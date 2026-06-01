@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ScriptFlow Pro | Smart Call Script Navigator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* Theme Variables - Light Mode Default */
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-sidebar: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.05);
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gradient-start: #e0e7ff;
+            --gradient-end: #f1f5f9;
+            --script-bg: #f1f5f9;
+            --nav-hover: #f1f5f9;
+        }
+        
+        /* Dark Mode */
+        body.dark {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --bg-sidebar: #0f172a;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.3);
+            --gradient-start: #0f172a;
+            --gradient-end: #1e1b4b;
+            --script-bg: #0f172a;
+            --nav-hover: #334155;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        h1 { 
+            font-size: 1.5rem; 
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        h1 i { margin-right: 10px; color: var(--primary); }
+        
+        .status-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { 
+            padding: 8px 20px; 
+            border-radius: 40px; 
+            font-weight: 600; 
+            font-size: 0.8rem; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge-primary { background: linear-gradient(135deg, var(--secondary), var(--primary)); color: white; }
+        .badge-success { background: var(--success); color: white; }
+        .mode-toggle {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 22px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-primary);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .mode-toggle:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* Main Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* Sidebar Navigation */
+        .nav-sidebar {
+            background: var(--bg-secondary);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            height: fit-content;
+            transition: all 0.3s ease;
+        }
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            padding: 0 10px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+        .nav-item:hover { background: var(--nav-hover); transform: translateX(4px); }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item i { width: 24px; font-size: 1rem; }
+        .nav-item .nav-badge { 
+            margin-left: auto; 
+            font-size: 0.65rem; 
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: rgba(0,0,0,0.1);
+        }
+        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); }
+        
+        /* Script Content Area */
+        .script-area {
+            background: var(--bg-secondary);
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+        .script-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        .script-title { 
+            font-size: 1.3rem; 
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .script-title i { color: var(--primary); font-size: 1.4rem; }
+        
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-icon {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 40px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .btn-icon:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+        .btn-edit { border-color: var(--warning); color: var(--warning); }
+        .btn-edit:hover { background: var(--warning); color: white; }
+        .btn-save { border-color: var(--success); color: var(--success); }
+        .btn-save:hover { background: var(--success); color: white; }
+        .btn-copy { border-color: var(--primary); color: var(--primary); }
+        .btn-copy:hover { background: var(--primary); color: white; }
+        .btn-reset { border-color: var(--danger); color: var(--danger); }
+        .btn-reset:hover { background: var(--danger); color: white; }
+        
+        /* Script Display */
+        .script-display {
+            background: var(--script-bg);
+            border-radius: 20px;
+            padding: 24px;
+            min-height: 520px;
+            line-height: 1.7;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .edit-textarea {
+            width: 100%;
+            min-height: 520px;
+            background: var(--bg-primary);
+            border: 2px solid var(--warning);
+            border-radius: 20px;
+            padding: 20px;
+            color: var(--text-primary);
+            font-family: 'Inter', monospace;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+        .edit-textarea:focus { outline: none; border-color: var(--primary); }
+        
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--success);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 48px;
+            z-index: 3000;
+            animation: slideIn 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 32px;
+            padding: 20px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .script-display { animation: fadeIn 0.3s ease; }
+        
+        /* Search Input */
+        .search-box {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 40px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+        }
+        .search-box:focus { outline: none; border-color: var(--primary); }
+        .search-box::placeholder { color: var(--text-secondary); opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-microphone-alt"></i> ScriptFlow Pro · Smart Call Navigator</h1>
+            <div class="status-group">
+                <div class="badge badge-primary" id="scriptCountBadge"><i class="fas fa-scroll"></i> <span id="scriptCount">0</span> Scripts</div>
+                <div class="badge badge-success" id="saveStatus"><i class="fas fa-save"></i> Auto-saved</div>
+                <button class="mode-toggle" id="themeToggle"><i class="fas fa-moon"></i> <span id="themeText">Dark Mode</span></button>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Navigation Sidebar - Scripts Only -->
+            <div class="nav-sidebar">
+                <div class="section-title"><i class="fas fa-bars"></i> CALL SCRIPTS</div>
+                <input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts...">
+                <div id="scriptNavList"></div>
+            </div>
+            
+            <!-- Script Content Area -->
+            <div class="script-area">
+                <div class="script-header">
+                    <div class="script-title"><i class="fas fa-scroll"></i> <span id="currentScriptName">Opening Script</span></div>
+                    <div class="action-buttons">
+                        <button id="editScriptBtn" class="btn-icon btn-edit"><i class="fas fa-pen"></i> Edit</button>
+                        <button id="saveScriptBtn" class="btn-icon btn-save" style="display: none;"><i class="fas fa-save"></i> Save</button>
+                        <button id="cancelEditBtn" class="btn-icon" style="display: none;"><i class="fas fa-times"></i> Cancel</button>
+                        <button id="copyScriptBtn" class="btn-icon btn-copy"><i class="fas fa-copy"></i> Copy</button>
+                        <button id="resetScriptBtn" class="btn-icon btn-reset"><i class="fas fa-undo-alt"></i> Reset</button>
+                    </div>
+                </div>
+                <div id="scriptContent"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <i class="fas fa-edit"></i> Fully Editable Scripts · Click any script to view · Edits auto-save to browser
+        </div>
+    </div>
+    
+    <script>
+        // ======================== SCRIPT DATABASE ========================
+        const defaultScripts = {
+            "opening": { name: "🎯 Opening Script", content: "Awesome — this is Flynn. I work with a web customization company, and we actually created a free, modern, preview-upgraded version inspired by your current site. There's no cost or obligation — we'd just like to show you what we built and get your thoughts.\n\n\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is Flynn. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Name]. Are you the owner of [Company Name]?\"" },
+            "owner_yes": { name: "👑 Owner - Yes", content: "✅ IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Name]. Talk soon!\"" },
+            "owner_no": { name: "👤 Not Owner", content: "❌ IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\n📌 IF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\n📌 IF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
+            "objection_website": { name: "⚠️ Already have a website", content: "💬 PROSPECT: \"We already have a website.\"\n\n✅ RESPONSE:\n→ \"Totally — honestly, most businesses we speak with do.\"\n→ \"This isn't really about replacing it immediately.\"\n→ \"It's more about showing you what a newer version could look like and seeing if there are opportunities to improve things like credibility, speed, or conversions.\"\n→ \"Worst case, you walk away with a few good ideas.\"" },
+            "objection_webguy": { name: "⚠️ Have a web guy", content: "💬 PROSPECT: \"I already have a web guy.\"\n\n✅ RESPONSE:\n→ \"That actually makes things easier.\"\n→ \"A lot of businesses we work with already have someone managing their site.\"\n→ \"They just like getting a second opinion or seeing a different creative direction.\"\n→ \"No commitment at all — just worth comparing.\"" },
+            "objection_cost": { name: "💰 How much does it cost?", content: "💬 PROSPECT: \"How much does it cost?\"\n\n✅ RESPONSE:\n→ \"The preview itself is completely free.\"\n→ \"Daniel would only go over pricing if you actually like what you see.\"\n→ \"Right now it's really just about showing you the concept first.\"" },
+            "objection_busy": { name: "⏰ I'm busy", content: "💬 PROSPECT: \"I'm busy.\"\n\n✅ RESPONSE:\n→ \"Totally understand — I caught you out of the blue.\"\n→ \"That's why I'm not trying to go through everything right now.\"\n→ \"What's easier for you — later today or sometime tomorrow for a quick 5–10 minute look?\"" },
+            "objection_not_interested": { name: "❌ Not interested", content: "💬 PROSPECT: \"Not interested.\"\n\n✅ RESPONSE:\n→ \"No worries.\"\n→ \"Just so you know, we already built the preview, so there's nothing you need to buy or commit to.\"\n→ \"Worst case, you spend a few minutes looking at it and walk away with a few ideas for your online presence.\"\n→ \"Would it hurt to at least take a quick look?\"" },
+            "objection_info": { name: "📧 Send me info", content: "💬 PROSPECT: \"Just send me info.\"\n\n✅ RESPONSE:\n→ \"I definitely can.\"\n→ \"The only reason I prefer a quick walkthrough is because the preview makes way more sense visually than through a long text or email.\"\n→ \"It honestly takes about 5 minutes.\"\n→ \"What's usually better for you — later today or tomorrow?\"" },
+            "objection_found_me": { name: "🔍 How did you find me?", content: "💬 PROSPECT: \"How did you find me?\"\n\n✅ RESPONSE:\n→ \"I came across your Google listing while looking at businesses in your area and industry.\"\n→ \"Your business stood out, so we decided to create a sample website concept using publicly available information online.\"" },
+            "objection_who_are_you": { name: "🏢 Who are you with?", content: "💬 PROSPECT: \"Who are you with?\"\n\n✅ RESPONSE:\n→ \"I'm with Canopy Designs.\"\n→ \"We help local and home service businesses improve their online presence and websites.\"\n→ \"The preview we built for you is completely free to look at.\"" },
+            "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
+        };
+        
+        let scripts = {};
+        let currentScriptId = "opening";
+        let isEditing = false;
+        let searchTerm = "";
+        
+        // Load scripts from localStorage
+        function loadScripts() {
+            const saved = localStorage.getItem('scriptflow_pro_scripts');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    scripts = parsed;
+                } catch(e) { scripts = { ...defaultScripts }; }
+            } else {
+                scripts = { ...defaultScripts };
+            }
+            updateScriptCount();
+        }
+        
+        function saveScripts() {
+            localStorage.setItem('scriptflow_pro_scripts', JSON.stringify(scripts));
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.innerHTML = '<i class="fas fa-check"></i> Saved!';
+            setTimeout(() => {
+                statusEl.innerHTML = '<i class="fas fa-save"></i> Auto-saved';
+            }, 2000);
+        }
+        
+        function updateScriptCount() {
+            document.getElementById('scriptCount').innerText = Object.keys(scripts).length;
+        }
+        
+        function showToast(msg, isSuccess = true) {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) existingToast.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = isSuccess ? 'var(--success)' : 'var(--danger)';
+            toast.innerHTML = `<i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${msg}`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        // Filter scripts based on search
+        function getFilteredScripts() {
+            if (!searchTerm) return Object.entries(scripts);
+            return Object.entries(scripts).filter(([id, script]) => 
+                script.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                id.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+        
+        // Render navigation (scripts only)
+        function renderNavigation() {
+            const navContainer = document.getElementById('scriptNavList');
+            const filtered = getFilteredScripts();
+            
+            if (filtered.length === 0) {
+                navContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No scripts found</div>';
+                return;
+            }
+            
+            let html = '';
+            for (const [id, script] of filtered) {
+                const isActive = currentScriptId === id;
+                const isObjection = id.includes('objection');
+                html += `
+                    <div class="nav-item ${isActive ? 'active' : ''}" data-script-id="${id}">
+                        <i class="fas ${isObjection ? 'fa-exclamation-triangle' : 'fa-scroll'}"></i>
+                        <span>${escapeHtml(script.name)}</span>
+                        <span class="nav-badge">${isObjection ? '💡' : '📝'}</span>
+                    </div>
+                `;
+            }
+            navContainer.innerHTML = html;
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const scriptId = item.getAttribute('data-script-id');
+                    if (isEditing && confirm('You have unsaved edits. Cancel editing to switch scripts?')) {
+                        cancelEditMode();
+                    }
+                    if (!isEditing) loadScript(scriptId);
+                });
+            });
+        }
+        
+        function loadScript(scriptId) {
+            if (!scripts[scriptId]) return;
+            
+            currentScriptId = scriptId;
+            const script = scripts[scriptId];
+            document.getElementById('currentScriptName').innerHTML = script.name;
+            
+            const scriptContainer = document.getElementById('scriptContent');
+            scriptContainer.innerHTML = `
+                <div class="script-display" id="scriptDisplay">
+                    ${escapeHtml(script.content).replace(/\n/g, '<br>')}
+                </div>
+            `;
+            
+            renderNavigation();
+        }
+        
+        function enterEditMode() {
+            if (isEditing) return;
+            isEditing = true;
+            const script = scripts[currentScriptId];
+            document.getElementById('editScriptBtn').style.display = 'none';
+            document.getElementById('saveScriptBtn').style.display = 'inline-flex';
+            document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+            
+            const scriptContainer = document.getElementById('scriptContent');
+            scriptContainer.innerHTML = `
+                <textarea id="editTextarea" class="edit-textarea" rows="18">${escapeHtml(script.content)}</textarea>
+            `;
+            document.getElementById('editTextarea').focus();
+        }
+        
+        function saveEdit() {
+            const newContent = document.getElementById('editTextarea').value;
+            scripts[currentScriptId].content = newContent;
+            saveScripts();
+            cancelEditMode();
+            showToast('✓ Script saved successfully!', true);
+        }
+        
+        function cancelEditMode() {
+            isEditing = false;
+            document.getElementById('editScriptBtn').style.display = 'inline-flex';
+            document.getElementById('saveScriptBtn').style.display = 'none';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            loadScript(currentScriptId);
+        }
+        
+        function copyScript() {
+            const script = scripts[currentScriptId];
+            navigator.clipboard.writeText(script.content).then(() => {
+                showToast('✓ Script copied to clipboard!', true);
+            }).catch(() => {
+                showToast('Failed to copy', false);
+            });
+        }
+        
+        function resetScript() {
+            if (!defaultScripts[currentScriptId]) {
+                showToast('This script cannot be reset to original', false);
+                return;
+            }
+            if (confirm('Reset this script to its original content? This cannot be undone.')) {
+                scripts[currentScriptId] = { ...defaultScripts[currentScriptId] };
+                saveScripts();
+                loadScript(currentScriptId);
+                showToast('✓ Script reset to original!', true);
+            }
+        }
+        
+        function escapeHtml(str) {
+            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+        }
+        
+        // Theme Management
+        function initTheme() {
+            const savedTheme = localStorage.getItem('scriptflow_theme');
+            const themeToggle = document.getElementById('themeToggle');
+            const themeText = document.getElementById('themeText');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark');
+                themeText.innerHTML = 'Light Mode';
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+            } else {
+                document.body.classList.remove('dark');
+                themeText.innerHTML = 'Dark Mode';
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+            }
+        }
+        
+        function toggleTheme() {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeText = document.getElementById('themeText');
+            
+            if (document.body.classList.contains('dark')) {
+                document.body.classList.remove('dark');
+                localStorage.setItem('scriptflow_theme', 'light');
+                themeText.innerHTML = 'Dark Mode';
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+            } else {
+                document.body.classList.add('dark');
+                localStorage.setItem('scriptflow_theme', 'dark');
+                themeText.innerHTML = 'Light Mode';
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+            }
+            showToast(`Theme switched to ${document.body.classList.contains('dark') ? 'dark' : 'light'} mode`, true);
+        }
+        
+        // Search functionality
+        function initSearch() {
+            const searchInput = document.getElementById('scriptSearch');
+            searchInput.addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase();
+                renderNavigation();
+            });
+        }
+        
+        // Initialize app
+        loadScripts();
+        initTheme();
+        initSearch();
+        renderNavigation();
+        loadScript('opening');
+        
+        // Button event listeners
+        document.getElementById('editScriptBtn').addEventListener('click', enterEditMode);
+        document.getElementById('saveScriptBtn').addEventListener('click', saveEdit);
+        document.getElementById('cancelEditBtn').addEventListener('click', cancelEditMode);
+        document.getElementById('copyScriptBtn').addEventListener('click', copyScript);
+        document.getElementById('resetScriptBtn').addEventListener('click', resetScript);
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        
+        // Auto-save indicator
+        setInterval(() => {
+            if (!isEditing) {
+                document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto-saved';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
