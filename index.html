@@ -236,14 +236,15 @@
         .script-display {
             background: var(--script-bg);
             border-radius: 20px;
-            padding: 24px;
+            padding: 28px;
             min-height: 520px;
-            line-height: 1.7;
-            font-size: 0.95rem;
+            line-height: 1.8;
+            font-size: 1rem;
             white-space: pre-wrap;
             word-break: break-word;
             border: 1px solid var(--border-color);
             transition: all 0.3s ease;
+            font-family: 'Inter', monospace;
         }
         .edit-textarea {
             width: 100%;
@@ -254,8 +255,8 @@
             padding: 20px;
             color: var(--text-primary);
             font-family: 'Inter', monospace;
-            font-size: 0.95rem;
-            line-height: 1.7;
+            font-size: 1rem;
+            line-height: 1.8;
             resize: vertical;
         }
         
@@ -428,10 +429,10 @@
                     <span><i class="fas fa-bars"></i> CALL SCRIPTS</span>
                     <button class="icon-btn" id="addScriptBtn" data-tooltip="Add New Script" style="padding:4px 10px;"><i class="fas fa-plus"></i></button>
                 </div>
-                <input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts...">
+                <input type="text" id="scriptSearch" class="search-box" placeholder="Search scripts...">
                 <div id="scriptNavList"></div>
                 <div style="margin-top: 16px; padding: 8px; font-size:0.65rem; background:var(--bg-primary); border-radius:20px; text-align:center; color:var(--text-secondary);">
-                    <i class="fas fa-crown"></i> Developed by Flynn P. · v2.5
+                    <i class="fas fa-crown"></i> Developed by Flynn P. · v3.0
                 </div>
             </div>
             
@@ -455,39 +456,38 @@
                 <div id="scriptContent"></div>
             </div>
         </div>
-        <div class="footer"><i class="fas fa-magic"></i> Press 1-9 keys to switch scripts instantly · Click 📅 to manage appointments · All data auto-saves locally</div>
+        <div class="footer"><i class="fas fa-magic"></i> Press 1-9 keys to switch scripts instantly · Click Calendar to manage appointments · All data auto-saves locally</div>
     </div>
 
     <script>
         // =============================================
         // ScriptFlow Pro - Developed by Flynn P.
-        // Full featured call script manager with appointment tracking
-        // Version 2.5 - Professional Edition
+        // Version 3.0 - Clean copy, fixed functionality
         // =============================================
         
         // User profile
         let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
         function setUserName() {
-            const newName = prompt('Enter your name (will replace [NAME] in scripts):', userName);
+            const newName = prompt('Enter your name:', userName);
             if (newName?.trim()) { userName = newName.trim(); localStorage.setItem('scriptflow_user_name', userName); showToast(`Name set to: ${userName}`, true); if (!isEditing) loadScript(currentScriptId); }
         }
-        function replaceNameInScript(content) { return content.replace(/\[NAME\]/gi, userName).replace(/\[Your Name\]/gi, userName); }
+        function replaceNameInScript(content) { return content.replace(/\[Your Name\]/gi, userName); }
         
         // =============================================
-        // Appointment Tracking System
+        // Appointment Tracking System - Clean text only (no icons)
         // =============================================
         let appointments = {};
         let goals = { daily: 3, weekly: 15, monthly: 60 };
         
         function loadAppointmentData() {
-            const saved = localStorage.getItem('scriptflow_appointments_final');
+            const saved = localStorage.getItem('scriptflow_appointments_clean');
             if (saved) appointments = JSON.parse(saved);
-            const savedGoals = localStorage.getItem('scriptflow_goals_final');
+            const savedGoals = localStorage.getItem('scriptflow_goals_clean');
             if (savedGoals) goals = JSON.parse(savedGoals);
             updateStats();
         }
-        function saveAppointments() { localStorage.setItem('scriptflow_appointments_final', JSON.stringify(appointments)); updateStats(); }
-        function saveGoals() { localStorage.setItem('scriptflow_goals_final', JSON.stringify(goals)); updateStats(); }
+        function saveAppointments() { localStorage.setItem('scriptflow_appointments_clean', JSON.stringify(appointments)); updateStats(); }
+        function saveGoals() { localStorage.setItem('scriptflow_goals_clean', JSON.stringify(goals)); updateStats(); }
         
         function getTodayStr() { return new Date().toISOString().split('T')[0]; }
         function getTodayCount() { return appointments[getTodayStr()]?.count || 0; }
@@ -516,10 +516,11 @@
             document.getElementById('goalMonthly').innerText = goals.monthly;
         }
         
+        // Clean appointment text - NO ICONS
         function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned) {
             if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
             if (!appointments[dateStr].reports) appointments[dateStr].reports = [];
-            const reportText = `🏢 Business: ${business}\n👤 Contact: ${contactName}\n📌 Role: ${role}\n📞 Phone: ${phone}\n⏰ Time: ${time}\n📝 Notes: ${notes}\n@${assigned}`;
+            const reportText = `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned to: ${assigned}`;
             appointments[dateStr].reports.unshift({
                 id: Date.now(), business, contactName, role, phone, time, notes, assigned,
                 createdAt: new Date().toISOString(), fullText: reportText
@@ -530,22 +531,35 @@
             return reportText;
         }
         
-        function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast('📋 Copied to clipboard!', true)).catch(() => showToast('Copy failed', false)); }
+        function copyToClipboard(text) { 
+            if (!text) { showToast('Nothing to copy', false); return; }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Copied to clipboard!', true);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Copied to clipboard!', true);
+            });
+        }
         
         // Quick Report Modal
         function openQuickReport() {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card report-modal"><h3 style="margin-bottom:16px;"><i class="fas fa-plus-circle"></i> Quick Add Appointment</h3>
-                <div class="form-group"><label>📅 Date</label><input type="date" id="reportDate" value="${getTodayStr()}"></div>
-                <div class="form-group"><label>🏢 Business Name *</label><input type="text" id="reportBusiness" placeholder="e.g., Blair Real Estate Agency"></div>
-                <div class="form-group"><label>👤 Contact Name *</label><input type="text" id="reportName" placeholder="Full name"></div>
-                <div class="form-group"><label>📌 Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
-                <div class="form-group"><label>📞 Phone Number</label><input type="text" id="reportPhone" placeholder="+1 207 592 2257"></div>
-                <div class="form-group"><label>⏰ Time</label><input type="text" id="reportTime" placeholder="Monday, June 08 around 3pm (ET)"></div>
-                <div class="form-group"><label>📝 Notes</label><textarea id="reportNotes" rows="3" placeholder="Appointment details..."></textarea></div>
-                <div class="form-group"><label>👥 Assigned To</label><input type="text" id="reportAssigned" placeholder="Daniel" value="Daniel"></div>
-                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="submitReportBtn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save & Copy</button><button class="icon-btn" id="closeReportBtn">Cancel</button></div>
+            modal.innerHTML = `<div class="modal-card report-modal"><h3 style="margin-bottom:16px;">Quick Add Appointment</h3>
+                <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${getTodayStr()}"></div>
+                <div class="form-group"><label>Business Name *</label><input type="text" id="reportBusiness" placeholder="e.g., Flynn Group"></div>
+                <div class="form-group"><label>Contact Name *</label><input type="text" id="reportName" placeholder="Full name"></div>
+                <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
+                <div class="form-group"><label>Phone Number</label><input type="text" id="reportPhone" placeholder="+1 207 592 2257"></div>
+                <div class="form-group"><label>Time</label><input type="text" id="reportTime" placeholder="Monday, June 08 around 3pm (ET)"></div>
+                <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="3" placeholder="Appointment details..."></textarea></div>
+                <div class="form-group"><label>Assigned To</label><input type="text" id="reportAssigned" placeholder="Daniel" value="Daniel"></div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="submitReportBtn" style="background:var(--success); color:white;">Save & Copy</button><button class="icon-btn" id="closeReportBtn">Cancel</button></div>
             </div>`;
             document.body.appendChild(modal);
             document.getElementById('submitReportBtn').addEventListener('click', () => {
@@ -603,16 +617,16 @@
             
             let reportsHtml = '';
             if (apptData.reports && apptData.reports.length > 0) {
-                reportsHtml = `<div style="margin-top:16px;"><strong>📋 Appointments (${apptData.reports.length}):</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;"><i class="fas fa-copy"></i> Copy All</button>`;
+                reportsHtml = `<div style="margin-top:16px;"><strong>Appointments (${apptData.reports.length}):</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;">Copy All</button>`;
                 apptData.reports.forEach((r, idx) => {
                     reportsHtml += `<div class="appointment-card">
                         <div style="display:flex; justify-content:space-between; align-items:start;">
                             <div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)} (${escapeHtml(r.role)})</div>
-                            <button class="copy-btn-sm" onclick="window.copySingleReport(${r.id})"><i class="fas fa-copy"></i> Copy</button>
+                            <button class="copy-btn-sm copy-single-btn" data-id="${r.id}">Copy</button>
                         </div>
-                        <div style="font-size:0.8rem; margin-top:4px;">📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div>
-                        <div style="font-size:0.8rem; margin-top:4px;">📝 ${escapeHtml(r.notes?.substring(0, 100))}${r.notes?.length > 100 ? '...' : ''}</div>
-                        <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px;">@${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div>
+                        <div style="font-size:0.8rem; margin-top:4px;">Phone: ${escapeHtml(r.phone)} | Time: ${escapeHtml(r.time || 'TBD')}</div>
+                        <div style="font-size:0.8rem; margin-top:4px;">Notes: ${escapeHtml(r.notes?.substring(0, 100))}${r.notes?.length > 100 ? '...' : ''}</div>
+                        <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px;">Assigned to: ${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div>
                     </div>`;
                 });
                 reportsHtml += `</div>`;
@@ -623,26 +637,26 @@
                 <div class="cal-header">
                     <div class="cal-month-year">${monthNames[month]} ${year}</div>
                     <div class="cal-nav">
-                        <button id="calPrevBtn"><i class="fas fa-chevron-left"></i> Prev</button>
-                        <button id="calNextBtn">Next <i class="fas fa-chevron-right"></i></button>
+                        <button id="calPrevBtn">Prev</button>
+                        <button id="calNextBtn">Next</button>
                         <button id="calTodayBtn">Today</button>
                     </div>
                 </div>
                 <div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
                 <div class="cal-days" id="calDaysGrid">${daysHtml}</div>
                 <div style="margin-top:16px;">
-                    <label><strong>📊 ${selectedCalDate} - ${apptData.count} appointment(s)</strong></label>
+                    <label><strong>${selectedCalDate} - ${apptData.count} appointment(s)</strong></label>
                     <textarea id="apptNoteInput" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); margin-top:8px;" rows="2" placeholder="General notes...">${escapeHtml(apptData.note || '')}</textarea>
-                    <button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;"><i class="fas fa-plus-circle"></i> + Add Appointment for this Day</button>
+                    <button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;">+ Add Appointment for this Day</button>
                     ${reportsHtml}
                     <div class="goal-input-group">
-                        <div><label>🎯 Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div>
-                        <div><label>📅 Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div>
-                        <div><label>📆 Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div>
+                        <div><label>Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div>
+                        <div><label>Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div>
+                        <div><label>Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div>
                     </div>
                 </div>
                 <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
-                    <button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save Note</button>
+                    <button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;">Save Note</button>
                     <button class="icon-btn" id="closeCalBtn">Close</button>
                 </div>
             `;
@@ -650,6 +664,19 @@
             document.querySelectorAll('.cal-day[data-date]').forEach(el => {
                 el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarModal(); });
             });
+            
+            document.querySelectorAll('.copy-single-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(btn.getAttribute('data-id'));
+                    for (let date in appointments) {
+                        const reports = appointments[date]?.reports || [];
+                        const report = reports.find(r => r.id === id);
+                        if (report) { copyToClipboard(report.fullText); break; }
+                    }
+                });
+            });
+            
             document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendarModal(); });
             document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendarModal(); });
             document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
@@ -662,7 +689,10 @@
             document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); openQuickReport(); });
             document.getElementById('closeCalBtn')?.addEventListener('click', closeCalendarModal);
             document.getElementById('copyAllReportsBtn')?.addEventListener('click', () => {
-                if (apptData.reports) { const allText = apptData.reports.map(r => r.fullText).join('\n\n---\n\n'); copyToClipboard(allText); }
+                if (apptData.reports && apptData.reports.length > 0) { 
+                    const allText = apptData.reports.map(r => r.fullText).join('\n\n---\n\n'); 
+                    copyToClipboard(allText); 
+                } else { showToast('No appointments to copy', false); }
             });
             
             const dailyInput = document.getElementById('goalDailyInput');
@@ -673,58 +703,49 @@
             if (monthlyInput) monthlyInput.addEventListener('change', () => { goals.monthly = parseInt(monthlyInput.value) || 60; saveGoals(); });
         }
         
-        window.copySingleReport = (id) => {
-            for (let date in appointments) {
-                const reports = appointments[date]?.reports || [];
-                const report = reports.find(r => r.id === id);
-                if (report) { copyToClipboard(report.fullText); break; }
-            }
-        };
-        
         // Help Guide
         function openHelpModal() {
             const modal = document.createElement('div');
             modal.className = 'modal-overlay';
             modal.innerHTML = `<div class="modal-card help-modal">
-                <h3 style="margin-bottom:20px;"><i class="fas fa-graduation-cap"></i> ScriptFlow Pro User Guide</h3>
-                <div class="help-step"><h4>🎯 Quick Navigation</h4><p>Press keys 1-9 to instantly jump to any script. Number badges show shortcut keys.</p></div>
-                <div class="help-step"><h4>✏️ Script Management</h4><p>Click Edit (✏️) to modify scripts. Add new scripts (+), rename (pencil icon), delete custom scripts (trash). Reset restores original version.</p></div>
-                <div class="help-step"><h4>📝 Version History</h4><p>Press Ctrl+Z to undo, Ctrl+Y to redo changes. Click History button to see all previous versions.</p></div>
-                <div class="help-step"><h4>👤 Personalization</h4><p>Click the user icon to set your name. Your name replaces [NAME] placeholders in scripts.</p></div>
-                <div class="help-step"><h4>📅 Appointment Tracker</h4><p>Click Calendar to view/manage appointments. Quick Add logs new appointments with copy-to-clipboard. Set daily/weekly/monthly goals.</p></div>
-                <div class="help-step"><h4>🎨 Theme</h4><p>Click moon/sun icon to toggle Dark/Light mode. All data auto-saves to your browser.</p></div>
+                <h3 style="margin-bottom:20px;">ScriptFlow Pro User Guide</h3>
+                <div class="help-step"><h4>Quick Navigation</h4><p>Press keys 1-9 to instantly jump to any script.</p></div>
+                <div class="help-step"><h4>Script Management</h4><p>Click Edit to modify scripts. Add new scripts, rename, delete custom scripts. Reset restores original version.</p></div>
+                <div class="help-step"><h4>Version History</h4><p>Press Ctrl+Z to undo, Ctrl+Y to redo changes.</p></div>
+                <div class="help-step"><h4>Personalization</h4><p>Click the user icon to set your name.</p></div>
+                <div class="help-step"><h4>Appointment Tracker</h4><p>Click Calendar to view/manage appointments. Quick Add logs new appointments with copy-to-clipboard.</p></div>
+                <div class="help-step"><h4>Theme</h4><p>Click moon/sun icon to toggle Dark/Light mode.</p></div>
                 <div class="shortcut-grid"><div class="shortcut-item"><strong>1-9</strong> Jump to script</div><div class="shortcut-item"><strong>Ctrl+Z</strong> Undo</div><div class="shortcut-item"><strong>Ctrl+Y</strong> Redo</div><div class="shortcut-item"><strong>Esc</strong> Cancel edit</div></div>
-                <div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary); color:white;"><i class="fas fa-check"></i> Got it!</button></div>
+                <div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary); color:white;">Got it!</button></div>
             </div>`;
             document.body.appendChild(modal);
             document.getElementById('closeHelpBtn').addEventListener('click', () => modal.remove());
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
-        // Factory Reset
         function factoryReset() {
-            if (confirm('⚠️ FACTORY RESET: This will erase ALL custom scripts, version history, appointments, and reset everything to default. This cannot be undone. Continue?')) {
+            if (confirm('FACTORY RESET: This will erase ALL data. Cannot be undone. Continue?')) {
                 localStorage.clear();
                 location.reload();
             }
         }
         
         // =============================================
-        // Complete Scripts Database (Full Versions)
+        // Complete Scripts Database
         // =============================================
         const defaultScripts = {
-            "opening": { name: "🎯 Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [NAME]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Name]. Are you the owner of [Company Name]?\"" },
-            "owner_yes": { name: "👑 Owner - Yes", content: "✅ IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Name]. Talk soon!\"" },
-            "owner_no": { name: "👤 Not Owner", content: "❌ IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\n📌 IF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\n📌 IF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
-            "objection_website": { name: "⚠️ Already have a website", content: "💬 PROSPECT: \"We already have a website.\"\n\n✅ RESPONSE:\n→ \"Totally — honestly, most businesses we speak with do.\"\n→ \"This isn't really about replacing it immediately.\"\n→ \"It's more about showing you what a newer version could look like and seeing if there are opportunities to improve things like credibility, speed, or conversions.\"\n→ \"Worst case, you walk away with a few good ideas.\"" },
-            "objection_webguy": { name: "⚠️ Have a web guy", content: "💬 PROSPECT: \"I already have a web guy.\"\n\n✅ RESPONSE:\n→ \"That actually makes things easier.\"\n→ \"A lot of businesses we work with already have someone managing their site.\"\n→ \"They just like getting a second opinion or seeing a different creative direction.\"\n→ \"No commitment at all — just worth comparing.\"" },
-            "objection_cost": { name: "💰 How much does it cost?", content: "💬 PROSPECT: \"How much does it cost?\"\n\n✅ RESPONSE:\n→ \"The preview itself is completely free.\"\n→ \"Daniel would only go over pricing if you actually like what you see.\"\n→ \"Right now it's really just about showing you the concept first.\"" },
-            "objection_busy": { name: "⏰ I'm busy", content: "💬 PROSPECT: \"I'm busy.\"\n\n✅ RESPONSE:\n→ \"Totally understand — I caught you out of the blue.\"\n→ \"That's why I'm not trying to go through everything right now.\"\n→ \"What's easier for you — later today or sometime tomorrow for a quick 5–10 minute look?\"" },
-            "objection_not_interested": { name: "❌ Not interested", content: "💬 PROSPECT: \"Not interested.\"\n\n✅ RESPONSE:\n→ \"No worries.\"\n→ \"Just so you know, we already built the preview, so there's nothing you need to buy or commit to.\"\n→ \"Worst case, you spend a few minutes looking at it and walk away with a few ideas for your online presence.\"\n→ \"Would it hurt to at least take a quick look?\"" },
-            "objection_info": { name: "📧 Send me info", content: "💬 PROSPECT: \"Just send me info.\"\n\n✅ RESPONSE:\n→ \"I definitely can.\"\n→ \"The only reason I prefer a quick walkthrough is because the preview makes way more sense visually than through a long text or email.\"\n→ \"It honestly takes about 5 minutes.\"\n→ \"What's usually better for you — later today or tomorrow?\"" },
-            "objection_found_me": { name: "🔍 How did you find me?", content: "💬 PROSPECT: \"How did you find me?\"\n\n✅ RESPONSE:\n→ \"I came across your Google listing while looking at businesses in your area and industry.\"\n→ \"Your business stood out, so we decided to create a sample website concept using publicly available information online.\"" },
-            "objection_who_are_you": { name: "🏢 Who are you with?", content: "💬 PROSPECT: \"Who are you with?\"\n\n✅ RESPONSE:\n→ \"I'm with Canopy Designs.\"\n→ \"We help local and home service businesses improve their online presence and websites.\"\n→ \"The preview we built for you is completely free to look at.\"" },
-            "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
+            "opening": { name: "Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [Your Name]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Prospect Name]. Are you the owner of [Company Name]?\"" },
+            "owner_yes": { name: "Owner - Yes", content: "IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Prospect Name]. Talk soon!\"" },
+            "owner_no": { name: "Not Owner", content: "IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\nIF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\nIF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
+            "objection_website": { name: "Already have a website", content: "PROSPECT: \"We already have a website.\"\n\nRESPONSE:\n→ \"Totally — honestly, most businesses we speak with do.\"\n→ \"This isn't really about replacing it immediately.\"\n→ \"It's more about showing you what a newer version could look like and seeing if there are opportunities to improve things like credibility, speed, or conversions.\"\n→ \"Worst case, you walk away with a few good ideas.\"" },
+            "objection_webguy": { name: "Have a web guy", content: "PROSPECT: \"I already have a web guy.\"\n\nRESPONSE:\n→ \"That actually makes things easier.\"\n→ \"A lot of businesses we work with already have someone managing their site.\"\n→ \"They just like getting a second opinion or seeing a different creative direction.\"\n→ \"No commitment at all — just worth comparing.\"" },
+            "objection_cost": { name: "How much does it cost?", content: "PROSPECT: \"How much does it cost?\"\n\nRESPONSE:\n→ \"The preview itself is completely free.\"\n→ \"Daniel would only go over pricing if you actually like what you see.\"\n→ \"Right now it's really just about showing you the concept first.\"" },
+            "objection_busy": { name: "I'm busy", content: "PROSPECT: \"I'm busy.\"\n\nRESPONSE:\n→ \"Totally understand — I caught you out of the blue.\"\n→ \"That's why I'm not trying to go through everything right now.\"\n→ \"What's easier for you — later today or sometime tomorrow for a quick 5–10 minute look?\"" },
+            "objection_not_interested": { name: "Not interested", content: "PROSPECT: \"Not interested.\"\n\nRESPONSE:\n→ \"No worries.\"\n→ \"Just so you know, we already built the preview, so there's nothing you need to buy or commit to.\"\n→ \"Worst case, you spend a few minutes looking at it and walk away with a few ideas for your online presence.\"\n→ \"Would it hurt to at least take a quick look?\"" },
+            "objection_info": { name: "Send me info", content: "PROSPECT: \"Just send me info.\"\n\nRESPONSE:\n→ \"I definitely can.\"\n→ \"The only reason I prefer a quick walkthrough is because the preview makes way more sense visually than through a long text or email.\"\n→ \"It honestly takes about 5 minutes.\"\n→ \"What's usually better for you — later today or tomorrow?\"" },
+            "objection_found_me": { name: "How did you find me?", content: "PROSPECT: \"How did you find me?\"\n\nRESPONSE:\n→ \"I came across your Google listing while looking at businesses in your area and industry.\"\n→ \"Your business stood out, so we decided to create a sample website concept using publicly available information online.\"" },
+            "objection_who_are_you": { name: "Who are you with?", content: "PROSPECT: \"Who are you with?\"\n\nRESPONSE:\n→ \"I'm with Canopy Designs.\"\n→ \"We help local and home service businesses improve their online presence and websites.\"\n→ \"The preview we built for you is completely free to look at.\"" },
+            "closing": { name: "Closing Script", content: "CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Your Name]! Talk soon!\"\n\nREMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
         };
         
         // =============================================
@@ -746,10 +767,10 @@
         function redoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] >= versionHistory[id].length - 1) { showToast('No newer version', false); return; } currentVersionIndex[id]++; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Redo successful', true); }
         
         function loadScripts() {
-            const saved = localStorage.getItem('scriptflow_pro_scripts_master');
+            const saved = localStorage.getItem('scriptflow_pro_scripts_final');
             if (saved) { scripts = JSON.parse(saved); for (let k of Object.keys(defaultScripts)) if (!scripts[k]) scripts[k] = {...defaultScripts[k]}; }
             else scripts = JSON.parse(JSON.stringify(defaultScripts));
-            const savedOrder = localStorage.getItem('scriptflow_order_master');
+            const savedOrder = localStorage.getItem('scriptflow_order_final');
             if (savedOrder) customOrder = JSON.parse(savedOrder);
             else customOrder = ["opening", "owner_yes", "owner_no", "objection_website", "objection_webguy", "objection_cost", "objection_busy", "objection_not_interested", "objection_info", "objection_found_me", "objection_who_are_you", "closing"];
             const savedHistory = localStorage.getItem('scriptflow_version_history');
@@ -758,8 +779,8 @@
             document.getElementById('scriptCount').innerText = Object.keys(scripts).length;
         }
         function saveAllScripts() {
-            localStorage.setItem('scriptflow_pro_scripts_master', JSON.stringify(scripts));
-            localStorage.setItem('scriptflow_order_master', JSON.stringify(customOrder));
+            localStorage.setItem('scriptflow_pro_scripts_final', JSON.stringify(scripts));
+            localStorage.setItem('scriptflow_order_final', JSON.stringify(customOrder));
             document.getElementById('saveStatus').innerHTML = '<i class="fas fa-check"></i> Saved';
             setTimeout(() => { if (!isEditing) document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto'; }, 2000);
         }
@@ -769,8 +790,8 @@
             return ids;
         }
         function getKeyMapping() { const vis = getOrderedVisible(); const map = new Map(); vis.slice(0,9).forEach((id,i)=>map.set((i+1).toString(),id)); return map; }
-        function showToast(msg, ok=true) { const t=document.createElement('div'); t.className='toast'; t.style.background=ok?'var(--success)':'var(--danger)'; t.innerHTML=`<i class="fas ${ok?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
-        function escapeHtml(s) { return s.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
+        function showToast(msg, ok=true) { const t=document.createElement('div'); t.className='toast'; t.style.background=ok?'var(--success)':'var(--danger)'; t.innerHTML=`${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
+        function escapeHtml(s) { return s ? s.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])) : ''; }
         
         function renderNavigation() {
             const container = document.getElementById('scriptNavList');
@@ -800,18 +821,31 @@
             document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); if(id==='opening'){ showToast('Cannot delete the main opening script', false); return; } if(confirm(`Delete "${scripts[id].name}"? This action cannot be undone.`)){ delete scripts[id]; delete versionHistory[id]; customOrder=customOrder.filter(i=>i!==id); if(currentScriptId===id) loadScript('opening'); saveAllScripts(); renderNavigation(); document.getElementById('scriptCount').innerText=Object.keys(scripts).length; showToast('Script deleted'); } }));
             const visibleIds = getOrderedVisible();
             const idxCur = visibleIds.indexOf(currentScriptId);
-            document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `<i class="fas fa-key"></i> Key: ${idxCur+1}` : `<i class="fas fa-key"></i> Key: —`;
+            document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `Key: ${idxCur+1}` : `Key: —`;
             if (versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText = `${currentVersionIndex[currentScriptId]+1}/${versionHistory[currentScriptId].length}`;
         }
         
         function loadScript(id) { if(!scripts[id] || isEditing) return; currentScriptId = id; document.getElementById('currentScriptName').innerHTML = scripts[id].name; const displayContent = replaceNameInScript(scripts[id].content); document.getElementById('scriptContent').innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`; renderNavigation(); }
-        function enterEdit() { if(isEditing) return; isEditing=true; const s=scripts[currentScriptId]; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(s.content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='<i class="fas fa-pen"></i> Editing...'; }
-        function saveEdit() { const newContent = document.getElementById('editTextarea').value; scripts[currentScriptId].content = newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('✓ Script saved successfully!', true); }
-        function cancelEdit() { isEditing=false; document.getElementById('editScriptBtn').style.display='inline-flex'; document.getElementById('saveScriptBtn').style.display='none'; document.getElementById('cancelEditBtn').style.display='none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML='<i class="fas fa-save"></i> Auto'; }
-        function copyScript() { const content = replaceNameInScript(scripts[currentScriptId].content); navigator.clipboard.writeText(content).then(()=>showToast('Script copied to clipboard!', true)); }
-        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset this script to its original content? This will create a backup in version history.')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Script reset to original version', true); } } else showToast('No default version available for this script', false); }
+        function enterEdit() { if(isEditing) return; isEditing=true; const s=scripts[currentScriptId]; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(s.content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='Editing...'; }
+        function saveEdit() { const newContent = document.getElementById('editTextarea').value; scripts[currentScriptId].content = newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('Script saved successfully!', true); }
+        function cancelEdit() { isEditing=false; document.getElementById('editScriptBtn').style.display='inline-flex'; document.getElementById('saveScriptBtn').style.display='none'; document.getElementById('cancelEditBtn').style.display='none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML='Auto'; }
+        function copyScript() { 
+            const content = replaceNameInScript(scripts[currentScriptId].content);
+            navigator.clipboard.writeText(content).then(() => {
+                showToast('Script copied to clipboard!', true);
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = content;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Script copied to clipboard!', true);
+            });
+        }
+        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset this script to its original content?')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Script reset to original version', true); } } else showToast('No default version available', false); }
         function addScript() { if(isEditing){ showToast('Please finish editing current script first', false); return; } const name=prompt('Enter script name:'); if(!name) return; const id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); scripts[id]={name, content:'Write your script content here...'}; initVersionHistory(id, scripts[id].content); customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`New script "${name}" added successfully`, true); }
-        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No version history available for this script', false); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>📜 Version History: ${escapeHtml(scripts[id].name)}</h3><div style="max-height:400px; overflow-y:auto;">`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span style="color:var(--primary);">${idx === currentVersionIndex[id] ? '✓ Current' : '↺ Restore'}</span></div>`; }); html += `</div><div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast(`Restored version from ${new Date(versionHistory[id][idx].timestamp).toLocaleString()}`, true); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
+        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No version history available', false); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>Version History: ${escapeHtml(scripts[id].name)}</h3><div style="max-height:400px; overflow-y:auto;">`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span style="color:var(--primary);">${idx === currentVersionIndex[id] ? 'Current' : 'Restore'}</span></div>`; }); html += `</div><div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast(`Restored version from ${new Date(versionHistory[id][idx].timestamp).toLocaleString()}`, true); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
         
         function initKeyboard() {
             window.addEventListener('keydown',(e)=>{
@@ -822,10 +856,10 @@
             });
         }
         function initTheme() { const saved=localStorage.getItem('scriptflow_theme_final'); if(saved==='dark') document.body.classList.add('dark'); document.getElementById('themeToggle').innerHTML=document.body.classList.contains('dark')?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; }
-        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_final',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode activated 🌙':'Light mode activated ☀️'}`, true); }
+        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_final',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode activated':'Light mode activated'}`, true); }
         function initSearch() { document.getElementById('scriptSearch').addEventListener('input',(e)=>{ searchTerm=e.target.value.toLowerCase(); renderNavigation(); }); }
         
-        // Initialize everything
+        // Initialize
         loadAppointmentData();
         loadScripts();
         initTheme();
@@ -851,8 +885,7 @@
         document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId));
         document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
         
-        // Auto-save status refresher
-        setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto'; updateStats(); }, 5000);
+        setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; updateStats(); }, 5000);
     </script>
 </body>
 </html>
