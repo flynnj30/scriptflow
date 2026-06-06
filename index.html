@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ScriptFlow Pro | Smart Call Script Navigator</title>
+    <title>ScriptFlow Pro | Call Script Manager + Appointment Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        /* Theme Variables - Light Mode Default */
         :root {
             --bg-primary: #f8fafc;
             --bg-secondary: #ffffff;
@@ -31,9 +30,12 @@
             --gradient-end: #f1f5f9;
             --script-bg: #f1f5f9;
             --nav-hover: #f1f5f9;
+            --tooltip-bg: #1e293b;
+            --help-bg: #f1f5f9;
+            --cal-day-bg: #ffffff;
+            --cal-day-hover: #e0e7ff;
         }
         
-        /* Dark Mode */
         body.dark {
             --bg-primary: #0f172a;
             --bg-secondary: #1e293b;
@@ -49,6 +51,10 @@
             --gradient-end: #1e1b4b;
             --script-bg: #0f172a;
             --nav-hover: #334155;
+            --tooltip-bg: #334155;
+            --help-bg: #1e293b;
+            --cal-day-bg: #1e293b;
+            --cal-day-hover: #3b82f6;
         }
         
         body {
@@ -61,7 +67,6 @@
         
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -86,7 +91,7 @@
         }
         h1 i { margin-right: 10px; color: var(--primary); }
         
-        .status-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .status-group { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
         .badge { 
             padding: 8px 20px; 
             border-radius: 40px; 
@@ -100,39 +105,59 @@
         }
         .badge-primary { background: linear-gradient(135deg, var(--secondary), var(--primary)); color: white; }
         .badge-success { background: var(--success); color: white; }
-        .mode-toggle {
+        
+        .icon-btn {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
-            padding: 8px 22px;
+            padding: 8px 12px;
             border-radius: 40px;
-            cursor: pointer;
-            font-weight: 500;
             color: var(--text-primary);
+            cursor: pointer;
             transition: all 0.2s;
+            font-size: 1rem;
+            position: relative;
+        }
+        .icon-btn:hover { transform: translateY(-2px); background: var(--primary); color: white; border-color: var(--primary); }
+        .icon-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tooltip-bg);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 8px;
+            z-index: 100;
+        }
+        .icon-btn:hover::after { opacity: 1; }
+        
+        .tracker-summary {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 15px;
+            background: var(--bg-primary);
+            padding: 6px 16px;
+            border-radius: 60px;
+            border: 1px solid var(--border-color);
         }
-        .mode-toggle:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .stat-pill { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; }
+        .stat-pill .number { font-weight: 800; color: var(--primary); }
         
-        /* Main Layout */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 24px;
-        }
-        @media (max-width: 900px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
         
-        /* Sidebar Navigation */
         .nav-sidebar {
             background: var(--bg-secondary);
-            backdrop-filter: blur(12px);
             border-radius: 24px;
             padding: 20px;
             border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-md);
             height: fit-content;
             transition: all 0.3s ease;
         }
@@ -142,8 +167,10 @@
             letter-spacing: 2px;
             font-weight: 600;
             color: var(--text-secondary);
-            margin-bottom: 16px;
-            padding: 0 10px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .nav-item {
             display: flex;
@@ -156,26 +183,40 @@
             transition: all 0.2s;
             color: var(--text-primary);
             font-size: 0.9rem;
+            position: relative;
         }
         .nav-item:hover { background: var(--nav-hover); transform: translateX(4px); }
         .nav-item.active { background: var(--primary); color: white; }
-        .nav-item i { width: 24px; font-size: 1rem; }
-        .nav-item .nav-badge { 
-            margin-left: auto; 
-            font-size: 0.65rem; 
+        .nav-item i { width: 24px; }
+        .key-hint {
+            position: absolute;
+            right: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--bg-primary);
             padding: 2px 8px;
             border-radius: 20px;
-            background: rgba(0,0,0,0.1);
+            color: var(--primary);
+            border: 1px solid var(--border-color);
         }
-        .nav-item.active .nav-badge { background: rgba(255,255,255,0.2); }
+        .nav-item.active .key-hint { background: rgba(255,255,255,0.25); color: white; }
+        .nav-actions { display: flex; gap: 6px; margin-left: auto; margin-right: 30px; }
+        .nav-icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .nav-icon-btn:hover { background: var(--bg-primary); color: var(--primary); }
         
-        /* Script Content Area */
         .script-area {
             background: var(--bg-secondary);
             border-radius: 24px;
             padding: 24px;
             border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-md);
             transition: all 0.3s ease;
         }
         .script-header {
@@ -188,41 +229,10 @@
             padding-bottom: 16px;
             border-bottom: 2px solid var(--border-color);
         }
-        .script-title { 
-            font-size: 1.3rem; 
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .script-title i { color: var(--primary); font-size: 1.4rem; }
+        .script-title { font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .action-buttons { display: flex; gap: 8px; }
+        .version-indicator { font-size: 0.7rem; background: var(--bg-primary); padding: 4px 12px; border-radius: 20px; color: var(--text-secondary); }
         
-        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-icon {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 40px;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .btn-icon:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-        .btn-edit { border-color: var(--warning); color: var(--warning); }
-        .btn-edit:hover { background: var(--warning); color: white; }
-        .btn-save { border-color: var(--success); color: var(--success); }
-        .btn-save:hover { background: var(--success); color: white; }
-        .btn-copy { border-color: var(--primary); color: var(--primary); }
-        .btn-copy:hover { background: var(--primary); color: white; }
-        .btn-reset { border-color: var(--danger); color: var(--danger); }
-        .btn-reset:hover { background: var(--danger); color: white; }
-        
-        /* Script Display */
         .script-display {
             background: var(--script-bg);
             border-radius: 20px;
@@ -247,11 +257,117 @@
             font-size: 0.95rem;
             line-height: 1.7;
             resize: vertical;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5000;
+            animation: fadeIn 0.2s ease;
+        }
+        .modal-card {
+            background: var(--bg-secondary);
+            border-radius: 32px;
+            width: 580px;
+            max-width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
             transition: all 0.3s ease;
         }
-        .edit-textarea:focus { outline: none; border-color: var(--primary); }
+        .calendar-modal { width: 780px; }
+        .report-modal { width: 600px; }
+        .help-modal { width: 650px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; color: var(--text-secondary); }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
         
-        /* Toast Notification */
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .cal-month-year { font-weight: 800; font-size: 1.3rem; color: var(--primary); }
+        .cal-nav { display: flex; gap: 12px; }
+        .cal-nav button {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: var(--text-primary);
+        }
+        .cal-nav button:hover { background: var(--primary); color: white; border-color: var(--primary); }
+        .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.75rem; font-weight: 700; margin-bottom: 12px; color: var(--text-secondary); }
+        .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 24px; }
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--cal-day-bg);
+            transition: all 0.2s;
+            position: relative;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .cal-day:hover { background: var(--primary); color: white; transform: scale(1.05); border-color: var(--primary); }
+        .cal-day.selected { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); border-color: var(--primary); }
+        .cal-day.has-appointment::after { content: '📅'; font-size: 0.55rem; position: absolute; bottom: 2px; right: 4px; }
+        .appointment-card {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--success);
+            transition: all 0.3s ease;
+        }
+        .copy-btn-sm {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .copy-btn-sm:hover { background: var(--border-color); }
+        .goal-input-group { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+        .goal-input-group input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); }
+        
+        .help-step {
+            background: var(--help-bg);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        .help-step h4 { margin-bottom: 8px; color: var(--primary); }
+        .help-step p { font-size: 0.85rem; line-height: 1.5; color: var(--text-primary); }
+        .shortcut-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+        .shortcut-item { background: var(--bg-primary); padding: 8px; border-radius: 12px; font-size: 0.8rem; color: var(--text-primary); }
+        
         .toast {
             position: fixed;
             bottom: 24px;
@@ -260,43 +376,19 @@
             color: white;
             padding: 12px 24px;
             border-radius: 48px;
-            z-index: 3000;
+            z-index: 6000;
             animation: slideIn 0.3s ease;
             box-shadow: var(--shadow-lg);
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-        
-        /* Footer */
-        .footer {
-            text-align: center;
-            margin-top: 32px;
-            padding: 20px;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            border-top: 1px solid var(--border-color);
-        }
-        
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-primary); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--primary-dark); }
-        
-        /* Animations */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        .script-display { animation: fadeIn 0.3s ease; }
-        
-        /* Search Input */
+        .footer { text-align: center; margin-top: 32px; padding: 20px; font-size: 0.7rem; color: var(--text-secondary); border-top: 1px solid var(--border-color); }
         .search-box {
             width: 100%;
             padding: 10px 14px;
@@ -305,56 +397,323 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             margin-bottom: 16px;
-            font-size: 0.85rem;
         }
-        .search-box:focus { outline: none; border-color: var(--primary); }
-        .search-box::placeholder { color: var(--text-secondary); opacity: 0.6; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-microphone-alt"></i> ScriptFlow Pro · Smart Call Navigator</h1>
+            <h1><i class="fas fa-microphone-alt"></i> ScriptFlow Pro</h1>
             <div class="status-group">
-                <div class="badge badge-primary" id="scriptCountBadge"><i class="fas fa-scroll"></i> <span id="scriptCount">0</span> Scripts</div>
-                <div class="badge badge-success" id="saveStatus"><i class="fas fa-save"></i> Auto-saved</div>
-                <button class="mode-toggle" id="themeToggle"><i class="fas fa-moon"></i> <span id="themeText">Dark Mode</span></button>
+                <div class="tracker-summary">
+                    <div class="stat-pill"><i class="fas fa-calendar-day"></i> Today: <span class="number" id="statToday">0</span>/<span id="goalDaily">3</span></div>
+                    <div class="stat-pill"><i class="fas fa-calendar-week"></i> Week: <span class="number" id="statWeek">0</span>/<span id="goalWeekly">15</span></div>
+                    <div class="stat-pill"><i class="fas fa-calendar-alt"></i> Month: <span class="number" id="statMonth">0</span>/<span id="goalMonthly">60</span></div>
+                    <button class="icon-btn" id="openCalendarBtn" data-tooltip="Appointment Calendar"><i class="fas fa-calendar-alt"></i></button>
+                    <button class="icon-btn" id="quickReportBtn" data-tooltip="Quick Add Appointment"><i class="fas fa-plus-circle"></i></button>
+                    <button class="icon-btn" id="userNameBtn" data-tooltip="Set Your Name"><i class="fas fa-user-circle"></i></button>
+                </div>
+                <div class="badge badge-primary"><i class="fas fa-scroll"></i> <span id="scriptCount">0</span></div>
+                <div class="badge badge-success" id="saveStatus"><i class="fas fa-save"></i> Auto</div>
+                <button class="icon-btn" id="historyBtn" data-tooltip="Version History (Ctrl+Z)"><i class="fas fa-history"></i></button>
+                <button class="icon-btn" id="resetAllBtn" data-tooltip="Factory Reset"><i class="fas fa-trash-alt"></i></button>
+                <button class="icon-btn" id="themeToggle" data-tooltip="Dark/Light Mode"><i class="fas fa-moon"></i></button>
+                <button class="icon-btn" id="helpBtn" data-tooltip="User Guide"><i class="fas fa-question-circle"></i></button>
             </div>
         </div>
         
         <div class="main-grid">
-            <!-- Navigation Sidebar - Scripts Only -->
             <div class="nav-sidebar">
-                <div class="section-title"><i class="fas fa-bars"></i> CALL SCRIPTS</div>
+                <div class="section-title">
+                    <span><i class="fas fa-bars"></i> CALL SCRIPTS</span>
+                    <button class="icon-btn" id="addScriptBtn" data-tooltip="Add New Script" style="padding:4px 10px;"><i class="fas fa-plus"></i></button>
+                </div>
                 <input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts...">
                 <div id="scriptNavList"></div>
+                <div style="margin-top: 16px; padding: 8px; font-size:0.65rem; background:var(--bg-primary); border-radius:20px; text-align:center; color:var(--text-secondary);">
+                    <i class="fas fa-crown"></i> Developed by Flynn P. · v2.5
+                </div>
             </div>
             
-            <!-- Script Content Area -->
             <div class="script-area">
                 <div class="script-header">
-                    <div class="script-title"><i class="fas fa-scroll"></i> <span id="currentScriptName">Opening Script</span></div>
+                    <div class="script-title">
+                        <i class="fas fa-scroll"></i> <span id="currentScriptName">Opening Script</span>
+                        <span id="activeShortcutHint" style="font-size:0.7rem; background:var(--bg-primary); padding:2px 10px; border-radius:20px;"><i class="fas fa-key"></i> Key: —</span>
+                        <span id="versionIndicator" class="version-indicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
+                    </div>
                     <div class="action-buttons">
-                        <button id="editScriptBtn" class="btn-icon btn-edit"><i class="fas fa-pen"></i> Edit</button>
-                        <button id="saveScriptBtn" class="btn-icon btn-save" style="display: none;"><i class="fas fa-save"></i> Save</button>
-                        <button id="cancelEditBtn" class="btn-icon" style="display: none;"><i class="fas fa-times"></i> Cancel</button>
-                        <button id="copyScriptBtn" class="btn-icon btn-copy"><i class="fas fa-copy"></i> Copy</button>
-                        <button id="resetScriptBtn" class="btn-icon btn-reset"><i class="fas fa-undo-alt"></i> Reset</button>
+                        <button class="icon-btn" id="undoBtn" data-tooltip="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                        <button class="icon-btn" id="redoBtn" data-tooltip="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+                        <button class="icon-btn" id="editScriptBtn" data-tooltip="Edit Script"><i class="fas fa-pen"></i></button>
+                        <button class="icon-btn" id="saveScriptBtn" data-tooltip="Save Changes" style="display:none;"><i class="fas fa-save"></i></button>
+                        <button class="icon-btn" id="cancelEditBtn" data-tooltip="Cancel Edit" style="display:none;"><i class="fas fa-times"></i></button>
+                        <button class="icon-btn" id="copyScriptBtn" data-tooltip="Copy Script"><i class="fas fa-copy"></i></button>
+                        <button class="icon-btn" id="resetScriptBtn" data-tooltip="Reset to Original"><i class="fas fa-undo-alt"></i></button>
                     </div>
                 </div>
                 <div id="scriptContent"></div>
             </div>
         </div>
-        
-        <div class="footer">
-            <i class="fas fa-edit"></i> Fully Editable Scripts · Click any script to view · Edits auto-save to browser
-        </div>
+        <div class="footer"><i class="fas fa-magic"></i> Press 1-9 keys to switch scripts instantly · Click 📅 to manage appointments · All data auto-saves locally</div>
     </div>
-    
+
     <script>
-        // ======================== SCRIPT DATABASE ========================
+        // =============================================
+        // ScriptFlow Pro - Developed by Flynn P.
+        // Full featured call script manager with appointment tracking
+        // Version 2.5 - Professional Edition
+        // =============================================
+        
+        // User profile
+        let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
+        function setUserName() {
+            const newName = prompt('Enter your name (will replace [NAME] in scripts):', userName);
+            if (newName?.trim()) { userName = newName.trim(); localStorage.setItem('scriptflow_user_name', userName); showToast(`Name set to: ${userName}`, true); if (!isEditing) loadScript(currentScriptId); }
+        }
+        function replaceNameInScript(content) { return content.replace(/\[NAME\]/gi, userName).replace(/\[Your Name\]/gi, userName); }
+        
+        // =============================================
+        // Appointment Tracking System
+        // =============================================
+        let appointments = {};
+        let goals = { daily: 3, weekly: 15, monthly: 60 };
+        
+        function loadAppointmentData() {
+            const saved = localStorage.getItem('scriptflow_appointments_final');
+            if (saved) appointments = JSON.parse(saved);
+            const savedGoals = localStorage.getItem('scriptflow_goals_final');
+            if (savedGoals) goals = JSON.parse(savedGoals);
+            updateStats();
+        }
+        function saveAppointments() { localStorage.setItem('scriptflow_appointments_final', JSON.stringify(appointments)); updateStats(); }
+        function saveGoals() { localStorage.setItem('scriptflow_goals_final', JSON.stringify(goals)); updateStats(); }
+        
+        function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+        function getTodayCount() { return appointments[getTodayStr()]?.count || 0; }
+        function getWeekCount() {
+            const now = new Date();
+            const start = new Date(now); start.setDate(now.getDate() - now.getDay());
+            const end = new Date(start); end.setDate(start.getDate() + 6);
+            let total = 0;
+            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end) total += appointments[d].count || 0; }
+            return total;
+        }
+        function getMonthCount() {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), now.getMonth(), 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            let total = 0;
+            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end) total += appointments[d].count || 0; }
+            return total;
+        }
+        function updateStats() {
+            document.getElementById('statToday').innerText = getTodayCount();
+            document.getElementById('statWeek').innerText = getWeekCount();
+            document.getElementById('statMonth').innerText = getMonthCount();
+            document.getElementById('goalDaily').innerText = goals.daily;
+            document.getElementById('goalWeekly').innerText = goals.weekly;
+            document.getElementById('goalMonthly').innerText = goals.monthly;
+        }
+        
+        function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned) {
+            if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
+            if (!appointments[dateStr].reports) appointments[dateStr].reports = [];
+            const reportText = `🏢 Business: ${business}\n👤 Contact: ${contactName}\n📌 Role: ${role}\n📞 Phone: ${phone}\n⏰ Time: ${time}\n📝 Notes: ${notes}\n@${assigned}`;
+            appointments[dateStr].reports.unshift({
+                id: Date.now(), business, contactName, role, phone, time, notes, assigned,
+                createdAt: new Date().toISOString(), fullText: reportText
+            });
+            appointments[dateStr].count = appointments[dateStr].reports.length;
+            appointments[dateStr].note = `${appointments[dateStr].reports.length} appointment(s)`;
+            saveAppointments();
+            return reportText;
+        }
+        
+        function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast('📋 Copied to clipboard!', true)).catch(() => showToast('Copy failed', false)); }
+        
+        // Quick Report Modal
+        function openQuickReport() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-card report-modal"><h3 style="margin-bottom:16px;"><i class="fas fa-plus-circle"></i> Quick Add Appointment</h3>
+                <div class="form-group"><label>📅 Date</label><input type="date" id="reportDate" value="${getTodayStr()}"></div>
+                <div class="form-group"><label>🏢 Business Name *</label><input type="text" id="reportBusiness" placeholder="e.g., Blair Real Estate Agency"></div>
+                <div class="form-group"><label>👤 Contact Name *</label><input type="text" id="reportName" placeholder="Full name"></div>
+                <div class="form-group"><label>📌 Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
+                <div class="form-group"><label>📞 Phone Number</label><input type="text" id="reportPhone" placeholder="+1 207 592 2257"></div>
+                <div class="form-group"><label>⏰ Time</label><input type="text" id="reportTime" placeholder="Monday, June 08 around 3pm (ET)"></div>
+                <div class="form-group"><label>📝 Notes</label><textarea id="reportNotes" rows="3" placeholder="Appointment details..."></textarea></div>
+                <div class="form-group"><label>👥 Assigned To</label><input type="text" id="reportAssigned" placeholder="Daniel" value="Daniel"></div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="submitReportBtn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save & Copy</button><button class="icon-btn" id="closeReportBtn">Cancel</button></div>
+            </div>`;
+            document.body.appendChild(modal);
+            document.getElementById('submitReportBtn').addEventListener('click', () => {
+                const date = document.getElementById('reportDate').value;
+                const business = document.getElementById('reportBusiness').value;
+                const name = document.getElementById('reportName').value;
+                const role = document.getElementById('reportRole').value;
+                const phone = document.getElementById('reportPhone').value;
+                const time = document.getElementById('reportTime').value;
+                const notes = document.getElementById('reportNotes').value;
+                const assigned = document.getElementById('reportAssigned').value;
+                if (!business || !name) { showToast('Please fill Business and Contact Name', false); return; }
+                const reportText = addAppointment(date, business, name, role, phone, time, notes, assigned);
+                copyToClipboard(reportText);
+                modal.remove();
+                openCalendarModal();
+            });
+            document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        }
+        
+        // Calendar Modal
+        let currentCalDate = new Date();
+        let selectedCalDate = getTodayStr();
+        let calendarModal = null;
+        
+        function openCalendarModal() {
+            if (calendarModal) return;
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`;
+            document.body.appendChild(modal);
+            calendarModal = modal;
+            renderCalendarModal();
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); });
+        }
+        function closeCalendarModal() { if (calendarModal) { calendarModal.remove(); calendarModal = null; } }
+        
+        function renderCalendarModal() {
+            const inner = document.getElementById('calModalInner');
+            if (!inner) return;
+            const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month+1, 0).getDate();
+            const apptData = appointments[selectedCalDate] || { count: 0, note: '', reports: [] };
+            
+            let daysHtml = '';
+            for (let i = 0; i < firstDay; i++) daysHtml += `<div class="cal-day"></div>`;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const hasApp = appointments[dateStr] && appointments[dateStr].count > 0;
+                const isSelected = (selectedCalDate === dateStr);
+                daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''} ${hasApp ? 'has-appointment' : ''}" data-date="${dateStr}">${d}</div>`;
+            }
+            
+            let reportsHtml = '';
+            if (apptData.reports && apptData.reports.length > 0) {
+                reportsHtml = `<div style="margin-top:16px;"><strong>📋 Appointments (${apptData.reports.length}):</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;"><i class="fas fa-copy"></i> Copy All</button>`;
+                apptData.reports.forEach((r, idx) => {
+                    reportsHtml += `<div class="appointment-card">
+                        <div style="display:flex; justify-content:space-between; align-items:start;">
+                            <div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)} (${escapeHtml(r.role)})</div>
+                            <button class="copy-btn-sm" onclick="window.copySingleReport(${r.id})"><i class="fas fa-copy"></i> Copy</button>
+                        </div>
+                        <div style="font-size:0.8rem; margin-top:4px;">📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div>
+                        <div style="font-size:0.8rem; margin-top:4px;">📝 ${escapeHtml(r.notes?.substring(0, 100))}${r.notes?.length > 100 ? '...' : ''}</div>
+                        <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px;">@${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div>
+                    </div>`;
+                });
+                reportsHtml += `</div>`;
+            }
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            inner.innerHTML = `
+                <div class="cal-header">
+                    <div class="cal-month-year">${monthNames[month]} ${year}</div>
+                    <div class="cal-nav">
+                        <button id="calPrevBtn"><i class="fas fa-chevron-left"></i> Prev</button>
+                        <button id="calNextBtn">Next <i class="fas fa-chevron-right"></i></button>
+                        <button id="calTodayBtn">Today</button>
+                    </div>
+                </div>
+                <div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+                <div class="cal-days" id="calDaysGrid">${daysHtml}</div>
+                <div style="margin-top:16px;">
+                    <label><strong>📊 ${selectedCalDate} - ${apptData.count} appointment(s)</strong></label>
+                    <textarea id="apptNoteInput" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); margin-top:8px;" rows="2" placeholder="General notes...">${escapeHtml(apptData.note || '')}</textarea>
+                    <button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;"><i class="fas fa-plus-circle"></i> + Add Appointment for this Day</button>
+                    ${reportsHtml}
+                    <div class="goal-input-group">
+                        <div><label>🎯 Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div>
+                        <div><label>📅 Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div>
+                        <div><label>📆 Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div>
+                    </div>
+                </div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;">
+                    <button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save Note</button>
+                    <button class="icon-btn" id="closeCalBtn">Close</button>
+                </div>
+            `;
+            
+            document.querySelectorAll('.cal-day[data-date]').forEach(el => {
+                el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarModal(); });
+            });
+            document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendarModal(); });
+            document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendarModal(); });
+            document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
+            document.getElementById('saveNoteBtn')?.addEventListener('click', () => {
+                if (!appointments[selectedCalDate]) appointments[selectedCalDate] = { count: 0, note: '', reports: [] };
+                appointments[selectedCalDate].note = document.getElementById('apptNoteInput').value;
+                saveAppointments();
+                showToast('Note saved', true);
+            });
+            document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); openQuickReport(); });
+            document.getElementById('closeCalBtn')?.addEventListener('click', closeCalendarModal);
+            document.getElementById('copyAllReportsBtn')?.addEventListener('click', () => {
+                if (apptData.reports) { const allText = apptData.reports.map(r => r.fullText).join('\n\n---\n\n'); copyToClipboard(allText); }
+            });
+            
+            const dailyInput = document.getElementById('goalDailyInput');
+            if (dailyInput) dailyInput.addEventListener('change', () => { goals.daily = parseInt(dailyInput.value) || 3; saveGoals(); });
+            const weeklyInput = document.getElementById('goalWeeklyInput');
+            if (weeklyInput) weeklyInput.addEventListener('change', () => { goals.weekly = parseInt(weeklyInput.value) || 15; saveGoals(); });
+            const monthlyInput = document.getElementById('goalMonthlyInput');
+            if (monthlyInput) monthlyInput.addEventListener('change', () => { goals.monthly = parseInt(monthlyInput.value) || 60; saveGoals(); });
+        }
+        
+        window.copySingleReport = (id) => {
+            for (let date in appointments) {
+                const reports = appointments[date]?.reports || [];
+                const report = reports.find(r => r.id === id);
+                if (report) { copyToClipboard(report.fullText); break; }
+            }
+        };
+        
+        // Help Guide
+        function openHelpModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-card help-modal">
+                <h3 style="margin-bottom:20px;"><i class="fas fa-graduation-cap"></i> ScriptFlow Pro User Guide</h3>
+                <div class="help-step"><h4>🎯 Quick Navigation</h4><p>Press keys 1-9 to instantly jump to any script. Number badges show shortcut keys.</p></div>
+                <div class="help-step"><h4>✏️ Script Management</h4><p>Click Edit (✏️) to modify scripts. Add new scripts (+), rename (pencil icon), delete custom scripts (trash). Reset restores original version.</p></div>
+                <div class="help-step"><h4>📝 Version History</h4><p>Press Ctrl+Z to undo, Ctrl+Y to redo changes. Click History button to see all previous versions.</p></div>
+                <div class="help-step"><h4>👤 Personalization</h4><p>Click the user icon to set your name. Your name replaces [NAME] placeholders in scripts.</p></div>
+                <div class="help-step"><h4>📅 Appointment Tracker</h4><p>Click Calendar to view/manage appointments. Quick Add logs new appointments with copy-to-clipboard. Set daily/weekly/monthly goals.</p></div>
+                <div class="help-step"><h4>🎨 Theme</h4><p>Click moon/sun icon to toggle Dark/Light mode. All data auto-saves to your browser.</p></div>
+                <div class="shortcut-grid"><div class="shortcut-item"><strong>1-9</strong> Jump to script</div><div class="shortcut-item"><strong>Ctrl+Z</strong> Undo</div><div class="shortcut-item"><strong>Ctrl+Y</strong> Redo</div><div class="shortcut-item"><strong>Esc</strong> Cancel edit</div></div>
+                <div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary); color:white;"><i class="fas fa-check"></i> Got it!</button></div>
+            </div>`;
+            document.body.appendChild(modal);
+            document.getElementById('closeHelpBtn').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+        }
+        
+        // Factory Reset
+        function factoryReset() {
+            if (confirm('⚠️ FACTORY RESET: This will erase ALL custom scripts, version history, appointments, and reset everything to default. This cannot be undone. Continue?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+        
+        // =============================================
+        // Complete Scripts Database (Full Versions)
+        // =============================================
         const defaultScripts = {
-            "opening": { name: "🎯 Opening Script", content: "Awesome — this is Flynn. I work with a web customization company, and we actually created a free, modern, preview-upgraded version inspired by your current site. There's no cost or obligation — we'd just like to show you what we built and get your thoughts.\n\n\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is Flynn. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Name]. Are you the owner of [Company Name]?\"" },
+            "opening": { name: "🎯 Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [NAME]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Name]. Are you the owner of [Company Name]?\"" },
             "owner_yes": { name: "👑 Owner - Yes", content: "✅ IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Name]. Talk soon!\"" },
             "owner_no": { name: "👤 Not Owner", content: "❌ IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\n📌 IF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\n📌 IF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
             "objection_website": { name: "⚠️ Already have a website", content: "💬 PROSPECT: \"We already have a website.\"\n\n✅ RESPONSE:\n→ \"Totally — honestly, most businesses we speak with do.\"\n→ \"This isn't really about replacing it immediately.\"\n→ \"It's more about showing you what a newer version could look like and seeing if there are opportunities to improve things like credibility, speed, or conversions.\"\n→ \"Worst case, you walk away with a few good ideas.\"" },
@@ -368,232 +727,132 @@
             "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
         };
         
-        let scripts = {};
-        let currentScriptId = "opening";
-        let isEditing = false;
-        let searchTerm = "";
+        // =============================================
+        // Scripts Management Core
+        // =============================================
+        let scripts = {}, currentScriptId = "opening", isEditing = false, searchTerm = "", customOrder = [];
+        let versionHistory = {}, currentVersionIndex = {};
         
-        // Load scripts from localStorage
+        function initVersionHistory(id, content) { if (!versionHistory[id]) { versionHistory[id] = [{ content, timestamp: new Date().toISOString() }]; currentVersionIndex[id] = 0; } }
+        function saveVersion(id, newContent) {
+            if (!versionHistory[id]) { initVersionHistory(id, newContent); return; }
+            if (currentVersionIndex[id] < versionHistory[id].length - 1) versionHistory[id] = versionHistory[id].slice(0, currentVersionIndex[id] + 1);
+            versionHistory[id].push({ content: newContent, timestamp: new Date().toISOString() });
+            currentVersionIndex[id] = versionHistory[id].length - 1;
+            if (versionHistory[id].length > 50) versionHistory[id].shift();
+            localStorage.setItem('scriptflow_version_history', JSON.stringify(versionHistory));
+        }
+        function undoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] <= 0) { showToast('No earlier version', false); return; } currentVersionIndex[id]--; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Undo successful', true); }
+        function redoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] >= versionHistory[id].length - 1) { showToast('No newer version', false); return; } currentVersionIndex[id]++; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Redo successful', true); }
+        
         function loadScripts() {
-            const saved = localStorage.getItem('scriptflow_pro_scripts');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    scripts = parsed;
-                } catch(e) { scripts = { ...defaultScripts }; }
-            } else {
-                scripts = { ...defaultScripts };
-            }
-            updateScriptCount();
-        }
-        
-        function saveScripts() {
-            localStorage.setItem('scriptflow_pro_scripts', JSON.stringify(scripts));
-            const statusEl = document.getElementById('saveStatus');
-            statusEl.innerHTML = '<i class="fas fa-check"></i> Saved!';
-            setTimeout(() => {
-                statusEl.innerHTML = '<i class="fas fa-save"></i> Auto-saved';
-            }, 2000);
-        }
-        
-        function updateScriptCount() {
+            const saved = localStorage.getItem('scriptflow_pro_scripts_master');
+            if (saved) { scripts = JSON.parse(saved); for (let k of Object.keys(defaultScripts)) if (!scripts[k]) scripts[k] = {...defaultScripts[k]}; }
+            else scripts = JSON.parse(JSON.stringify(defaultScripts));
+            const savedOrder = localStorage.getItem('scriptflow_order_master');
+            if (savedOrder) customOrder = JSON.parse(savedOrder);
+            else customOrder = ["opening", "owner_yes", "owner_no", "objection_website", "objection_webguy", "objection_cost", "objection_busy", "objection_not_interested", "objection_info", "objection_found_me", "objection_who_are_you", "closing"];
+            const savedHistory = localStorage.getItem('scriptflow_version_history');
+            if (savedHistory) versionHistory = JSON.parse(savedHistory);
+            for (let id in scripts) { if (!versionHistory[id]) initVersionHistory(id, scripts[id].content); else currentVersionIndex[id] = versionHistory[id].length - 1; }
             document.getElementById('scriptCount').innerText = Object.keys(scripts).length;
         }
-        
-        function showToast(msg, isSuccess = true) {
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) existingToast.remove();
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.background = isSuccess ? 'var(--success)' : 'var(--danger)';
-            toast.innerHTML = `<i class="fas ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${msg}`;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+        function saveAllScripts() {
+            localStorage.setItem('scriptflow_pro_scripts_master', JSON.stringify(scripts));
+            localStorage.setItem('scriptflow_order_master', JSON.stringify(customOrder));
+            document.getElementById('saveStatus').innerHTML = '<i class="fas fa-check"></i> Saved';
+            setTimeout(() => { if (!isEditing) document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto'; }, 2000);
         }
-        
-        // Filter scripts based on search
-        function getFilteredScripts() {
-            if (!searchTerm) return Object.entries(scripts);
-            return Object.entries(scripts).filter(([id, script]) => 
-                script.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                id.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+        function getOrderedVisible() {
+            let ids = [...customOrder.filter(id=>scripts[id]), ...Object.keys(scripts).filter(id=>!customOrder.includes(id))];
+            if (searchTerm) ids = ids.filter(id => scripts[id].name.toLowerCase().includes(searchTerm.toLowerCase()));
+            return ids;
         }
+        function getKeyMapping() { const vis = getOrderedVisible(); const map = new Map(); vis.slice(0,9).forEach((id,i)=>map.set((i+1).toString(),id)); return map; }
+        function showToast(msg, ok=true) { const t=document.createElement('div'); t.className='toast'; t.style.background=ok?'var(--success)':'var(--danger)'; t.innerHTML=`<i class="fas ${ok?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`; document.body.appendChild(t); setTimeout(()=>t.remove(),2500); }
+        function escapeHtml(s) { return s.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])); }
         
-        // Render navigation (scripts only)
         function renderNavigation() {
-            const navContainer = document.getElementById('scriptNavList');
-            const filtered = getFilteredScripts();
-            
-            if (filtered.length === 0) {
-                navContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">No scripts found</div>';
-                return;
-            }
-            
+            const container = document.getElementById('scriptNavList');
+            const visible = getOrderedVisible();
+            if (!visible.length) { container.innerHTML='<div style="padding:20px;text-align:center;">No scripts found</div>'; return; }
             let html = '';
-            for (const [id, script] of filtered) {
-                const isActive = currentScriptId === id;
-                const isObjection = id.includes('objection');
-                html += `
-                    <div class="nav-item ${isActive ? 'active' : ''}" data-script-id="${id}">
-                        <i class="fas ${isObjection ? 'fa-exclamation-triangle' : 'fa-scroll'}"></i>
-                        <span>${escapeHtml(script.name)}</span>
-                        <span class="nav-badge">${isObjection ? '💡' : '📝'}</span>
+            visible.forEach((id, idx) => {
+                const s = scripts[id];
+                const active = currentScriptId === id;
+                const shortcut = idx < 9 ? `${idx+1}` : null;
+                html += `<div class="nav-item ${active ? 'active' : ''}" data-id="${id}">
+                    <i class="fas fa-scroll"></i>
+                    <span>${escapeHtml(s.name)}</span>
+                    ${shortcut ? `<span class="key-hint">${shortcut}</span>` : ''}
+                    <div class="nav-actions">
+                        <button class="nav-icon-btn rename-btn" data-id="${id}"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="nav-icon-btn delete-btn" data-id="${id}" ${id==='opening'?'disabled style="opacity:0.4;"':''}><i class="fas fa-trash"></i></button>
                     </div>
-                `;
-            }
-            navContainer.innerHTML = html;
-            
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const scriptId = item.getAttribute('data-script-id');
-                    if (isEditing && confirm('You have unsaved edits. Cancel editing to switch scripts?')) {
-                        cancelEditMode();
-                    }
-                    if (!isEditing) loadScript(scriptId);
-                });
+                </div>`;
+            });
+            container.innerHTML = html;
+            document.querySelectorAll('.nav-item').forEach(el => {
+                const sid = el.getAttribute('data-id');
+                el.addEventListener('click', (e) => { if(e.target.closest('.rename-btn')||e.target.closest('.delete-btn')) return; if(isEditing && confirm('Cancel editing? Unsaved changes will be lost.')) cancelEdit(); if(!isEditing && sid) loadScript(sid); });
+            });
+            document.querySelectorAll('.rename-btn').forEach(btn => btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); const newName=prompt('Enter new script name:',scripts[id].name); if(newName?.trim()){ scripts[id].name=newName.trim(); saveAllScripts(); renderNavigation(); if(currentScriptId===id) document.getElementById('currentScriptName').innerHTML=scripts[id].name; showToast('Script renamed successfully'); } }));
+            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); if(id==='opening'){ showToast('Cannot delete the main opening script', false); return; } if(confirm(`Delete "${scripts[id].name}"? This action cannot be undone.`)){ delete scripts[id]; delete versionHistory[id]; customOrder=customOrder.filter(i=>i!==id); if(currentScriptId===id) loadScript('opening'); saveAllScripts(); renderNavigation(); document.getElementById('scriptCount').innerText=Object.keys(scripts).length; showToast('Script deleted'); } }));
+            const visibleIds = getOrderedVisible();
+            const idxCur = visibleIds.indexOf(currentScriptId);
+            document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `<i class="fas fa-key"></i> Key: ${idxCur+1}` : `<i class="fas fa-key"></i> Key: —`;
+            if (versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText = `${currentVersionIndex[currentScriptId]+1}/${versionHistory[currentScriptId].length}`;
+        }
+        
+        function loadScript(id) { if(!scripts[id] || isEditing) return; currentScriptId = id; document.getElementById('currentScriptName').innerHTML = scripts[id].name; const displayContent = replaceNameInScript(scripts[id].content); document.getElementById('scriptContent').innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`; renderNavigation(); }
+        function enterEdit() { if(isEditing) return; isEditing=true; const s=scripts[currentScriptId]; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(s.content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='<i class="fas fa-pen"></i> Editing...'; }
+        function saveEdit() { const newContent = document.getElementById('editTextarea').value; scripts[currentScriptId].content = newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('✓ Script saved successfully!', true); }
+        function cancelEdit() { isEditing=false; document.getElementById('editScriptBtn').style.display='inline-flex'; document.getElementById('saveScriptBtn').style.display='none'; document.getElementById('cancelEditBtn').style.display='none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML='<i class="fas fa-save"></i> Auto'; }
+        function copyScript() { const content = replaceNameInScript(scripts[currentScriptId].content); navigator.clipboard.writeText(content).then(()=>showToast('Script copied to clipboard!', true)); }
+        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset this script to its original content? This will create a backup in version history.')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Script reset to original version', true); } } else showToast('No default version available for this script', false); }
+        function addScript() { if(isEditing){ showToast('Please finish editing current script first', false); return; } const name=prompt('Enter script name:'); if(!name) return; const id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); scripts[id]={name, content:'Write your script content here...'}; initVersionHistory(id, scripts[id].content); customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`New script "${name}" added successfully`, true); }
+        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No version history available for this script', false); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>📜 Version History: ${escapeHtml(scripts[id].name)}</h3><div style="max-height:400px; overflow-y:auto;">`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span style="color:var(--primary);">${idx === currentVersionIndex[id] ? '✓ Current' : '↺ Restore'}</span></div>`; }); html += `</div><div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast(`Restored version from ${new Date(versionHistory[id][idx].timestamp).toLocaleString()}`, true); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
+        
+        function initKeyboard() {
+            window.addEventListener('keydown',(e)=>{
+                if(e.key>='1' && e.key<='9' && !isEditing && !e.target.matches('textarea,input')){ e.preventDefault(); const target=getKeyMapping().get(e.key); if(target && scripts[target]){ loadScript(target); showToast(`Switched to: ${scripts[target].name}`, true); } }
+                if(e.key==='Escape' && isEditing){ cancelEdit(); showToast('Edit mode cancelled', true); }
+                if((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault(); undoScript(currentScriptId); }
+                if((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault(); redoScript(currentScriptId); }
             });
         }
+        function initTheme() { const saved=localStorage.getItem('scriptflow_theme_final'); if(saved==='dark') document.body.classList.add('dark'); document.getElementById('themeToggle').innerHTML=document.body.classList.contains('dark')?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; }
+        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_final',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode activated 🌙':'Light mode activated ☀️'}`, true); }
+        function initSearch() { document.getElementById('scriptSearch').addEventListener('input',(e)=>{ searchTerm=e.target.value.toLowerCase(); renderNavigation(); }); }
         
-        function loadScript(scriptId) {
-            if (!scripts[scriptId]) return;
-            
-            currentScriptId = scriptId;
-            const script = scripts[scriptId];
-            document.getElementById('currentScriptName').innerHTML = script.name;
-            
-            const scriptContainer = document.getElementById('scriptContent');
-            scriptContainer.innerHTML = `
-                <div class="script-display" id="scriptDisplay">
-                    ${escapeHtml(script.content).replace(/\n/g, '<br>')}
-                </div>
-            `;
-            
-            renderNavigation();
-        }
-        
-        function enterEditMode() {
-            if (isEditing) return;
-            isEditing = true;
-            const script = scripts[currentScriptId];
-            document.getElementById('editScriptBtn').style.display = 'none';
-            document.getElementById('saveScriptBtn').style.display = 'inline-flex';
-            document.getElementById('cancelEditBtn').style.display = 'inline-flex';
-            
-            const scriptContainer = document.getElementById('scriptContent');
-            scriptContainer.innerHTML = `
-                <textarea id="editTextarea" class="edit-textarea" rows="18">${escapeHtml(script.content)}</textarea>
-            `;
-            document.getElementById('editTextarea').focus();
-        }
-        
-        function saveEdit() {
-            const newContent = document.getElementById('editTextarea').value;
-            scripts[currentScriptId].content = newContent;
-            saveScripts();
-            cancelEditMode();
-            showToast('✓ Script saved successfully!', true);
-        }
-        
-        function cancelEditMode() {
-            isEditing = false;
-            document.getElementById('editScriptBtn').style.display = 'inline-flex';
-            document.getElementById('saveScriptBtn').style.display = 'none';
-            document.getElementById('cancelEditBtn').style.display = 'none';
-            loadScript(currentScriptId);
-        }
-        
-        function copyScript() {
-            const script = scripts[currentScriptId];
-            navigator.clipboard.writeText(script.content).then(() => {
-                showToast('✓ Script copied to clipboard!', true);
-            }).catch(() => {
-                showToast('Failed to copy', false);
-            });
-        }
-        
-        function resetScript() {
-            if (!defaultScripts[currentScriptId]) {
-                showToast('This script cannot be reset to original', false);
-                return;
-            }
-            if (confirm('Reset this script to its original content? This cannot be undone.')) {
-                scripts[currentScriptId] = { ...defaultScripts[currentScriptId] };
-                saveScripts();
-                loadScript(currentScriptId);
-                showToast('✓ Script reset to original!', true);
-            }
-        }
-        
-        function escapeHtml(str) {
-            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-        }
-        
-        // Theme Management
-        function initTheme() {
-            const savedTheme = localStorage.getItem('scriptflow_theme');
-            const themeToggle = document.getElementById('themeToggle');
-            const themeText = document.getElementById('themeText');
-            
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark');
-                themeText.innerHTML = 'Light Mode';
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
-            } else {
-                document.body.classList.remove('dark');
-                themeText.innerHTML = 'Dark Mode';
-                themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
-            }
-        }
-        
-        function toggleTheme() {
-            const themeToggle = document.getElementById('themeToggle');
-            const themeText = document.getElementById('themeText');
-            
-            if (document.body.classList.contains('dark')) {
-                document.body.classList.remove('dark');
-                localStorage.setItem('scriptflow_theme', 'light');
-                themeText.innerHTML = 'Dark Mode';
-                themeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
-            } else {
-                document.body.classList.add('dark');
-                localStorage.setItem('scriptflow_theme', 'dark');
-                themeText.innerHTML = 'Light Mode';
-                themeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
-            }
-            showToast(`Theme switched to ${document.body.classList.contains('dark') ? 'dark' : 'light'} mode`, true);
-        }
-        
-        // Search functionality
-        function initSearch() {
-            const searchInput = document.getElementById('scriptSearch');
-            searchInput.addEventListener('input', (e) => {
-                searchTerm = e.target.value.toLowerCase();
-                renderNavigation();
-            });
-        }
-        
-        // Initialize app
+        // Initialize everything
+        loadAppointmentData();
         loadScripts();
         initTheme();
         initSearch();
         renderNavigation();
         loadScript('opening');
+        initKeyboard();
         
-        // Button event listeners
-        document.getElementById('editScriptBtn').addEventListener('click', enterEditMode);
+        // Event listeners
+        document.getElementById('editScriptBtn').addEventListener('click', enterEdit);
         document.getElementById('saveScriptBtn').addEventListener('click', saveEdit);
-        document.getElementById('cancelEditBtn').addEventListener('click', cancelEditMode);
+        document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
         document.getElementById('copyScriptBtn').addEventListener('click', copyScript);
         document.getElementById('resetScriptBtn').addEventListener('click', resetScript);
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        document.getElementById('addScriptBtn').addEventListener('click', addScript);
+        document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal);
+        document.getElementById('quickReportBtn').addEventListener('click', openQuickReport);
+        document.getElementById('userNameBtn').addEventListener('click', setUserName);
+        document.getElementById('helpBtn').addEventListener('click', openHelpModal);
+        document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId));
+        document.getElementById('resetAllBtn').addEventListener('click', factoryReset);
+        document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId));
+        document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
         
-        // Auto-save indicator
-        setInterval(() => {
-            if (!isEditing) {
-                document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto-saved';
-            }
-        }, 5000);
+        // Auto-save status refresher
+        setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto'; updateStats(); }, 5000);
     </script>
 </body>
 </html>
