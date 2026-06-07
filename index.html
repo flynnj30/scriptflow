@@ -275,7 +275,7 @@
         .modal-card {
             background: var(--bg-secondary);
             border-radius: 32px;
-            width: 600px;
+            width: 750px;
             max-width: 90%;
             max-height: 85vh;
             overflow-y: auto;
@@ -284,10 +284,10 @@
             box-shadow: var(--shadow-lg);
             transition: all 0.3s ease;
         }
-        .calendar-modal { width: 780px; }
+        .calendar-modal { width: 900px; max-width: 95%; }
         .report-modal { width: 600px; }
         .help-modal { width: 650px; }
-        .priority-modal { width: 560px; }
+        .priority-modal { width: 700px; max-width: 95%; }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.8rem; color: var(--text-secondary); }
         .form-group input, .form-group textarea, .form-group select {
@@ -332,7 +332,7 @@
             border: 1px solid var(--border-color);
             color: var(--text-primary);
         }
-        .cal-day:hover { background: var(--primary); color: white; transform: scale(1.05); border-color: var(--primary); }
+        .cal-day:hover { background: var(--primary); color: white; transform: scale(1.02); border-color: var(--primary); }
         .cal-day.selected { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); border-color: var(--primary); }
         .cal-day.has-appointment::after { content: '📅'; font-size: 0.55rem; position: absolute; bottom: 2px; right: 4px; }
         .appointment-card {
@@ -343,6 +343,20 @@
             border-left: 4px solid var(--success);
             transition: all 0.3s ease;
         }
+        .appointment-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
+        .edit-appt-btn, .delete-appt-btn {
+            background: transparent;
+            border: none;
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 4px 12px;
+            border-radius: 20px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .edit-appt-btn { color: var(--primary); border: 1px solid var(--border-color); background: var(--bg-secondary); }
+        .delete-appt-btn { color: var(--danger); border: 1px solid var(--border-color); background: var(--bg-secondary); }
+        .edit-appt-btn:hover, .delete-appt-btn:hover { transform: translateY(-1px); background: var(--bg-primary); }
         .copy-btn-sm {
             background: transparent;
             border: none;
@@ -355,54 +369,6 @@
         .copy-btn-sm:hover { background: var(--border-color); }
         .goal-input-group { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
         .goal-input-group input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); }
-        
-        .help-step {
-            background: var(--help-bg);
-            border-radius: 16px;
-            padding: 14px;
-            margin-bottom: 12px;
-            border-left: 4px solid var(--primary);
-            transition: all 0.3s ease;
-        }
-        .priority-header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            padding: 16px;
-            border-radius: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .timezone-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
-        .timezone-card {
-            background: var(--bg-primary);
-            border-radius: 16px;
-            padding: 12px;
-            text-align: center;
-            border: 1px solid var(--border-color);
-        }
-        .timezone-name { font-weight: 700; font-size: 1rem; }
-        .timezone-time { font-size: 1.2rem; font-weight: 800; margin: 8px 0; }
-        .status-open { color: var(--success); font-weight: 600; }
-        .status-closed { color: var(--danger); font-weight: 600; }
-        .best-time-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 0.7rem;
-            margin-top: 8px;
-        }
-        .best-time-high { background: #10b981; color: white; }
-        .best-time-good { background: #3b82f6; color: white; }
-        .best-time-bad { background: #ef4444; color: white; }
-        .recommendation-card {
-            background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1));
-            border-radius: 16px;
-            padding: 16px;
-            margin: 16px 0;
-            text-align: center;
-            border: 1px solid var(--primary);
-        }
         
         .toast {
             position: fixed;
@@ -435,6 +401,48 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             margin-bottom: 16px;
+        }
+        .date-changer { display: flex; align-items: center; gap: 8px; margin: 16px 0; }
+        .date-changer input { flex: 1; border-radius: 40px; border: 1px solid var(--border-color); padding: 8px 12px; background: var(--bg-primary); color: var(--text-primary); }
+        
+        .timezone-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin: 20px 0; }
+        .timezone-card {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            padding: 16px;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .timezone-card.recommended { border-color: var(--success); background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1)); }
+        .timezone-name { font-weight: 800; font-size: 1.1rem; }
+        .timezone-time { font-size: 1.4rem; font-weight: 800; margin: 8px 0; color: var(--primary); }
+        .best-time-high { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .best-time-good { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .best-time-bad { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
+        .best-time-badge { display: inline-block; padding: 6px 14px; border-radius: 30px; font-weight: 700; font-size: 0.75rem; margin-top: 10px; }
+        .recommendation-card {
+            background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(59,130,246,0.15));
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            border: 2px solid var(--success);
+        }
+        .priority-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px;
+            border-radius: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .help-step {
+            background: var(--help-bg);
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary);
         }
     </style>
 </head>
@@ -470,7 +478,7 @@
                 <input type="text" id="scriptSearch" class="search-box" placeholder="Search scripts...">
                 <div id="scriptNavList"></div>
                 <div style="margin-top: 16px; padding: 8px; font-size:0.65rem; background:var(--bg-primary); border-radius:20px; text-align:center; color:var(--text-secondary);">
-                    <i class="fas fa-crown"></i> Developed by Flynn P. · v3.4
+                    <i class="fas fa-crown"></i> Press 1-9 to switch scripts
                 </div>
             </div>
             
@@ -482,35 +490,32 @@
                         <span id="versionIndicator" class="version-indicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
                     </div>
                     <div class="action-buttons">
-                        <button class="icon-btn" id="undoBtn" data-tooltip="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
-                        <button class="icon-btn" id="redoBtn" data-tooltip="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
                         <button class="icon-btn" id="editScriptBtn" data-tooltip="Edit Script"><i class="fas fa-pen"></i></button>
                         <button class="icon-btn" id="saveScriptBtn" data-tooltip="Save Changes" style="display:none;"><i class="fas fa-save"></i></button>
                         <button class="icon-btn" id="cancelEditBtn" data-tooltip="Cancel Edit" style="display:none;"><i class="fas fa-times"></i></button>
                         <button class="icon-btn" id="copyScriptBtn" data-tooltip="Copy Script"><i class="fas fa-copy"></i></button>
                         <button class="icon-btn" id="resetScriptBtn" data-tooltip="Reset to Original"><i class="fas fa-undo-alt"></i></button>
+                        <button class="icon-btn" id="undoBtn" data-tooltip="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                        <button class="icon-btn" id="redoBtn" data-tooltip="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
                     </div>
                 </div>
                 <div id="scriptContent"></div>
             </div>
         </div>
-        <div class="footer"><i class="fas fa-magic"></i> Press 1-9 keys to switch scripts · Click chart icon for best times to call US business owners</div>
+        <div class="footer"><i class="fas fa-magic"></i> Click calendar to manage appointments · Edit/Delete appointments in calendar view</div>
     </div>
 
     <script>
         // =============================================
-        // ScriptFlow Pro - Complete Working Version
+        // COMPLETE SCRIPTFLOW PRO - FULLY FUNCTIONAL
         // =============================================
         
         let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
-        function setUserName() {
-            const newName = prompt('Enter your name:', userName);
-            if (newName?.trim()) { userName = newName.trim(); localStorage.setItem('scriptflow_user_name', userName); showToast(`Name set to: ${userName}`); if (!isEditing) loadScript(currentScriptId); }
-        }
+        function setUserName() { const newName = prompt('Enter your name:', userName); if (newName?.trim()) { userName = newName.trim(); localStorage.setItem('scriptflow_user_name', userName); showToast(`Name set to: ${userName}`); if (!isEditing) loadScript(currentScriptId); } }
         function replaceNameInScript(content) { return content.replace(/\[Your Name\]/gi, userName); }
         
         // =============================================
-        // Appointment Tracking System
+        // APPOINTMENT SYSTEM
         // =============================================
         let appointments = {};
         let goals = { daily: 3, weekly: 15, monthly: 60 };
@@ -526,21 +531,17 @@
         function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
         
         function getTodayStr() { return new Date().toISOString().split('T')[0]; }
-        function getTodayCount() { return appointments[getTodayStr()]?.count || 0; }
+        function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
         function getWeekCount() {
-            const now = new Date();
-            const start = new Date(now); start.setDate(now.getDate() - now.getDay());
-            const end = new Date(start); end.setDate(start.getDate() + 6);
+            const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); const end = new Date(start); end.setDate(start.getDate() + 6);
             let total = 0;
-            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end) total += appointments[d].count || 0; }
+            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length; }
             return total;
         }
         function getMonthCount() {
-            const now = new Date();
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             let total = 0;
-            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end) total += appointments[d].count || 0; }
+            for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length; }
             return total;
         }
         function updateStats() {
@@ -552,83 +553,105 @@
             document.getElementById('goalMonthly').innerText = goals.monthly;
         }
         
-        function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned) {
+        function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null) {
             if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
             if (!appointments[dateStr].reports) appointments[dateStr].reports = [];
             const reportText = `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned to: ${assigned}`;
-            appointments[dateStr].reports.unshift({ id: Date.now(), business, contactName, role, phone, time, notes, assigned, createdAt: new Date().toISOString(), fullText: reportText });
+            const newAppointment = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, createdAt: new Date().toISOString(), fullText: reportText };
+            if (editId) {
+                const index = appointments[dateStr].reports.findIndex(r => r.id === editId);
+                if (index !== -1) appointments[dateStr].reports[index] = newAppointment;
+            } else {
+                appointments[dateStr].reports.unshift(newAppointment);
+            }
+            appointments[dateStr].reports.sort((a,b) => b.id - a.id);
             appointments[dateStr].count = appointments[dateStr].reports.length;
-            appointments[dateStr].note = `${appointments[dateStr].reports.length} appointment(s)`;
+            appointments[dateStr].note = appointments[dateStr].note || `${appointments[dateStr].reports.length} appointment(s)`;
             saveAppointments();
             return reportText;
         }
         
+        function deleteAppointment(dateStr, id) {
+            if (appointments[dateStr] && appointments[dateStr].reports) {
+                appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
+                appointments[dateStr].count = appointments[dateStr].reports.length;
+                if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
+                else appointments[dateStr].note = `${appointments[dateStr].reports.length} appointment(s)`;
+                saveAppointments();
+                return true;
+            }
+            return false;
+        }
+        
         function showToast(msg, isError = false) { 
-            const t = document.createElement('div'); 
-            t.className = 'toast'; 
-            t.style.background = isError ? 'var(--danger)' : 'var(--success)'; 
-            t.innerHTML = `${isError ? '⚠️ ' : '✓ '}${msg}`; 
-            document.body.appendChild(t); 
-            setTimeout(() => t.remove(), 2000); 
+            const t = document.createElement('div'); t.className = 'toast'; t.style.background = isError ? 'var(--danger)' : 'var(--success)'; t.innerHTML = `${isError ? '⚠️ ' : '✓ '}${msg}`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); 
         }
+        function copyToClipboard(text) { if (!text) { showToast('Nothing to copy', true); return; } navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied!'); }); }
         
-        function copyToClipboard(text) { 
-            if (!text) { showToast('Nothing to copy', true); return; }
-            navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied!'); });
-        }
-        
-        // Calendar Modal - Full Featured
+        // =============================================
+        // CALENDAR MODAL - FULLY FUNCTIONAL
+        // =============================================
         let currentCalDate = new Date();
         let selectedCalDate = getTodayStr();
         let calendarModal = null;
         
-        function openCalendarModal() {
-            if (calendarModal) return;
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`;
-            document.body.appendChild(modal);
-            calendarModal = modal;
-            renderCalendarModal();
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); });
-        }
+        function openCalendarModal() { if (calendarModal) return; const modal = document.createElement('div'); modal.className = 'modal-overlay'; modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`; document.body.appendChild(modal); calendarModal = modal; renderCalendarModal(); modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); }); }
         function closeCalendarModal() { if (calendarModal) { calendarModal.remove(); calendarModal = null; } }
         
+        function openEditAppointmentModal(dateStr, appt) {
+            const modalDiv = document.createElement('div'); modalDiv.className = 'modal-overlay';
+            modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3><div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div><div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div><div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div><div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div><div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div><div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div><div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div><div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div><div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="saveEditBtn" style="background:var(--success);">Save Changes</button><button class="icon-btn" id="cancelEditModalBtn">Cancel</button></div></div>`;
+            document.body.appendChild(modalDiv);
+            document.getElementById('saveEditBtn').addEventListener('click', () => {
+                const newDate = document.getElementById('editDate').value;
+                const updatedBusiness = document.getElementById('editBusiness').value;
+                const updatedName = document.getElementById('editName').value;
+                if (!updatedBusiness || !updatedName) { showToast('Business and Name required', true); return; }
+                if (newDate !== dateStr) {
+                    deleteAppointment(dateStr, appt.id);
+                    addAppointment(newDate, updatedBusiness, updatedName, document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id);
+                } else {
+                    addAppointment(dateStr, updatedBusiness, updatedName, document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id);
+                }
+                modalDiv.remove(); closeCalendarModal(); openCalendarModal(); showToast('Appointment updated');
+            });
+            document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
+            modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
+        }
+        
         function renderCalendarModal() {
-            const inner = document.getElementById('calModalInner');
-            if (!inner) return;
+            const inner = document.getElementById('calModalInner'); if (!inner) return;
             const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month+1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month+1, 0).getDate();
             const apptData = appointments[selectedCalDate] || { count: 0, note: '', reports: [] };
-            
             let daysHtml = '';
             for (let i = 0; i < firstDay; i++) daysHtml += `<div class="cal-day"></div>`;
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const hasApp = appointments[dateStr] && appointments[dateStr].count > 0;
+                const hasApp = appointments[dateStr] && appointments[dateStr].reports?.length > 0;
                 const isSelected = (selectedCalDate === dateStr);
                 daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''} ${hasApp ? 'has-appointment' : ''}" data-date="${dateStr}">${d}</div>`;
             }
-            
-            let reportsHtml = '';
-            if (apptData.reports && apptData.reports.length > 0) {
-                reportsHtml = `<div style="margin-top:16px;"><strong>Appointments (${apptData.reports.length}):</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;">Copy All</button>`;
+            let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;">Copy All</button><div style="clear:both;"></div>';
+            if (apptData.reports && apptData.reports.length) {
                 apptData.reports.forEach(r => {
-                    reportsHtml += `<div class="appointment-card"><div style="display:flex; justify-content:space-between;"><div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)} (${escapeHtml(r.role)})</div><button class="copy-btn-sm copy-single-btn" data-id="${r.id}">Copy</button></div><div style="font-size:0.8rem;">Phone: ${escapeHtml(r.phone)} | Time: ${escapeHtml(r.time || 'TBD')}</div><div style="font-size:0.8rem;">Notes: ${escapeHtml(r.notes?.substring(0, 100))}</div><div style="font-size:0.7rem;">Assigned to: ${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div></div>`;
+                    reportsHtml += `<div class="appointment-card"><div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)} (${escapeHtml(r.role)})</div><div style="font-size:0.8rem;">📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div><div style="font-size:0.8rem;">📝 ${escapeHtml(r.notes?.substring(0, 100))}</div><div style="font-size:0.7rem;">👤 Assigned: ${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div><div class="appointment-actions"><button class="edit-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-edit"></i> Edit</button><button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-trash"></i> Delete</button><button class="copy-btn-sm copy-single-btn" data-id="${r.id}">Copy</button></div></div>`;
                 });
-                reportsHtml += `</div>`;
-            }
+            } else { reportsHtml += '<div style="padding:20px; text-align:center; color:var(--text-secondary);">No appointments for this date</div>'; }
+            reportsHtml += `</div>`;
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            inner.innerHTML = `<div class="cal-header"><div class="cal-month-year">${monthNames[month]} ${year}</div><div class="cal-nav"><button id="calPrevBtn">◀ Prev</button><button id="calNextBtn">Next ▶</button><button id="calTodayBtn">Today</button></div></div><div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="cal-days" id="calDaysGrid">${daysHtml}</div><div><label><strong>${selectedCalDate} - ${apptData.count} appointment(s)</strong></label><textarea id="apptNoteInput" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-top:8px;" rows="2" placeholder="General notes...">${escapeHtml(apptData.note || '')}</textarea><button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;">+ Add Appointment</button>${reportsHtml}<div class="goal-input-group"><div><label>Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div><div><label>Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div><div><label>Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div></div></div><div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;"><button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;">Save Note</button><button class="icon-btn" id="closeCalBtn">Close</button></div>`;
+            inner.innerHTML = `<div class="cal-header"><div class="cal-month-year">${monthNames[month]} ${year}</div><div class="cal-nav"><button id="calPrevBtn">◀ Prev</button><button id="calNextBtn">Next ▶</button><button id="calTodayBtn">Today</button></div></div><div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="cal-days" id="calDaysGrid">${daysHtml}</div><div class="date-changer"><i class="fas fa-calendar-day"></i><span style="font-weight:700;">Selected Date:</span><input type="date" id="quickDatePicker" value="${selectedCalDate}"></div><div><label><strong>📝 General Note</strong></label><textarea id="apptNoteInput" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-top:8px;" rows="2">${escapeHtml(apptData.note || '')}</textarea><button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;"><i class="fas fa-plus"></i> + Quick Add Appointment for ${selectedCalDate}</button>${reportsHtml}<div class="goal-input-group"><div><label>Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div><div><label>Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div><div><label>Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div></div></div><div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;"><button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;">Save Note</button><button class="icon-btn" id="closeCalBtn">Close</button></div>`;
             
             document.querySelectorAll('.cal-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarModal(); }); });
+            document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedCalDate = e.target.value; renderCalendarModal(); });
+            document.querySelectorAll('.delete-appt-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); renderCalendarModal(); showToast('Appointment deleted'); } }); });
+            document.querySelectorAll('.edit-appt-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openEditAppointmentModal(date, appt); }); });
             document.querySelectorAll('.copy-single-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); for (let date in appointments) { const report = appointments[date]?.reports?.find(r => r.id === id); if (report) { copyToClipboard(report.fullText); break; } } }); });
             document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendarModal(); });
             document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendarModal(); });
             document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
             document.getElementById('saveNoteBtn')?.addEventListener('click', () => { if (!appointments[selectedCalDate]) appointments[selectedCalDate] = { count: 0, note: '', reports: [] }; appointments[selectedCalDate].note = document.getElementById('apptNoteInput').value; saveAppointments(); showToast('Note saved'); });
-            document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); setTimeout(() => openQuickReport(), 100); });
+            document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
             document.getElementById('closeCalBtn')?.addEventListener('click', closeCalendarModal);
             document.getElementById('copyAllReportsBtn')?.addEventListener('click', () => { if (apptData.reports?.length) copyToClipboard(apptData.reports.map(r => r.fullText).join('\n\n---\n\n')); else showToast('No appointments', true); });
             const dInput = document.getElementById('goalDailyInput'); if (dInput) dInput.addEventListener('change', () => { goals.daily = parseInt(dInput.value) || 3; saveGoals(); });
@@ -636,19 +659,17 @@
             const mInput = document.getElementById('goalMonthlyInput'); if (mInput) mInput.addEventListener('change', () => { goals.monthly = parseInt(mInput.value) || 60; saveGoals(); });
         }
         
-        // Quick Report Modal
-        function openQuickReport() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card report-modal"><h3 style="margin-bottom:16px;">Quick Add Appointment</h3>
-                <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${getTodayStr()}"></div>
+        function openQuickReportWithDate(defaultDate) {
+            const modal = document.createElement('div'); modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-card report-modal"><h3><i class="fas fa-plus-circle"></i> Quick Add Appointment for ${defaultDate}</h3>
+                <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
                 <div class="form-group"><label>Business Name *</label><input type="text" id="reportBusiness" placeholder="e.g., Flynn Group"></div>
                 <div class="form-group"><label>Contact Name *</label><input type="text" id="reportName" placeholder="Full name"></div>
                 <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
                 <div class="form-group"><label>Phone Number</label><input type="text" id="reportPhone" placeholder="+1 207 592 2257"></div>
-                <div class="form-group"><label>Time</label><input type="text" id="reportTime" placeholder="Monday, June 08 around 3pm (ET)"></div>
+                <div class="form-group"><label>Time</label><input type="text" id="reportTime" placeholder="e.g., Monday 3pm ET"></div>
                 <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="3" placeholder="Appointment details..."></textarea></div>
-                <div class="form-group"><label>Assigned To</label><input type="text" id="reportAssigned" placeholder="Daniel" value="Daniel"></div>
+                <div class="form-group"><label>Assigned To</label><input type="text" id="reportAssigned" value="Daniel"></div>
                 <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="submitReportBtn" style="background:var(--success); color:white;">Save & Copy</button><button class="icon-btn" id="closeReportBtn">Cancel</button></div>
             </div>`;
             document.body.appendChild(modal);
@@ -656,13 +677,8 @@
                 const date = document.getElementById('reportDate').value;
                 const business = document.getElementById('reportBusiness').value;
                 const name = document.getElementById('reportName').value;
-                const role = document.getElementById('reportRole').value;
-                const phone = document.getElementById('reportPhone').value;
-                const time = document.getElementById('reportTime').value;
-                const notes = document.getElementById('reportNotes').value;
-                const assigned = document.getElementById('reportAssigned').value;
                 if (!business || !name) { showToast('Fill business and contact name', true); return; }
-                const reportText = addAppointment(date, business, name, role, phone, time, notes, assigned);
+                const reportText = addAppointment(date, business, name, document.getElementById('reportRole').value, document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value, document.getElementById('reportAssigned').value);
                 copyToClipboard(reportText);
                 modal.remove();
                 openCalendarModal();
@@ -670,75 +686,89 @@
             document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
+        function openQuickReport() { openQuickReportWithDate(getTodayStr()); }
         
-        // Priority Predictor
-        function getCallPriorityAnalysis() {
+        // =============================================
+        // PRIORITY PREDICTOR
+        // =============================================
+        function getAdvancedPriorityAnalysis() {
             const now = new Date();
+            const dayOfWeek = now.getDay();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            
+            const dayScores = {
+                0: { name: "Sunday", score: 5, multiplier: 0.2, note: "❌ Closed - Do not call" },
+                1: { name: "Monday", score: 65, multiplier: 0.65, note: "⚠️ Slow start - Call after 10 AM" },
+                2: { name: "Tuesday", score: 92, multiplier: 0.92, note: "🔥 BEST DAY - Peak decision-maker availability" },
+                3: { name: "Wednesday", score: 95, multiplier: 0.95, note: "🔥 BEST DAY - Maximum availability" },
+                4: { name: "Thursday", score: 90, multiplier: 0.90, note: "✅ Excellent - Strong availability" },
+                5: { name: "Friday", score: 55, multiplier: 0.55, note: "⚠️ Poor - Call before 2 PM" },
+                6: { name: "Saturday", score: 15, multiplier: 0.15, note: "❌ Very poor - Avoid" }
+            };
+            
+            const getTimeScore = (h, m) => {
+                const totalMinutes = h * 60 + m;
+                if (totalMinutes >= 480 && totalMinutes < 540) return 35;
+                if (totalMinutes >= 540 && totalMinutes < 600) return 55;
+                if (totalMinutes >= 600 && totalMinutes < 690) return 95;
+                if (totalMinutes >= 690 && totalMinutes < 780) return 40;
+                if (totalMinutes >= 780 && totalMinutes < 840) return 50;
+                if (totalMinutes >= 840 && totalMinutes < 960) return 88;
+                if (totalMinutes >= 960 && totalMinutes < 1020) return 65;
+                if (totalMinutes >= 1020) return 15;
+                return 10;
+            };
+            
             const timeZones = [
-                { name: "ET", zone: "America/New_York", label: "Eastern Time", abbreviation: "ET", cities: "NY, Miami, Atlanta" },
+                { name: "ET", zone: "America/New_York", label: "Eastern Time", abbreviation: "ET", cities: "New York, Miami, Atlanta" },
                 { name: "CT", zone: "America/Chicago", label: "Central Time", abbreviation: "CT", cities: "Chicago, Dallas, Houston" },
                 { name: "MT", zone: "America/Denver", label: "Mountain Time", abbreviation: "MT", cities: "Denver, Phoenix, Salt Lake" },
-                { name: "PT", zone: "America/Los_Angeles", label: "Pacific Time", abbreviation: "PT", cities: "LA, Seattle, San Francisco" }
+                { name: "PT", zone: "America/Los_Angeles", label: "Pacific Time", abbreviation: "PT", cities: "Los Angeles, Seattle, San Francisco" }
             ];
-            const getCallScore = (hour, minute) => {
-                const totalMinutes = hour * 60 + minute;
-                if ((totalMinutes >= 570 && totalMinutes <= 690) || (totalMinutes >= 810 && totalMinutes <= 960)) return 100;
-                if (totalMinutes >= 540 && totalMinutes <= 570) return 85;
-                if (totalMinutes >= 690 && totalMinutes <= 720) return 60;
-                if (totalMinutes >= 720 && totalMinutes <= 780) return 30;
-                if (totalMinutes >= 960 && totalMinutes <= 1020) return 75;
-                if (totalMinutes >= 480 && totalMinutes <= 540) return 50;
-                if (totalMinutes > 1020) return 20;
-                if (totalMinutes < 480) return 10;
-                return 50;
-            };
-            const getAvailabilityStatus = (score) => {
-                if (score >= 85) return { text: "Excellent Time to Call", class: "best-time-high", emoji: "🎯" };
-                if (score >= 70) return { text: "Good Time to Call", class: "best-time-good", emoji: "👍" };
-                if (score >= 40) return { text: "Fair Time (May be busy)", class: "best-time-good", emoji: "⚠️" };
-                return { text: "Poor Time (Likely Unavailable)", class: "best-time-bad", emoji: "❌" };
-            };
+            
             const zones = timeZones.map(tz => {
                 const tzTime = new Date(now.toLocaleString("en-US", { timeZone: tz.zone }));
-                const hour = tzTime.getHours();
-                const minute = tzTime.getMinutes();
-                const score = getCallScore(hour, minute);
-                const status = getAvailabilityStatus(score);
-                return { ...tz, timeStr: tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }), hour, minute, isBusinessHours: hour >= 9 && hour < 17, callScore: score, availability: status.text, availabilityClass: status.class, emoji: status.emoji };
+                const tzHour = tzTime.getHours();
+                const tzMinute = tzTime.getMinutes();
+                const timeScore = getTimeScore(tzHour, tzMinute);
+                const dayScore = dayScores[tzTime.getDay()].score;
+                const combinedScore = Math.floor((timeScore * 0.7) + (dayScore * 0.3));
+                
+                let priority = "", priorityClass = "", successRate = "";
+                if (combinedScore >= 85) { priority = "OPTIMAL - Call NOW!"; priorityClass = "best-time-high"; successRate = "85-95% success rate"; }
+                else if (combinedScore >= 70) { priority = "GOOD - Recommended"; priorityClass = "best-time-good"; successRate = "70-85% success rate"; }
+                else if (combinedScore >= 50) { priority = "FAIR - Might connect"; priorityClass = "best-time-good"; successRate = "50-70% success rate"; }
+                else { priority = "POOR - Avoid if possible"; priorityClass = "best-time-bad"; successRate = "<50% success rate"; }
+                
+                return { ...tz, timeStr: tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }), isBusinessHours: tzHour >= 9 && tzHour < 17, dayName: dayScores[tzTime.getDay()].name, dayNote: dayScores[tzTime.getDay()].note, combinedScore, priority, priorityClass, successRate };
             });
-            const sorted = [...zones].sort((a, b) => b.callScore - a.callScore);
+            
+            const sorted = [...zones].sort((a, b) => b.combinedScore - a.combinedScore);
             const bestZone = sorted[0];
-            let recommendation = bestZone.callScore >= 85 ? `🎯 OPTIMAL: Call ${bestZone.abbreviation} businesses NOW (${bestZone.timeStr})` : (bestZone.callScore >= 70 ? `✅ GOOD: ${bestZone.abbreviation} at ${bestZone.timeStr}` : `⏰ FAIR: Consider waiting 1-2 hours for better results`);
-            return { zones, bestZone, recommendation, bestTimes: ["10:00 AM - 11:30 AM (local) - Peak", "2:00 PM - 4:00 PM (local) - Second window", "Avoid 12-1 PM (lunch hour)"] };
+            const recommendation = bestZone.combinedScore >= 85 ? `🎯 OPTIMAL: Call ${bestZone.abbreviation} businesses NOW (${bestZone.timeStr} local time). Expected success rate: ${bestZone.successRate}` : (bestZone.combinedScore >= 70 ? `✅ GOOD: ${bestZone.abbreviation} at ${bestZone.timeStr} local time. ${bestZone.successRate}` : `⏰ WAIT: Consider calling during prime hours (10-11:30 AM or 2-4 PM local time)`);
+            
+            return { zones, bestZone, recommendation, bestTimeSlots: ["10:00 AM - 11:30 AM (92% rate)", "2:00 PM - 4:00 PM (88% rate)", "9:00 AM - 10:00 AM (65% rate)"], bestDays: ["Tuesday (92%)", "Wednesday (95%)", "Thursday (90%)"] };
         }
         
         function openPriorityModal() {
-            const analysis = getCallPriorityAnalysis();
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
+            const analysis = getAdvancedPriorityAnalysis();
+            const modal = document.createElement('div'); modal.className = 'modal-overlay';
             let zonesHtml = '';
-            analysis.zones.forEach(zone => {
-                zonesHtml += `<div class="timezone-card"><div class="timezone-name">${zone.label} (${zone.abbreviation})</div><div class="timezone-time">${zone.timeStr}</div><div class="${zone.isBusinessHours ? 'status-open' : 'status-closed'}">${zone.isBusinessHours ? 'Business Hours' : 'After Hours'}</div><div class="best-time-badge ${zone.availabilityClass}">${zone.emoji} ${zone.availability}</div><div style="font-size:0.7rem; margin-top:6px;">${zone.cities}</div></div>`;
+            analysis.zones.forEach((zone, idx) => {
+                zonesHtml += `<div class="timezone-card ${idx === 0 ? 'recommended' : ''}"><div class="timezone-name">${zone.label} (${zone.abbreviation})${idx === 0 ? ' 👑' : ''}</div><div class="timezone-time">${zone.timeStr}</div><div class="${zone.isBusinessHours ? 'status-open' : 'status-closed'}">${zone.isBusinessHours ? '✅ Business Hours' : '❌ After Hours'}</div><div class="best-time-badge ${zone.priorityClass}">${zone.priority}</div><div style="font-size:0.75rem; margin-top:8px;">📍 ${zone.cities}<br>📊 ${zone.successRate}</div><div style="font-size:0.7rem; margin-top:6px;">${zone.dayNote}</div></div>`;
             });
-            modal.innerHTML = `<div class="modal-card priority-modal"><div class="priority-header"><h3><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h3><div style="font-size:0.8rem;">Intelligent US Business Hours Predictor</div></div><div class="recommendation-card"><div style="font-weight:800;">📞 RECOMMENDATION</div><div>${analysis.recommendation}</div></div><div style="font-weight:700;">🌍 US TIME ZONES</div><div class="timezone-grid">${zonesHtml}</div><div style="margin-top:16px;"><div style="font-weight:700;">⏰ BEST TIMES TO CALL</div>${analysis.bestTimes.map(t => `<div style="padding:6px 0; font-size:0.85rem;">• ${t}</div>`).join('')}</div><div style="margin-top:16px; padding:12px; background:var(--bg-primary); border-radius:16px; font-size:0.8rem;"><strong>💡 Pro Tips:</strong><br>• Call ET between 10-11:30 AM for highest answer rates<br>• Avoid 12-1 PM (lunch hour)<br>• Tuesday-Thursday are best days</div><div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closePriorityBtn" style="background:var(--primary); color:white;">Close</button></div></div>`;
+            modal.innerHTML = `<div class="modal-card priority-modal"><div class="priority-header"><h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2><div style="font-size:0.85rem;">Intelligent US Business Hours Predictor</div><div style="font-size:0.7rem; margin-top:8px;"><i class="fas fa-sync-alt"></i> Live Analysis · ${new Date().toLocaleString()}</div></div><div class="recommendation-card"><div style="font-weight:800;">📞 SMART RECOMMENDATION</div><div style="margin-top:8px;">${analysis.recommendation}</div><div style="margin-top:12px;"><div style="background:var(--bg-primary); border-radius:12px; padding:8px;"><div style="height:8px; background:linear-gradient(90deg, #10b981, #3b82f6); border-radius:20px; width:${analysis.bestZone.combinedScore}%;"></div><div style="margin-top:4px;">Connection Probability: ${analysis.bestZone.combinedScore}%</div></div></div></div><div style="font-weight:700; margin:16px 0 8px;"><i class="fas fa-globe-americas"></i> TIME ZONE PRIORITY</div><div class="timezone-grid">${zonesHtml}</div><div style="margin-top:16px;"><strong>⏰ BEST TIMES:</strong> ${analysis.bestTimeSlots.join(' • ')}</div><div style="margin-top:8px;"><strong>📅 BEST DAYS:</strong> ${analysis.bestDays.join(' • ')}</div><div style="margin-top:16px; padding:12px; background:var(--bg-primary); border-radius:16px; font-size:0.8rem;"><strong>💡 PRO TIPS:</strong> Call Tuesday-Thursday 10-11:30 AM or 2-4 PM local time. Avoid Monday mornings and Friday afternoons.</div><div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closePriorityBtn" style="background:var(--primary); width:100%;">Start Calling</button></div></div>`;
             document.body.appendChild(modal);
             document.getElementById('closePriorityBtn').addEventListener('click', () => modal.remove());
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
-        function openHelpModal() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card help-modal"><h3>ScriptFlow Pro User Guide</h3><div class="help-step"><h4>Quick Navigation</h4><p>Press keys 1-9 to instantly jump to any script.</p></div><div class="help-step"><h4>Script Management</h4><p>Click Edit to modify scripts. Add, rename, delete custom scripts.</p></div><div class="help-step"><h4>Version History</h4><p>Ctrl+Z to undo, Ctrl+Y to redo changes.</p></div><div class="help-step"><h4>Appointment Tracker</h4><p>Click Calendar to manage appointments. Quick Add logs new appointments.</p></div><div class="help-step"><h4>Call Priority</h4><p>Click chart icon for best times to call US business owners.</p></div><div class="modal-buttons"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary); color:white;">Got it!</button></div></div>`;
-            document.body.appendChild(modal);
-            document.getElementById('closeHelpBtn').addEventListener('click', () => modal.remove());
-            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-        }
-        
-        function factoryReset() { if (confirm('FACTORY RESET: This will erase ALL data. Cannot be undone.')) { localStorage.clear(); location.reload(); } }
+        function openHelpModal() { const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card help-modal"><h3>📖 ScriptFlow Pro Guide</h3><div class="help-step"><h4>📅 Appointment Calendar</h4><p>Click calendar icon → Select any date → Edit/Delete appointments with buttons. Quick Add auto-fills selected date.</p></div><div class="help-step"><h4>✏️ Edit/Delete Appointments</h4><p>In calendar view, each appointment has Edit ✏️ and Delete 🗑️ buttons. Change date when editing.</p></div><div class="help-step"><h4>🎯 Call Priority Predictor</h4><p>Click chart icon for real-time analysis of best times to call US businesses based on time zones.</p></div><div class="help-step"><h4>📜 Script Management</h4><p>Press 1-9 keys to switch scripts. Edit, rename, delete, or add custom scripts.</p></div><div class="modal-buttons"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary);">Got it!</button></div></div>`; document.body.appendChild(modal); document.getElementById('closeHelpBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+        function factoryReset() { if(confirm('FACTORY RESET: This will erase ALL data. Cannot be undone.')) { localStorage.clear(); location.reload(); } }
         
         // =============================================
-        // COMPLETE CALL SCRIPTS
+        // COMPLETE SCRIPTS SYSTEM
         // =============================================
         const defaultScripts = {
             "opening": { name: "🎯 Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [Your Name]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Prospect Name]. Are you the owner of [Company Name]?\"" },
@@ -755,118 +785,35 @@
             "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Your Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
         };
         
-        // Scripts Management
         let scripts = {}, currentScriptId = "opening", isEditing = false, searchTerm = "", customOrder = [];
         let versionHistory = {}, currentVersionIndex = {};
         
         function initVersionHistory(id, content) { if (!versionHistory[id]) { versionHistory[id] = [{ content, timestamp: new Date().toISOString() }]; currentVersionIndex[id] = 0; } }
-        function saveVersion(id, newContent) {
-            if (!versionHistory[id]) { initVersionHistory(id, newContent); return; }
-            if (currentVersionIndex[id] < versionHistory[id].length - 1) versionHistory[id] = versionHistory[id].slice(0, currentVersionIndex[id] + 1);
-            versionHistory[id].push({ content: newContent, timestamp: new Date().toISOString() });
-            currentVersionIndex[id] = versionHistory[id].length - 1;
-            if (versionHistory[id].length > 50) versionHistory[id].shift();
-            localStorage.setItem('scriptflow_version_history', JSON.stringify(versionHistory));
-        }
-        function undoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] <= 0) { showToast('No earlier version', true); return; } currentVersionIndex[id]--; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Undo successful'); }
-        function redoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] >= versionHistory[id].length - 1) { showToast('No newer version', true); return; } currentVersionIndex[id]++; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Redo successful'); }
-        
-        function loadScripts() {
-            const saved = localStorage.getItem('scriptflow_pro_scripts_main');
-            if (saved) { scripts = JSON.parse(saved); for (let k of Object.keys(defaultScripts)) if (!scripts[k]) scripts[k] = {...defaultScripts[k]}; }
-            else scripts = JSON.parse(JSON.stringify(defaultScripts));
-            const savedOrder = localStorage.getItem('scriptflow_order_main');
-            if (savedOrder) customOrder = JSON.parse(savedOrder);
-            else customOrder = ["opening", "owner_yes", "owner_no", "objection_website", "objection_webguy", "objection_cost", "objection_busy", "objection_not_interested", "objection_info", "objection_found_me", "objection_who_are_you", "closing"];
-            const savedHistory = localStorage.getItem('scriptflow_version_history');
-            if (savedHistory) versionHistory = JSON.parse(savedHistory);
-            for (let id in scripts) { if (!versionHistory[id]) initVersionHistory(id, scripts[id].content); else currentVersionIndex[id] = versionHistory[id].length - 1; }
-            document.getElementById('scriptCount').innerText = Object.keys(scripts).length;
-        }
-        function saveAllScripts() {
-            localStorage.setItem('scriptflow_pro_scripts_main', JSON.stringify(scripts));
-            localStorage.setItem('scriptflow_order_main', JSON.stringify(customOrder));
-            document.getElementById('saveStatus').innerHTML = '✓ Saved';
-            setTimeout(() => { if (!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; }, 1500);
-        }
-        function getOrderedVisible() {
-            let ids = [...customOrder.filter(id=>scripts[id]), ...Object.keys(scripts).filter(id=>!customOrder.includes(id))];
-            if (searchTerm) ids = ids.filter(id => scripts[id].name.toLowerCase().includes(searchTerm.toLowerCase()));
-            return ids;
-        }
+        function saveVersion(id, newContent) { if (!versionHistory[id]) { initVersionHistory(id, newContent); return; } if (currentVersionIndex[id] < versionHistory[id].length - 1) versionHistory[id] = versionHistory[id].slice(0, currentVersionIndex[id] + 1); versionHistory[id].push({ content: newContent, timestamp: new Date().toISOString() }); currentVersionIndex[id] = versionHistory[id].length - 1; if (versionHistory[id].length > 50) versionHistory[id].shift(); localStorage.setItem('scriptflow_version_history', JSON.stringify(versionHistory)); }
+        function undoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] <= 0) { showToast('No earlier version', true); return; } currentVersionIndex[id]--; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Undo'); }
+        function redoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] >= versionHistory[id].length - 1) { showToast('No newer version', true); return; } currentVersionIndex[id]++; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Redo'); }
+        function loadScripts() { const saved = localStorage.getItem('scriptflow_pro_scripts_main'); if (saved) { scripts = JSON.parse(saved); for (let k of Object.keys(defaultScripts)) if (!scripts[k]) scripts[k] = {...defaultScripts[k]}; } else scripts = JSON.parse(JSON.stringify(defaultScripts)); const savedOrder = localStorage.getItem('scriptflow_order_main'); if (savedOrder) customOrder = JSON.parse(savedOrder); else customOrder = ["opening","owner_yes","owner_no","objection_website","objection_webguy","objection_cost","objection_busy","objection_not_interested","objection_info","objection_found_me","objection_who_are_you","closing"]; const savedHistory = localStorage.getItem('scriptflow_version_history'); if (savedHistory) versionHistory = JSON.parse(savedHistory); for (let id in scripts) { if (!versionHistory[id]) initVersionHistory(id, scripts[id].content); else currentVersionIndex[id] = versionHistory[id].length - 1; } document.getElementById('scriptCount').innerText = Object.keys(scripts).length; }
+        function saveAllScripts() { localStorage.setItem('scriptflow_pro_scripts_main', JSON.stringify(scripts)); localStorage.setItem('scriptflow_order_main', JSON.stringify(customOrder)); document.getElementById('saveStatus').innerHTML = '✓ Saved'; setTimeout(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; }, 1500); }
+        function getOrderedVisible() { let ids = [...customOrder.filter(id=>scripts[id]), ...Object.keys(scripts).filter(id=>!customOrder.includes(id))]; if (searchTerm) ids = ids.filter(id => scripts[id].name.toLowerCase().includes(searchTerm.toLowerCase())); return ids; }
         function getKeyMapping() { const vis = getOrderedVisible(); const map = new Map(); vis.slice(0,9).forEach((id,i)=>map.set((i+1).toString(),id)); return map; }
-        function escapeHtml(s) { return s ? s.replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])) : ''; }
-        
-        function renderNavigation() {
-            const container = document.getElementById('scriptNavList');
-            const visible = getOrderedVisible();
-            if (!visible.length) { container.innerHTML='<div style="padding:20px;text-align:center;">No scripts found</div>'; return; }
-            let html = '';
-            visible.forEach((id, idx) => {
-                const s = scripts[id];
-                const active = currentScriptId === id;
-                const shortcut = idx < 9 ? `${idx+1}` : null;
-                html += `<div class="nav-item ${active ? 'active' : ''}" data-id="${id}"><i class="fas fa-scroll"></i><span>${escapeHtml(s.name)}</span>${shortcut ? `<span class="key-hint">${shortcut}</span>` : ''}<div class="nav-actions"><button class="nav-icon-btn rename-btn" data-id="${id}"><i class="fas fa-pencil-alt"></i></button><button class="nav-icon-btn delete-btn" data-id="${id}" ${id==='opening'?'disabled style="opacity:0.4;"':''}><i class="fas fa-trash"></i></button></div></div>`;
-            });
-            container.innerHTML = html;
-            document.querySelectorAll('.nav-item').forEach(el => {
-                const sid = el.getAttribute('data-id');
-                el.addEventListener('click', (e) => { if(e.target.closest('.rename-btn')||e.target.closest('.delete-btn')) return; if(isEditing && confirm('Cancel editing?')) cancelEdit(); if(!isEditing && sid) loadScript(sid); });
-            });
-            document.querySelectorAll('.rename-btn').forEach(btn => btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); const newName=prompt('New name:',scripts[id].name); if(newName?.trim()){ scripts[id].name=newName.trim(); saveAllScripts(); renderNavigation(); if(currentScriptId===id) document.getElementById('currentScriptName').innerHTML=scripts[id].name; showToast('Renamed'); } }));
-            document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); if(id==='opening'){ showToast('Cannot delete opening script', true); return; } if(confirm('Delete?')){ delete scripts[id]; delete versionHistory[id]; customOrder=customOrder.filter(i=>i!==id); if(currentScriptId===id) loadScript('opening'); saveAllScripts(); renderNavigation(); document.getElementById('scriptCount').innerText=Object.keys(scripts).length; showToast('Deleted'); } }));
-            const visibleIds = getOrderedVisible();
-            const idxCur = visibleIds.indexOf(currentScriptId);
-            document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `Key: ${idxCur+1}` : `Key: —`;
-            if (versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText = `${currentVersionIndex[currentScriptId]+1}/${versionHistory[currentScriptId].length}`;
-        }
-        
-        function loadScript(id) { if(!scripts[id] || isEditing) return; currentScriptId = id; document.getElementById('currentScriptName').innerHTML = scripts[id].name; const displayContent = replaceNameInScript(scripts[id].content); document.getElementById('scriptContent').innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`; renderNavigation(); }
-        function enterEdit() { if(isEditing) return; isEditing=true; const s=scripts[currentScriptId]; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(s.content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='Editing'; }
-        function saveEdit() { const newContent = document.getElementById('editTextarea').value; scripts[currentScriptId].content = newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('Saved!'); }
+        function escapeHtml(s) { return s ? String(s).replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])) : ''; }
+        function renderNavigation() { const container = document.getElementById('scriptNavList'); const visible = getOrderedVisible(); if (!visible.length) { container.innerHTML='<div style="padding:20px;text-align:center;">No scripts found</div>'; return; } let html=''; visible.forEach((id, idx)=>{ const s=scripts[id]; const active=currentScriptId===id; const shortcut=idx<9?`${idx+1}`:null; html+=`<div class="nav-item ${active?'active':''}" data-id="${id}"><i class="fas fa-scroll"></i><span>${escapeHtml(s.name)}</span>${shortcut?`<span class="key-hint">${shortcut}</span>`:''}<div class="nav-actions"><button class="nav-icon-btn rename-btn" data-id="${id}"><i class="fas fa-pencil-alt"></i></button><button class="nav-icon-btn delete-btn" data-id="${id}" ${id==='opening'?'disabled style="opacity:0.4;"':''}><i class="fas fa-trash"></i></button></div></div>`; }); container.innerHTML=html; document.querySelectorAll('.nav-item').forEach(el=>{ const sid=el.getAttribute('data-id'); el.addEventListener('click',(e)=>{ if(e.target.closest('.rename-btn')||e.target.closest('.delete-btn')) return; if(isEditing && confirm('Cancel editing?')) cancelEdit(); if(!isEditing && sid) loadScript(sid); }); }); document.querySelectorAll('.rename-btn').forEach(btn=>btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); const newName=prompt('New name:',scripts[id].name); if(newName?.trim()){ scripts[id].name=newName.trim(); saveAllScripts(); renderNavigation(); if(currentScriptId===id) document.getElementById('currentScriptName').innerHTML=scripts[id].name; showToast('Renamed'); } })); document.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); if(id==='opening'){ showToast('Cannot delete opening script', true); return; } if(confirm('Delete this script?')){ delete scripts[id]; delete versionHistory[id]; customOrder=customOrder.filter(i=>i!==id); if(currentScriptId===id) loadScript('opening'); saveAllScripts(); renderNavigation(); document.getElementById('scriptCount').innerText=Object.keys(scripts).length; showToast('Script deleted'); } })); const visibleIds=getOrderedVisible(); const idxCur=visibleIds.indexOf(currentScriptId); document.getElementById('activeShortcutHint').innerHTML=idxCur!==-1&&idxCur<9?`Key: ${idxCur+1}`:`Key: —`; if(versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText=`${currentVersionIndex[currentScriptId]+1}/${versionHistory[currentScriptId].length}`; }
+        function loadScript(id) { if(!scripts[id]||isEditing) return; currentScriptId=id; document.getElementById('currentScriptName').innerHTML=scripts[id].name; const displayContent=replaceNameInScript(scripts[id].content); document.getElementById('scriptContent').innerHTML=`<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`; renderNavigation(); }
+        function enterEdit() { isEditing=true; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(scripts[currentScriptId].content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='Editing'; }
+        function saveEdit() { const newContent=document.getElementById('editTextarea').value; scripts[currentScriptId].content=newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('Saved!'); }
         function cancelEdit() { isEditing=false; document.getElementById('editScriptBtn').style.display='inline-flex'; document.getElementById('saveScriptBtn').style.display='none'; document.getElementById('cancelEditBtn').style.display='none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML='Auto'; }
-        function copyScript() { const content = replaceNameInScript(scripts[currentScriptId].content); copyToClipboard(content); }
-        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset to original?')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Reset complete'); } } else showToast('No default', true); }
-        function addScript() { if(isEditing){ showToast('Finish editing first', true); return; } const name=prompt('Script name:'); if(!name) return; const id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); scripts[id]={name, content:'Write your script here...'}; initVersionHistory(id, scripts[id].content); customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`Added: ${name}`); }
-        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No history', true); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>Version History: ${escapeHtml(scripts[id].name)}</h3>`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span>${idx === currentVersionIndex[id] ? 'Current' : 'Restore'}</span></div>`; }); html += `<div class="modal-buttons"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast('Version restored'); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
-        
-        function initKeyboard() {
-            window.addEventListener('keydown',(e)=>{
-                if(e.key>='1' && e.key<='9' && !isEditing && !e.target.matches('textarea,input')){ e.preventDefault(); const target=getKeyMapping().get(e.key); if(target && scripts[target]){ loadScript(target); showToast(scripts[target].name); } }
-                if(e.key==='Escape' && isEditing){ cancelEdit(); showToast('Edit cancelled'); }
-                if((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault(); undoScript(currentScriptId); }
-                if((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault(); redoScript(currentScriptId); }
-            });
-        }
+        function copyScript() { const content=replaceNameInScript(scripts[currentScriptId].content); copyToClipboard(content); }
+        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset to original content?')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Reset complete'); } } else showToast('No default version', true); }
+        function addScript() { if(isEditing){ showToast('Finish editing first', true); return; } const name=prompt('Enter script name:'); if(!name) return; const id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); scripts[id]={name, content:'Write your custom script here...'}; initVersionHistory(id, scripts[id].content); customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`Added: ${name}`); }
+        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No history', true); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>Version History: ${escapeHtml(scripts[id].name)}</h3>`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span>${idx === currentVersionIndex[id] ? '✓ Current' : 'Restore'}</span></div>`; }); html += `<div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast('Version restored'); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
+        function initKeyboard() { window.addEventListener('keydown',(e)=>{ if(e.key>='1'&&e.key<='9'&&!isEditing&&!e.target.matches('textarea,input')){ e.preventDefault(); const target=getKeyMapping().get(e.key); if(target&&scripts[target]){ loadScript(target); showToast(scripts[target].name); } } if(e.key==='Escape'&&isEditing){ cancelEdit(); } if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!isEditing){ e.preventDefault(); undoScript(currentScriptId); } if((e.ctrlKey||e.metaKey)&&e.key==='y'&&!isEditing){ e.preventDefault(); redoScript(currentScriptId); } }); }
         function initTheme() { const saved=localStorage.getItem('scriptflow_theme_main'); if(saved==='dark') document.body.classList.add('dark'); document.getElementById('themeToggle').innerHTML=document.body.classList.contains('dark')?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; }
-        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_main',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode':'Light mode'}`); }
+        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_main',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode':'Light mode'} enabled`); }
         function initSearch() { document.getElementById('scriptSearch').addEventListener('input',(e)=>{ searchTerm=e.target.value.toLowerCase(); renderNavigation(); }); }
         
-        loadAppointmentData();
-        loadScripts();
-        initTheme();
-        initSearch();
-        renderNavigation();
-        loadScript('opening');
-        initKeyboard();
-        
-        document.getElementById('editScriptBtn').addEventListener('click', enterEdit);
-        document.getElementById('saveScriptBtn').addEventListener('click', saveEdit);
-        document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
-        document.getElementById('copyScriptBtn').addEventListener('click', copyScript);
-        document.getElementById('resetScriptBtn').addEventListener('click', resetScript);
-        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-        document.getElementById('addScriptBtn').addEventListener('click', addScript);
-        document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal);
-        document.getElementById('quickReportBtn').addEventListener('click', openQuickReport);
-        document.getElementById('userNameBtn').addEventListener('click', setUserName);
-        document.getElementById('helpBtn').addEventListener('click', openHelpModal);
-        document.getElementById('priorityBtn').addEventListener('click', openPriorityModal);
-        document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId));
-        document.getElementById('resetAllBtn').addEventListener('click', factoryReset);
-        document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId));
-        document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
-        
+        // Initialize everything
+        loadAppointmentData(); loadScripts(); initTheme(); initSearch(); renderNavigation(); loadScript('opening'); initKeyboard();
+        document.getElementById('editScriptBtn').addEventListener('click', enterEdit); document.getElementById('saveScriptBtn').addEventListener('click', saveEdit); document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn').addEventListener('click', copyScript); document.getElementById('resetScriptBtn').addEventListener('click', resetScript); document.getElementById('themeToggle').addEventListener('click', toggleTheme); document.getElementById('addScriptBtn').addEventListener('click', addScript); document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal); document.getElementById('quickReportBtn').addEventListener('click', openQuickReport); document.getElementById('userNameBtn').addEventListener('click', setUserName); document.getElementById('helpBtn').addEventListener('click', openHelpModal); document.getElementById('priorityBtn').addEventListener('click', openPriorityModal); document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId)); document.getElementById('resetAllBtn').addEventListener('click', factoryReset); document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
         setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; updateStats(); }, 5000);
     </script>
 </body>
