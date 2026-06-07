@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: scriptflow-pro
+    runtime: static
+    buildCommand: ""
+    staticPublishPath: ./scriptflow    # ← Changed from ./
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        value: 389117008163-cbjcmgsitsmbmltg9mb9h99aukeb54p0.apps.googleusercontent.com
