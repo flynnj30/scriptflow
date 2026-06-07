@@ -284,7 +284,7 @@
             box-shadow: var(--shadow-lg);
             transition: all 0.3s ease;
         }
-        .calendar-modal { width: 900px; max-width: 95%; }
+        .calendar-modal { width: 950px; max-width: 95%; }
         .report-modal { width: 600px; }
         .help-modal { width: 650px; }
         .priority-modal { width: 700px; max-width: 95%; }
@@ -320,21 +320,39 @@
         .cal-day {
             aspect-ratio: 1;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 500;
+            font-size: 0.9rem;
+            font-weight: 600;
             background: var(--cal-day-bg);
             transition: all 0.2s;
             position: relative;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
+            padding: 8px 4px;
         }
         .cal-day:hover { background: var(--primary); color: white; transform: scale(1.02); border-color: var(--primary); }
         .cal-day.selected { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); border-color: var(--primary); }
-        .cal-day.has-appointment::after { content: '📅'; font-size: 0.55rem; position: absolute; bottom: 2px; right: 4px; }
+        .cal-day-number { font-size: 1rem; font-weight: 700; }
+        .appointment-dots {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .appointment-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .appointment-dot.multiple { background: var(--warning); }
+        .appointment-dot.many { background: var(--danger); }
+        
         .appointment-card {
             background: var(--bg-primary);
             border-radius: 16px;
@@ -457,6 +475,7 @@
                     <div class="stat-pill"><i class="fas fa-calendar-alt"></i> Month: <span class="number" id="statMonth">0</span>/<span id="goalMonthly">60</span></div>
                     <button class="icon-btn" id="openCalendarBtn" data-tooltip="Appointment Calendar"><i class="fas fa-calendar-alt"></i></button>
                     <button class="icon-btn" id="quickReportBtn" data-tooltip="Quick Add Appointment"><i class="fas fa-plus-circle"></i></button>
+                    <button class="icon-btn" id="exportCsvBtn" data-tooltip="Export to CSV"><i class="fas fa-file-csv"></i></button>
                     <button class="icon-btn" id="userNameBtn" data-tooltip="Set Your Name"><i class="fas fa-user-circle"></i></button>
                     <button class="icon-btn" id="priorityBtn" data-tooltip="Real-Time Call Priority"><i class="fas fa-chart-line"></i></button>
                 </div>
@@ -502,7 +521,7 @@
                 <div id="scriptContent"></div>
             </div>
         </div>
-        <div class="footer"><i class="fas fa-magic"></i> Click calendar to manage appointments · Edit/Delete appointments in calendar view</div>
+        <div class="footer"><i class="fas fa-magic"></i> Click calendar to manage appointments · Edit/Delete appointments · Export to CSV</div>
     </div>
 
     <script>
@@ -556,11 +575,12 @@
         function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null) {
             if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
             if (!appointments[dateStr].reports) appointments[dateStr].reports = [];
-            const reportText = `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned to: ${assigned}`;
+            const reportText = `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned to: ${assigned}\nDate: ${dateStr}`;
             const newAppointment = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, createdAt: new Date().toISOString(), fullText: reportText };
             if (editId) {
                 const index = appointments[dateStr].reports.findIndex(r => r.id === editId);
                 if (index !== -1) appointments[dateStr].reports[index] = newAppointment;
+                else appointments[dateStr].reports.unshift(newAppointment);
             } else {
                 appointments[dateStr].reports.unshift(newAppointment);
             }
@@ -588,8 +608,33 @@
         }
         function copyToClipboard(text) { if (!text) { showToast('Nothing to copy', true); return; } navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied!'); }); }
         
+        function exportToCSV() {
+            let csvRows = [];
+            csvRows.push(['Date', 'Business', 'Contact Name', 'Role', 'Phone', 'Time', 'Notes', 'Assigned To', 'Created At']);
+            for (let date in appointments) {
+                if (appointments[date].reports) {
+                    appointments[date].reports.forEach(appt => {
+                        csvRows.push([
+                            date, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appt.createdAt
+                        ]);
+                    });
+                }
+            }
+            const csvContent = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', `appointments_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${csvRows.length - 1} appointments to CSV`);
+        }
+        
         // =============================================
-        // CALENDAR MODAL - FULLY FUNCTIONAL
+        // CALENDAR MODAL - FULLY FUNCTIONAL WITH FIXED DATE MOVING
         // =============================================
         let currentCalDate = new Date();
         let selectedCalDate = getTodayStr();
@@ -598,39 +643,37 @@
         function openCalendarModal() { if (calendarModal) return; const modal = document.createElement('div'); modal.className = 'modal-overlay'; modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`; document.body.appendChild(modal); calendarModal = modal; renderCalendarModal(); modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); }); }
         function closeCalendarModal() { if (calendarModal) { calendarModal.remove(); calendarModal = null; } }
         
-        function openEditAppointmentModal(dateStr, appt) {
-            const modalDiv = document.createElement('div'); modalDiv.className = 'modal-overlay';
-            modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3><div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div><div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div><div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div><div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div><div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div><div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div><div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div><div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div><div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="saveEditBtn" style="background:var(--success);">Save Changes</button><button class="icon-btn" id="cancelEditModalBtn">Cancel</button></div></div>`;
-            document.body.appendChild(modalDiv);
-            document.getElementById('saveEditBtn').addEventListener('click', () => {
-                const newDate = document.getElementById('editDate').value;
-                const updatedBusiness = document.getElementById('editBusiness').value;
-                const updatedName = document.getElementById('editName').value;
-                if (!updatedBusiness || !updatedName) { showToast('Business and Name required', true); return; }
-                if (newDate !== dateStr) {
-                    deleteAppointment(dateStr, appt.id);
-                    addAppointment(newDate, updatedBusiness, updatedName, document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id);
-                } else {
-                    addAppointment(dateStr, updatedBusiness, updatedName, document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id);
-                }
-                modalDiv.remove(); closeCalendarModal(); openCalendarModal(); showToast('Appointment updated');
-            });
-            document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
-            modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
+        function getAppointmentDots(count) {
+            if (count === 0) return '<div class="appointment-dots"></div>';
+            let dots = '<div class="appointment-dots">';
+            const dotCount = Math.min(count, 5);
+            for (let i = 0; i < dotCount; i++) {
+                let dotClass = 'appointment-dot';
+                if (count >= 5) dotClass += ' many';
+                else if (count >= 3) dotClass += ' multiple';
+                dots += `<div class="${dotClass}"></div>`;
+            }
+            if (count > 5) dots += `<span style="font-size:0.65rem; margin-left:2px;">+${count-5}</span>`;
+            dots += '</div>';
+            return dots;
         }
         
         function renderCalendarModal() {
             const inner = document.getElementById('calModalInner'); if (!inner) return;
             const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
-            const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month+1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month+1, 0).getDate();
             const apptData = appointments[selectedCalDate] || { count: 0, note: '', reports: [] };
             let daysHtml = '';
             for (let i = 0; i < firstDay; i++) daysHtml += `<div class="cal-day"></div>`;
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const hasApp = appointments[dateStr] && appointments[dateStr].reports?.length > 0;
+                const apptCount = appointments[dateStr]?.reports?.length || 0;
                 const isSelected = (selectedCalDate === dateStr);
-                daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''} ${hasApp ? 'has-appointment' : ''}" data-date="${dateStr}">${d}</div>`;
+                daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''}" data-date="${dateStr}">
+                    <div class="cal-day-number">${d}</div>
+                    ${getAppointmentDots(apptCount)}
+                </div>`;
             }
             let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;">Copy All</button><div style="clear:both;"></div>';
             if (apptData.reports && apptData.reports.length) {
@@ -654,9 +697,65 @@
             document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
             document.getElementById('closeCalBtn')?.addEventListener('click', closeCalendarModal);
             document.getElementById('copyAllReportsBtn')?.addEventListener('click', () => { if (apptData.reports?.length) copyToClipboard(apptData.reports.map(r => r.fullText).join('\n\n---\n\n')); else showToast('No appointments', true); });
-            const dInput = document.getElementById('goalDailyInput'); if (dInput) dInput.addEventListener('change', () => { goals.daily = parseInt(dInput.value) || 3; saveGoals(); });
-            const wInput = document.getElementById('goalWeeklyInput'); if (wInput) wInput.addEventListener('change', () => { goals.weekly = parseInt(wInput.value) || 15; saveGoals(); });
-            const mInput = document.getElementById('goalMonthlyInput'); if (mInput) mInput.addEventListener('change', () => { goals.monthly = parseInt(mInput.value) || 60; saveGoals(); });
+            ['goalDailyInput', 'goalWeeklyInput', 'goalMonthlyInput'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', () => { const map = { goalDailyInput: 'daily', goalWeeklyInput: 'weekly', goalMonthlyInput: 'monthly' }; goals[map[id]] = parseInt(el.value) || (id === 'goalDailyInput' ? 3 : id === 'goalWeeklyInput' ? 15 : 60); saveGoals(); renderCalendarModal(); }); });
+        }
+        
+        // FIXED: Edit appointment with proper date moving - this is the critical fix
+        function openEditAppointmentModal(oldDateStr, appt) {
+            const modalDiv = document.createElement('div'); 
+            modalDiv.className = 'modal-overlay';
+            modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3>
+                <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${oldDateStr}"></div>
+                <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
+                <div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
+                <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div>
+                <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div>
+                <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div>
+                <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div>
+                <div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+                    <button class="icon-btn" id="saveEditBtn" style="background:var(--success);">Save Changes</button>
+                    <button class="icon-btn" id="cancelEditModalBtn">Cancel</button>
+                </div>
+            </div>`;
+            document.body.appendChild(modalDiv);
+            
+            document.getElementById('saveEditBtn').addEventListener('click', () => {
+                const newDate = document.getElementById('editDate').value;
+                const updatedBusiness = document.getElementById('editBusiness').value;
+                const updatedName = document.getElementById('editName').value;
+                const updatedRole = document.getElementById('editRole').value;
+                const updatedPhone = document.getElementById('editPhone').value;
+                const updatedTime = document.getElementById('editTime').value;
+                const updatedNotes = document.getElementById('editNotes').value;
+                const updatedAssigned = document.getElementById('editAssigned').value;
+                
+                if (!updatedBusiness || !updatedName) { 
+                    showToast('Business and Name required', true); 
+                    return; 
+                }
+                
+                // Delete from old date first
+                deleteAppointment(oldDateStr, appt.id);
+                
+                // Add to new date (or same date if unchanged)
+                addAppointment(newDate, updatedBusiness, updatedName, updatedRole, updatedPhone, updatedTime, updatedNotes, updatedAssigned, appt.id);
+                
+                // Update selected date to new date if date changed
+                if (newDate !== oldDateStr) {
+                    selectedCalDate = newDate;
+                    showToast(`Appointment moved from ${oldDateStr} to ${newDate}`);
+                } else {
+                    showToast('Appointment updated successfully');
+                }
+                
+                modalDiv.remove(); 
+                closeCalendarModal(); 
+                openCalendarModal();
+            });
+            
+            document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
+            modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
         }
         
         function openQuickReportWithDate(defaultDate) {
@@ -691,80 +790,35 @@
         // =============================================
         // PRIORITY PREDICTOR
         // =============================================
-        function getAdvancedPriorityAnalysis() {
-            const now = new Date();
-            const dayOfWeek = now.getDay();
-            const hour = now.getHours();
-            const minute = now.getMinutes();
-            
-            const dayScores = {
-                0: { name: "Sunday", score: 5, multiplier: 0.2, note: "❌ Closed - Do not call" },
-                1: { name: "Monday", score: 65, multiplier: 0.65, note: "⚠️ Slow start - Call after 10 AM" },
-                2: { name: "Tuesday", score: 92, multiplier: 0.92, note: "🔥 BEST DAY - Peak decision-maker availability" },
-                3: { name: "Wednesday", score: 95, multiplier: 0.95, note: "🔥 BEST DAY - Maximum availability" },
-                4: { name: "Thursday", score: 90, multiplier: 0.90, note: "✅ Excellent - Strong availability" },
-                5: { name: "Friday", score: 55, multiplier: 0.55, note: "⚠️ Poor - Call before 2 PM" },
-                6: { name: "Saturday", score: 15, multiplier: 0.15, note: "❌ Very poor - Avoid" }
-            };
-            
-            const getTimeScore = (h, m) => {
-                const totalMinutes = h * 60 + m;
-                if (totalMinutes >= 480 && totalMinutes < 540) return 35;
-                if (totalMinutes >= 540 && totalMinutes < 600) return 55;
-                if (totalMinutes >= 600 && totalMinutes < 690) return 95;
-                if (totalMinutes >= 690 && totalMinutes < 780) return 40;
-                if (totalMinutes >= 780 && totalMinutes < 840) return 50;
-                if (totalMinutes >= 840 && totalMinutes < 960) return 88;
-                if (totalMinutes >= 960 && totalMinutes < 1020) return 65;
-                if (totalMinutes >= 1020) return 15;
-                return 10;
-            };
-            
-            const timeZones = [
-                { name: "ET", zone: "America/New_York", label: "Eastern Time", abbreviation: "ET", cities: "New York, Miami, Atlanta" },
-                { name: "CT", zone: "America/Chicago", label: "Central Time", abbreviation: "CT", cities: "Chicago, Dallas, Houston" },
-                { name: "MT", zone: "America/Denver", label: "Mountain Time", abbreviation: "MT", cities: "Denver, Phoenix, Salt Lake" },
-                { name: "PT", zone: "America/Los_Angeles", label: "Pacific Time", abbreviation: "PT", cities: "Los Angeles, Seattle, San Francisco" }
-            ];
-            
-            const zones = timeZones.map(tz => {
-                const tzTime = new Date(now.toLocaleString("en-US", { timeZone: tz.zone }));
-                const tzHour = tzTime.getHours();
-                const tzMinute = tzTime.getMinutes();
-                const timeScore = getTimeScore(tzHour, tzMinute);
-                const dayScore = dayScores[tzTime.getDay()].score;
-                const combinedScore = Math.floor((timeScore * 0.7) + (dayScore * 0.3));
-                
-                let priority = "", priorityClass = "", successRate = "";
-                if (combinedScore >= 85) { priority = "OPTIMAL - Call NOW!"; priorityClass = "best-time-high"; successRate = "85-95% success rate"; }
-                else if (combinedScore >= 70) { priority = "GOOD - Recommended"; priorityClass = "best-time-good"; successRate = "70-85% success rate"; }
-                else if (combinedScore >= 50) { priority = "FAIR - Might connect"; priorityClass = "best-time-good"; successRate = "50-70% success rate"; }
-                else { priority = "POOR - Avoid if possible"; priorityClass = "best-time-bad"; successRate = "<50% success rate"; }
-                
-                return { ...tz, timeStr: tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }), isBusinessHours: tzHour >= 9 && tzHour < 17, dayName: dayScores[tzTime.getDay()].name, dayNote: dayScores[tzTime.getDay()].note, combinedScore, priority, priorityClass, successRate };
-            });
-            
-            const sorted = [...zones].sort((a, b) => b.combinedScore - a.combinedScore);
-            const bestZone = sorted[0];
-            const recommendation = bestZone.combinedScore >= 85 ? `🎯 OPTIMAL: Call ${bestZone.abbreviation} businesses NOW (${bestZone.timeStr} local time). Expected success rate: ${bestZone.successRate}` : (bestZone.combinedScore >= 70 ? `✅ GOOD: ${bestZone.abbreviation} at ${bestZone.timeStr} local time. ${bestZone.successRate}` : `⏰ WAIT: Consider calling during prime hours (10-11:30 AM or 2-4 PM local time)`);
-            
-            return { zones, bestZone, recommendation, bestTimeSlots: ["10:00 AM - 11:30 AM (92% rate)", "2:00 PM - 4:00 PM (88% rate)", "9:00 AM - 10:00 AM (65% rate)"], bestDays: ["Tuesday (92%)", "Wednesday (95%)", "Thursday (90%)"] };
-        }
-        
         function openPriorityModal() {
-            const analysis = getAdvancedPriorityAnalysis();
             const modal = document.createElement('div'); modal.className = 'modal-overlay';
+            const now = new Date();
+            const timeZones = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
+            const zoneNames = ['Eastern (ET)', 'Central (CT)', 'Mountain (MT)', 'Pacific (PT)'];
             let zonesHtml = '';
-            analysis.zones.forEach((zone, idx) => {
-                zonesHtml += `<div class="timezone-card ${idx === 0 ? 'recommended' : ''}"><div class="timezone-name">${zone.label} (${zone.abbreviation})${idx === 0 ? ' 👑' : ''}</div><div class="timezone-time">${zone.timeStr}</div><div class="${zone.isBusinessHours ? 'status-open' : 'status-closed'}">${zone.isBusinessHours ? '✅ Business Hours' : '❌ After Hours'}</div><div class="best-time-badge ${zone.priorityClass}">${zone.priority}</div><div style="font-size:0.75rem; margin-top:8px;">📍 ${zone.cities}<br>📊 ${zone.successRate}</div><div style="font-size:0.7rem; margin-top:6px;">${zone.dayNote}</div></div>`;
-            });
-            modal.innerHTML = `<div class="modal-card priority-modal"><div class="priority-header"><h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2><div style="font-size:0.85rem;">Intelligent US Business Hours Predictor</div><div style="font-size:0.7rem; margin-top:8px;"><i class="fas fa-sync-alt"></i> Live Analysis · ${new Date().toLocaleString()}</div></div><div class="recommendation-card"><div style="font-weight:800;">📞 SMART RECOMMENDATION</div><div style="margin-top:8px;">${analysis.recommendation}</div><div style="margin-top:12px;"><div style="background:var(--bg-primary); border-radius:12px; padding:8px;"><div style="height:8px; background:linear-gradient(90deg, #10b981, #3b82f6); border-radius:20px; width:${analysis.bestZone.combinedScore}%;"></div><div style="margin-top:4px;">Connection Probability: ${analysis.bestZone.combinedScore}%</div></div></div></div><div style="font-weight:700; margin:16px 0 8px;"><i class="fas fa-globe-americas"></i> TIME ZONE PRIORITY</div><div class="timezone-grid">${zonesHtml}</div><div style="margin-top:16px;"><strong>⏰ BEST TIMES:</strong> ${analysis.bestTimeSlots.join(' • ')}</div><div style="margin-top:8px;"><strong>📅 BEST DAYS:</strong> ${analysis.bestDays.join(' • ')}</div><div style="margin-top:16px; padding:12px; background:var(--bg-primary); border-radius:16px; font-size:0.8rem;"><strong>💡 PRO TIPS:</strong> Call Tuesday-Thursday 10-11:30 AM or 2-4 PM local time. Avoid Monday mornings and Friday afternoons.</div><div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closePriorityBtn" style="background:var(--primary); width:100%;">Start Calling</button></div></div>`;
+            for (let i = 0; i < timeZones.length; i++) {
+                const tzTime = new Date(now.toLocaleString('en-US', { timeZone: timeZones[i] }));
+                const hour = tzTime.getHours();
+                const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
+                zonesHtml += `<div class="timezone-card ${isPrime ? 'recommended' : ''}">
+                    <div class="timezone-name">${zoneNames[i]}</div>
+                    <div class="timezone-time">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="best-time-badge ${isPrime ? 'best-time-high' : 'best-time-good'}">${isPrime ? '🔥 PRIME TIME' : 'Call during 10-11:30 AM or 2-4 PM'}</div>
+                </div>`;
+            }
+            modal.innerHTML = `<div class="modal-card priority-modal">
+                <div class="priority-header"><h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2><div>Best times to reach US business owners</div></div>
+                <div class="recommendation-card"><strong>🎯 SMART RECOMMENDATION:</strong><br>Call Tuesday-Thursday between 10-11:30 AM or 2-4 PM local time for 85-95% connection rates</div>
+                <div class="timezone-grid">${zonesHtml}</div>
+                <div style="padding:12px; background:var(--bg-primary); border-radius:16px;"><strong>💡 PRO TIPS:</strong><br>• Best days: Tuesday, Wednesday, Thursday<br>• Avoid: Monday mornings & Friday afternoons<br>• Lunch hour (12-1 PM) has <30% answer rate</div>
+                <div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closePriorityBtn" style="background:var(--primary); width:100%;">Start Calling</button></div>
+            </div>`;
             document.body.appendChild(modal);
             document.getElementById('closePriorityBtn').addEventListener('click', () => modal.remove());
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
-        function openHelpModal() { const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card help-modal"><h3>📖 ScriptFlow Pro Guide</h3><div class="help-step"><h4>📅 Appointment Calendar</h4><p>Click calendar icon → Select any date → Edit/Delete appointments with buttons. Quick Add auto-fills selected date.</p></div><div class="help-step"><h4>✏️ Edit/Delete Appointments</h4><p>In calendar view, each appointment has Edit ✏️ and Delete 🗑️ buttons. Change date when editing.</p></div><div class="help-step"><h4>🎯 Call Priority Predictor</h4><p>Click chart icon for real-time analysis of best times to call US businesses based on time zones.</p></div><div class="help-step"><h4>📜 Script Management</h4><p>Press 1-9 keys to switch scripts. Edit, rename, delete, or add custom scripts.</p></div><div class="modal-buttons"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary);">Got it!</button></div></div>`; document.body.appendChild(modal); document.getElementById('closeHelpBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+        function openHelpModal() { const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card help-modal"><h3>📖 ScriptFlow Pro Guide</h3><div class="help-step"><h4>📅 Appointment Calendar</h4><p>Click calendar icon → Color dots show appointment count. Edit any appointment and change its date to move it.</p></div><div class="help-step"><h4>📊 CSV Export</h4><p>Click CSV icon to export all appointments.</p></div><div class="help-step"><h4>✏️ Edit/Delete Appointments</h4><p>Each appointment has Edit (change date too) and Delete buttons.</p></div><div class="help-step"><h4>💾 Local Storage</h4><p>All data saves automatically to your browser.</p></div><div class="modal-buttons"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary);">Got it!</button></div></div>`; document.body.appendChild(modal); document.getElementById('closeHelpBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
         function factoryReset() { if(confirm('FACTORY RESET: This will erase ALL data. Cannot be undone.')) { localStorage.clear(); location.reload(); } }
         
         // =============================================
@@ -813,7 +867,7 @@
         
         // Initialize everything
         loadAppointmentData(); loadScripts(); initTheme(); initSearch(); renderNavigation(); loadScript('opening'); initKeyboard();
-        document.getElementById('editScriptBtn').addEventListener('click', enterEdit); document.getElementById('saveScriptBtn').addEventListener('click', saveEdit); document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn').addEventListener('click', copyScript); document.getElementById('resetScriptBtn').addEventListener('click', resetScript); document.getElementById('themeToggle').addEventListener('click', toggleTheme); document.getElementById('addScriptBtn').addEventListener('click', addScript); document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal); document.getElementById('quickReportBtn').addEventListener('click', openQuickReport); document.getElementById('userNameBtn').addEventListener('click', setUserName); document.getElementById('helpBtn').addEventListener('click', openHelpModal); document.getElementById('priorityBtn').addEventListener('click', openPriorityModal); document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId)); document.getElementById('resetAllBtn').addEventListener('click', factoryReset); document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
+        document.getElementById('editScriptBtn').addEventListener('click', enterEdit); document.getElementById('saveScriptBtn').addEventListener('click', saveEdit); document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn').addEventListener('click', copyScript); document.getElementById('resetScriptBtn').addEventListener('click', resetScript); document.getElementById('themeToggle').addEventListener('click', toggleTheme); document.getElementById('addScriptBtn').addEventListener('click', addScript); document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal); document.getElementById('quickReportBtn').addEventListener('click', openQuickReport); document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV); document.getElementById('userNameBtn').addEventListener('click', setUserName); document.getElementById('helpBtn').addEventListener('click', openHelpModal); document.getElementById('priorityBtn').addEventListener('click', openPriorityModal); document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId)); document.getElementById('resetAllBtn').addEventListener('click', factoryReset); document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
         setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; updateStats(); }, 5000);
     </script>
 </body>
