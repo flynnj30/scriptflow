@@ -578,41 +578,228 @@ function initializeApp() {
     loadScripts();
     initTheme();
     initSearch();
-    renderNavigation();
-    loadScript('opening');
-    initKeyboard();
-    
-    document.getElementById('editScriptBtn').onclick = enterEdit;
-    document.getElementById('saveScriptBtn').onclick = saveEdit;
-    document.getElementById('cancelEditBtn').onclick = cancelEdit;
-    document.getElementById('copyScriptBtn').onclick = copyScript;
-    document.getElementById('resetScriptBtn').onclick = resetScript;
-    document.getElementById('themeToggle').onclick = toggleTheme;
-    document.getElementById('addScriptBtn').onclick = addScript;
-    document.getElementById('openCalendarBtn').onclick = openCalendarModal;
-    document.getElementById('quickReportBtn').onclick = openQuickReport;
-    document.getElementById('exportCsvBtn').onclick = exportToCSV;
-    document.getElementById('userNameBtn').onclick = () => {
-        const newName = prompt('Enter your name:', userName);
-        if (newName?.trim()) {
-            userName = newName.trim();
-            showToast(`Name set to: ${userName}`);
-            if (!isEditing) loadScript(currentScriptId);
+    renderNavigation();// =============================================
+// GOOGLE SIGN-IN WITH ENVIRONMENT VARIABLES
+// =============================================
+
+let currentUser = null;
+let isAuthenticated = false;
+let allFeaturesEnabled = false;
+
+// Get Google Client ID from environment or use default
+// For Render: Set environment variable GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || 
+                         '389117008163-cbjcmgsitsmbmltg9mb9h99aukeb54p0.apps.googleusercontent.com';
+
+// Initialize Google Sign-In
+function initializeGoogleSignIn() {
+    try {
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            context: 'signin'
+        });
+        
+        // Attach click handler to our custom Google icon button
+        const googleBtn = document.getElementById('googleIconBtn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed()) {
+                        console.error('Google prompt not displayed:', notification);
+                        showToast('Please check console for Google Sign-In errors', true);
+                    }
+                });
+            });
         }
-    };
-    document.getElementById('priorityBtn').onclick = openPriorityModal;
-    document.getElementById('helpBtn').onclick = openHelpModal;
-    document.getElementById('resetAllBtn').onclick = factoryReset;
-    document.getElementById('historyBtn').onclick = () => showToast('Version history coming soon');
-    document.getElementById('undoBtn').onclick = undoScript;
-    document.getElementById('redoBtn').onclick = redoScript;
-    
-    setInterval(() => {
-        if (!isEditing && allFeaturesEnabled) document.getElementById('saveStatus').innerHTML = 'Auto';
-        updateStats();
-    }, 5000);
+        
+        // Also render the default button as backup
+        google.accounts.id.renderButton(
+            document.getElementById('googleButtonContainer'),
+            { 
+                theme: 'outline', 
+                size: 'large',
+                text: 'signin_with',
+                shape: 'pill'
+            }
+        );
+        
+        // Hide our custom button if default is shown
+        const customBtn = document.getElementById('googleIconBtn');
+        if (customBtn) customBtn.style.display = 'none';
+        
+    } catch (error) {
+        console.error('Google Sign-In initialization error:', error);
+        showToast('Google Sign-In failed to initialize. Check console.', true);
+    }
 }
 
-if (!checkExistingSession()) {
-    initializeGoogleSignIn();
+// Handle successful sign-in
+function handleCredentialResponse(response) {
+    if (response.credential) {
+        const payload = parseJwt(response.credential);
+        currentUser = {
+            email: payload.email,
+            name: payload.name,
+            picture: payload.picture,
+            sub: payload.sub
+        };
+        
+        localStorage.setItem('scriptflow_user', JSON.stringify(currentUser));
+        isAuthenticated = true;
+        allFeaturesEnabled = true;
+        
+        // Update UI
+        const googleContainer = document.getElementById('googleButtonContainer');
+        const userContainer = document.getElementById('userProfileContainer');
+        const disabledOverlay = document.getElementById('disabledOverlay');
+        
+        if (googleContainer) googleContainer.style.display = 'none';
+        if (userContainer) userContainer.style.display = 'block';
+        
+        const avatarImg = document.getElementById('userAvatarImg');
+        const userNameSpan = document.getElementById('userNameSpan');
+        
+        if (avatarImg) avatarImg.src = currentUser.picture;
+        if (userNameSpan) userNameSpan.innerText = currentUser.name.split(' ')[0];
+        if (disabledOverlay) disabledOverlay.style.display = 'none';
+        
+        // Enable all features
+        enableAllFeatures();
+        
+        showToast(`Welcome ${currentUser.name}! All features unlocked.`);
+        
+        // Initialize app
+        initializeApp();
+    }
 }
+
+// Enable all disabled features
+function enableAllFeatures() {
+    document.querySelectorAll('.feature-btn, .feature-input').forEach(el => {
+        el.style.pointerEvents = 'auto';
+        el.style.opacity = '1';
+        el.disabled = false;
+    });
+}
+
+// Sign out
+function signOut() {
+    if (google?.accounts?.id) {
+        google.accounts.id.disableAutoSelect();
+    }
+    localStorage.removeItem('scriptflow_user');
+    currentUser = null;
+    isAuthenticated = false;
+    allFeaturesEnabled = false;
+    
+    const googleContainer = document.getElementById('googleButtonContainer');
+    const userContainer = document.getElementById('userProfileContainer');
+    const disabledOverlay = document.getElementById('disabledOverlay');
+    
+    if (googleContainer) googleContainer.style.display = 'block';
+    if (userContainer) userContainer.style.display = 'none';
+    if (disabledOverlay) disabledOverlay.style.display = 'flex';
+    
+    showToast('Signed out. Please sign in again.');
+}
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (error) {
+        console.error('Error parsing JWT:', error);
+        return {};
+    }
+}
+
+function showToast(msg, isError = false) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.style.background = isError ? 'var(--danger)' : 'var(--success)';
+    t.innerHTML = `${isError ? '⚠️ ' : '✓ '}${msg}`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// Check existing session
+function checkExistingSession() {
+    const saved = localStorage.getItem('scriptflow_user');
+    if (saved) {
+        try {
+            currentUser = JSON.parse(saved);
+            isAuthenticated = true;
+            allFeaturesEnabled = true;
+            
+            const googleContainer = document.getElementById('googleButtonContainer');
+            const userContainer = document.getElementById('userProfileContainer');
+            const disabledOverlay = document.getElementById('disabledOverlay');
+            
+            if (googleContainer) googleContainer.style.display = 'none';
+            if (userContainer) userContainer.style.display = 'block';
+            
+            const avatarImg = document.getElementById('userAvatarImg');
+            const userNameSpan = document.getElementById('userNameSpan');
+            
+            if (avatarImg) avatarImg.src = currentUser.picture;
+            if (userNameSpan) userNameSpan.innerText = currentUser.name.split(' ')[0];
+            if (disabledOverlay) disabledOverlay.style.display = 'none';
+            
+            enableAllFeatures();
+            initializeApp();
+            return true;
+        } catch (error) {
+            console.error('Error loading saved session:', error);
+            localStorage.removeItem('scriptflow_user');
+        }
+    }
+    return false;
+}
+
+// Close overlay button
+const closeOverlayBtn = document.getElementById('closeOverlayBtn');
+if (closeOverlayBtn) {
+    closeOverlayBtn.addEventListener('click', () => {
+        const overlay = document.getElementById('disabledOverlay');
+        if (overlay) overlay.style.display = 'none';
+    });
+}
+
+// Profile click for sign out
+const userProfileBtn = document.getElementById('userProfileBtn');
+if (userProfileBtn) {
+    userProfileBtn.addEventListener('click', () => {
+        if (confirm(`Sign out ${currentUser?.name}?`)) {
+            signOut();
+        }
+    });
+}
+
+// Check if Google API is loaded
+function waitForGoogleAPI() {
+    return new Promise((resolve) => {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+            resolve();
+        } else {
+            const checkInterval = setInterval(() => {
+                if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 100);
+        }
+    });
+}
+
+// Start the app
+(async function() {
+    await waitForGoogleAPI();
+    if (!checkExistingSession()) {
+        initializeGoogleSignIn();
+    }
+})();
