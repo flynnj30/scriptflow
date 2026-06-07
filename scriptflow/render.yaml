@@ -1,13 +1,9 @@
 services:
   - type: web
-    name: scriptflow
-    env: static
+    name: scriptflow-pro
+    runtime: static
     buildCommand: ""
     staticPublishPath: ./
     envVars:
       - key: GOOGLE_CLIENT_ID
-        value: your-client-id-here.apps.googleusercontent.com
-    headers:
-      - path: /*
-        name: Content-Security-Policy
-        value: "default-src 'self' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; script-src 'self' https://accounts.google.com https://*.googleapis.com 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.googleusercontent.com https://*.googleapis.com;"
+        value: 389117008163-cbjcmgsitsmbmltg9mb9h99aukeb54p0.apps.googleusercontent.com
