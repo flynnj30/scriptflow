@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ScriptFlow Pro | Secure Call Script Manager + Priority Tracker</title>
+    <title>ScriptFlow Pro | Google Sign-In</title>
     <!-- External Fonts & Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -12,9 +12,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="loginContainer"></div>
-    
-    <div class="container" id="mainApp">
+    <div id="mainApp" class="container">
         <div class="header">
             <h1><i class="fas fa-microphone-alt"></i> ScriptFlow Pro</h1>
             <div class="status-group">
@@ -22,18 +20,32 @@
                     <div class="stat-pill"><i class="fas fa-calendar-day"></i> Today: <span class="number" id="statToday">0</span>/<span id="goalDaily">3</span></div>
                     <div class="stat-pill"><i class="fas fa-calendar-week"></i> Week: <span class="number" id="statWeek">0</span>/<span id="goalWeekly">15</span></div>
                     <div class="stat-pill"><i class="fas fa-calendar-alt"></i> Month: <span class="number" id="statMonth">0</span>/<span id="goalMonthly">60</span></div>
-                    <button class="icon-btn" id="openCalendarBtn" data-tooltip="Appointment Calendar"><i class="fas fa-calendar-alt"></i></button>
-                    <button class="icon-btn" id="quickReportBtn" data-tooltip="Quick Add Appointment"><i class="fas fa-plus-circle"></i></button>
-                    <button class="icon-btn" id="userNameBtn" data-tooltip="Set Your Name"><i class="fas fa-user-circle"></i></button>
-                    <button class="icon-btn" id="priorityBtn" data-tooltip="Real-Time Call Priority"><i class="fas fa-chart-line"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="openCalendarBtn"><i class="fas fa-calendar-alt"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="quickReportBtn"><i class="fas fa-plus-circle"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="exportCsvBtn"><i class="fas fa-file-csv"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="userNameBtn"><i class="fas fa-user-circle"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="priorityBtn"><i class="fas fa-chart-line"></i></button>
                 </div>
                 <div class="badge badge-primary"><i class="fas fa-scroll"></i> <span id="scriptCount">0</span></div>
                 <div class="badge badge-success" id="saveStatus"><i class="fas fa-save"></i> Auto</div>
-                <button class="icon-btn" id="historyBtn" data-tooltip="Version History (Ctrl+Z)"><i class="fas fa-history"></i></button>
-                <button class="icon-btn" id="resetAllBtn" data-tooltip="Factory Reset"><i class="fas fa-trash-alt"></i></button>
-                <button class="icon-btn" id="themeToggle" data-tooltip="Dark/Light Mode"><i class="fas fa-moon"></i></button>
-                <button class="icon-btn" id="helpBtn" data-tooltip="User Guide"><i class="fas fa-question-circle"></i></button>
-                <button class="icon-btn" id="logoutBtn" data-tooltip="Sign Out"><i class="fas fa-sign-out-alt"></i></button>
+                <button class="icon-btn feature-btn" data-feature="true" id="historyBtn"><i class="fas fa-history"></i></button>
+                <button class="icon-btn feature-btn" data-feature="true" id="resetAllBtn"><i class="fas fa-trash-alt"></i></button>
+                <button class="icon-btn" id="themeToggle"><i class="fas fa-moon"></i></button>
+                <button class="icon-btn feature-btn" data-feature="true" id="helpBtn"><i class="fas fa-question-circle"></i></button>
+                
+                <!-- Google Icon Button -->
+                <div id="googleButtonContainer">
+                    <button id="googleIconBtn" class="google-icon-btn">
+                        <i class="fab fa-google"></i> Sign In
+                    </button>
+                </div>
+                <div id="userProfileContainer" style="display: none;">
+                    <div id="userProfileBtn" class="user-avatar-btn">
+                        <img id="userAvatarImg" class="user-avatar-img" src="" alt="Avatar">
+                        <span id="userNameSpan"></span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -41,13 +53,10 @@
             <div class="nav-sidebar">
                 <div class="section-title">
                     <span><i class="fas fa-bars"></i> CALL SCRIPTS</span>
-                    <button class="icon-btn" id="addScriptBtn" data-tooltip="Add New Script" style="padding:4px 10px;"><i class="fas fa-plus"></i></button>
+                    <button class="icon-btn feature-btn" data-feature="true" id="addScriptBtn"><i class="fas fa-plus"></i></button>
                 </div>
-                <input type="text" id="scriptSearch" class="search-box" placeholder="Search scripts...">
+                <input type="text" id="scriptSearch" class="search-box feature-input" data-feature="true" placeholder="Search scripts...">
                 <div id="scriptNavList"></div>
-                <div style="margin-top: 16px; padding: 8px; font-size:0.65rem; background:var(--bg-primary); border-radius:20px; text-align:center; color:var(--text-secondary);">
-                    <i class="fas fa-crown"></i> Developed by Flynn P. · v4.0
-                </div>
             </div>
             
             <div class="script-area">
@@ -58,22 +67,31 @@
                         <span id="versionIndicator" class="version-indicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
                     </div>
                     <div class="action-buttons">
-                        <button class="icon-btn" id="undoBtn" data-tooltip="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
-                        <button class="icon-btn" id="redoBtn" data-tooltip="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
-                        <button class="icon-btn" id="editScriptBtn" data-tooltip="Edit Script"><i class="fas fa-pen"></i></button>
-                        <button class="icon-btn" id="saveScriptBtn" data-tooltip="Save Changes" style="display:none;"><i class="fas fa-save"></i></button>
-                        <button class="icon-btn" id="cancelEditBtn" data-tooltip="Cancel Edit" style="display:none;"><i class="fas fa-times"></i></button>
-                        <button class="icon-btn" id="copyScriptBtn" data-tooltip="Copy Script"><i class="fas fa-copy"></i></button>
-                        <button class="icon-btn" id="resetScriptBtn" data-tooltip="Reset to Original"><i class="fas fa-undo-alt"></i></button>
+                        <button class="icon-btn feature-btn" data-feature="true" id="editScriptBtn"><i class="fas fa-pen"></i></button>
+                        <button class="icon-btn" id="saveScriptBtn" style="display:none;"><i class="fas fa-save"></i></button>
+                        <button class="icon-btn" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i></button>
+                        <button class="icon-btn feature-btn" data-feature="true" id="copyScriptBtn"><i class="fas fa-copy"></i></button>
+                        <button class="icon-btn feature-btn" data-feature="true" id="resetScriptBtn"><i class="fas fa-undo-alt"></i></button>
+                        <button class="icon-btn feature-btn" data-feature="true" id="undoBtn"><i class="fas fa-undo"></i></button>
+                        <button class="icon-btn feature-btn" data-feature="true" id="redoBtn"><i class="fas fa-redo"></i></button>
                     </div>
                 </div>
                 <div id="scriptContent"></div>
             </div>
         </div>
-        <div class="footer"><i class="fas fa-magic"></i> Press 1-9 keys to switch scripts · Click chart icon for best times to call US business owners</div>
+        <div class="footer"><i class="fab fa-google"></i> Click the Google button above to sign in and unlock all features</div>
     </div>
 
-    <!-- Local Script -->
+    <div id="disabledOverlay" class="disabled-overlay">
+        <div class="disabled-message">
+            <i class="fab fa-google"></i>
+            <h3>Sign In Required</h3>
+            <p>Please click the Google Sign In button in the top-right corner to access all features.</p>
+            <button id="closeOverlayBtn" class="icon-btn" style="margin-top: 16px; background: var(--primary); color: white;">OK, I'll Sign In</button>
+        </div>
+    </div>
+
+    <!-- Local JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>
