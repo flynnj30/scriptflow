@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ScriptFlow Pro | Google Sign-In</title>
+    <title>ScriptFlow Pro | Smart Call Scripts + Priority Predictor</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -82,7 +81,6 @@
             border: 1px solid var(--border-color);
             transition: all 0.3s ease;
         }
-        
         h1 { 
             font-size: 1.5rem; 
             font-weight: 700;
@@ -94,10 +92,19 @@
         h1 i { margin-right: 10px; color: var(--primary); }
         
         .status-group { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        .badge { padding: 8px 20px; border-radius: 40px; font-weight: 600; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px; }
+        .badge { 
+            padding: 8px 20px; 
+            border-radius: 40px; 
+            font-weight: 600; 
+            font-size: 0.8rem; 
+            cursor: pointer; 
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
         .badge-primary { background: linear-gradient(135deg, var(--secondary), var(--primary)); color: white; }
         .badge-success { background: var(--success); color: white; }
-        .badge-warning { background: var(--warning); color: white; }
         
         .icon-btn {
             background: var(--bg-primary);
@@ -111,51 +118,25 @@
             position: relative;
         }
         .icon-btn:hover { transform: translateY(-2px); background: var(--primary); color: white; border-color: var(--primary); }
-        
-        /* Google Icon Button */
-        .google-icon-btn {
-            background: white;
-            border: 1px solid #ddd;
-            padding: 8px 16px;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: #5f6368;
-        }
-        .google-icon-btn:hover {
-            background: #f8f9fa;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .google-icon-btn i { font-size: 1.2rem; color: #4285F4; }
-        
-        .user-avatar-btn {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            padding: 6px 12px 6px 8px;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .user-avatar-btn:hover {
-            background: var(--primary);
+        .icon-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tooltip-bg);
             color: white;
-            transform: translateY(-2px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 8px;
+            z-index: 100;
         }
-        .user-avatar-img {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
+        .icon-btn:hover::after { opacity: 1; }
         
         .tracker-summary {
             display: flex;
@@ -180,7 +161,17 @@
             height: fit-content;
             transition: all 0.3s ease;
         }
-        .section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .nav-item {
             display: flex;
             align-items: center;
@@ -197,10 +188,28 @@
         .nav-item:hover { background: var(--nav-hover); transform: translateX(4px); }
         .nav-item.active { background: var(--primary); color: white; }
         .nav-item i { width: 24px; }
-        .key-hint { position: absolute; right: 12px; font-size: 0.7rem; font-weight: 700; background: var(--bg-primary); padding: 2px 8px; border-radius: 20px; color: var(--primary); border: 1px solid var(--border-color); }
+        .key-hint {
+            position: absolute;
+            right: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: var(--primary);
+            border: 1px solid var(--border-color);
+        }
         .nav-item.active .key-hint { background: rgba(255,255,255,0.25); color: white; }
         .nav-actions { display: flex; gap: 6px; margin-left: auto; margin-right: 30px; }
-        .nav-icon-btn { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .nav-icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
         .nav-icon-btn:hover { background: var(--bg-primary); color: var(--primary); }
         
         .script-area {
@@ -328,8 +337,21 @@
         .cal-day:hover { background: var(--primary); color: white; transform: scale(1.02); border-color: var(--primary); }
         .cal-day.selected { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); border-color: var(--primary); }
         .cal-day-number { font-size: 1rem; font-weight: 700; }
-        .appointment-dots { display: flex; gap: 3px; justify-content: center; margin-top: 4px; flex-wrap: wrap; }
-        .appointment-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+        .appointment-dots {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+        .appointment-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+        .appointment-dot.multiple { background: var(--warning); }
+        .appointment-dot.many { background: var(--danger); }
         
         .appointment-card {
             background: var(--bg-primary);
@@ -352,7 +374,17 @@
         }
         .edit-appt-btn { color: var(--primary); border: 1px solid var(--border-color); background: var(--bg-secondary); }
         .delete-appt-btn { color: var(--danger); border: 1px solid var(--border-color); background: var(--bg-secondary); }
-        .copy-btn-sm { background: transparent; border: none; color: var(--primary); cursor: pointer; padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; }
+        .edit-appt-btn:hover, .delete-appt-btn:hover { transform: translateY(-1px); background: var(--bg-primary); }
+        .copy-btn-sm {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+        .copy-btn-sm:hover { background: var(--border-color); }
         .goal-input-group { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
         .goal-input-group input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); }
         
@@ -405,6 +437,7 @@
         .timezone-time { font-size: 1.4rem; font-weight: 800; margin: 8px 0; color: var(--primary); }
         .best-time-high { background: linear-gradient(135deg, #10b981, #059669); color: white; }
         .best-time-good { background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; }
+        .best-time-bad { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
         .best-time-badge { display: inline-block; padding: 6px 14px; border-radius: 30px; font-weight: 700; font-size: 0.75rem; margin-top: 10px; }
         .recommendation-card {
             background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(59,130,246,0.15));
@@ -429,36 +462,10 @@
             margin-bottom: 12px;
             border-left: 4px solid var(--primary);
         }
-        
-        .disabled-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 20px;
-        }
-        .disabled-message {
-            background: var(--bg-secondary);
-            padding: 30px 40px;
-            border-radius: 32px;
-            text-align: center;
-            max-width: 400px;
-        }
-        .disabled-message i { font-size: 3rem; color: var(--warning); margin-bottom: 16px; }
-        .disabled-message h3 { margin-bottom: 8px; }
-        .disabled-message p { color: var(--text-secondary); }
     </style>
 </head>
 <body>
-    <div id="mainApp" class="container">
+    <div class="container">
         <div class="header">
             <h1><i class="fas fa-microphone-alt"></i> ScriptFlow Pro</h1>
             <div class="status-group">
@@ -466,32 +473,18 @@
                     <div class="stat-pill"><i class="fas fa-calendar-day"></i> Today: <span class="number" id="statToday">0</span>/<span id="goalDaily">3</span></div>
                     <div class="stat-pill"><i class="fas fa-calendar-week"></i> Week: <span class="number" id="statWeek">0</span>/<span id="goalWeekly">15</span></div>
                     <div class="stat-pill"><i class="fas fa-calendar-alt"></i> Month: <span class="number" id="statMonth">0</span>/<span id="goalMonthly">60</span></div>
-                    <button class="icon-btn feature-btn" data-feature="true" id="openCalendarBtn"><i class="fas fa-calendar-alt"></i></button>
-                    <button class="icon-btn feature-btn" data-feature="true" id="quickReportBtn"><i class="fas fa-plus-circle"></i></button>
-                    <button class="icon-btn feature-btn" data-feature="true" id="exportCsvBtn"><i class="fas fa-file-csv"></i></button>
-                    <button class="icon-btn feature-btn" data-feature="true" id="userNameBtn"><i class="fas fa-user-circle"></i></button>
-                    <button class="icon-btn feature-btn" data-feature="true" id="priorityBtn"><i class="fas fa-chart-line"></i></button>
+                    <button class="icon-btn" id="openCalendarBtn" data-tooltip="Appointment Calendar"><i class="fas fa-calendar-alt"></i></button>
+                    <button class="icon-btn" id="quickReportBtn" data-tooltip="Quick Add Appointment"><i class="fas fa-plus-circle"></i></button>
+                    <button class="icon-btn" id="exportCsvBtn" data-tooltip="Export to CSV"><i class="fas fa-file-csv"></i></button>
+                    <button class="icon-btn" id="userNameBtn" data-tooltip="Set Your Name"><i class="fas fa-user-circle"></i></button>
+                    <button class="icon-btn" id="priorityBtn" data-tooltip="Real-Time Call Priority"><i class="fas fa-chart-line"></i></button>
                 </div>
                 <div class="badge badge-primary"><i class="fas fa-scroll"></i> <span id="scriptCount">0</span></div>
                 <div class="badge badge-success" id="saveStatus"><i class="fas fa-save"></i> Auto</div>
-                <button class="icon-btn feature-btn" data-feature="true" id="historyBtn"><i class="fas fa-history"></i></button>
-                <button class="icon-btn feature-btn" data-feature="true" id="resetAllBtn"><i class="fas fa-trash-alt"></i></button>
-                <button class="icon-btn" id="themeToggle"><i class="fas fa-moon"></i></button>
-                <button class="icon-btn feature-btn" data-feature="true" id="helpBtn"><i class="fas fa-question-circle"></i></button>
-                
-                <!-- Google Icon Button -->
-                <div id="googleButtonContainer">
-                    <button id="googleIconBtn" class="google-icon-btn">
-                        <i class="fab fa-google"></i> Sign In
-                    </button>
-                </div>
-                <div id="userProfileContainer" style="display: none;">
-                    <div id="userProfileBtn" class="user-avatar-btn">
-                        <img id="userAvatarImg" class="user-avatar-img" src="" alt="">
-                        <span id="userNameSpan"></span>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                </div>
+                <button class="icon-btn" id="historyBtn" data-tooltip="Version History (Ctrl+Z)"><i class="fas fa-history"></i></button>
+                <button class="icon-btn" id="resetAllBtn" data-tooltip="Factory Reset"><i class="fas fa-trash-alt"></i></button>
+                <button class="icon-btn" id="themeToggle" data-tooltip="Dark/Light Mode"><i class="fas fa-moon"></i></button>
+                <button class="icon-btn" id="helpBtn" data-tooltip="User Guide"><i class="fas fa-question-circle"></i></button>
             </div>
         </div>
         
@@ -499,10 +492,13 @@
             <div class="nav-sidebar">
                 <div class="section-title">
                     <span><i class="fas fa-bars"></i> CALL SCRIPTS</span>
-                    <button class="icon-btn feature-btn" data-feature="true" id="addScriptBtn"><i class="fas fa-plus"></i></button>
+                    <button class="icon-btn" id="addScriptBtn" data-tooltip="Add New Script" style="padding:4px 10px;"><i class="fas fa-plus"></i></button>
                 </div>
-                <input type="text" id="scriptSearch" class="search-box feature-input" data-feature="true" placeholder="Search scripts...">
+                <input type="text" id="scriptSearch" class="search-box" placeholder="Search scripts...">
                 <div id="scriptNavList"></div>
+                <div style="margin-top: 16px; padding: 8px; font-size:0.65rem; background:var(--bg-primary); border-radius:20px; text-align:center; color:var(--text-secondary);">
+                    <i class="fas fa-crown"></i> Press 1-9 to switch scripts
+                </div>
             </div>
             
             <div class="script-area">
@@ -513,185 +509,45 @@
                         <span id="versionIndicator" class="version-indicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
                     </div>
                     <div class="action-buttons">
-                        <button class="icon-btn feature-btn" data-feature="true" id="editScriptBtn"><i class="fas fa-pen"></i></button>
-                        <button class="icon-btn" id="saveScriptBtn" style="display:none;"><i class="fas fa-save"></i></button>
-                        <button class="icon-btn" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i></button>
-                        <button class="icon-btn feature-btn" data-feature="true" id="copyScriptBtn"><i class="fas fa-copy"></i></button>
-                        <button class="icon-btn feature-btn" data-feature="true" id="resetScriptBtn"><i class="fas fa-undo-alt"></i></button>
-                        <button class="icon-btn feature-btn" data-feature="true" id="undoBtn"><i class="fas fa-undo"></i></button>
-                        <button class="icon-btn feature-btn" data-feature="true" id="redoBtn"><i class="fas fa-redo"></i></button>
+                        <button class="icon-btn" id="editScriptBtn" data-tooltip="Edit Script"><i class="fas fa-pen"></i></button>
+                        <button class="icon-btn" id="saveScriptBtn" data-tooltip="Save Changes" style="display:none;"><i class="fas fa-save"></i></button>
+                        <button class="icon-btn" id="cancelEditBtn" data-tooltip="Cancel Edit" style="display:none;"><i class="fas fa-times"></i></button>
+                        <button class="icon-btn" id="copyScriptBtn" data-tooltip="Copy Script"><i class="fas fa-copy"></i></button>
+                        <button class="icon-btn" id="resetScriptBtn" data-tooltip="Reset to Original"><i class="fas fa-undo-alt"></i></button>
+                        <button class="icon-btn" id="undoBtn" data-tooltip="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+                        <button class="icon-btn" id="redoBtn" data-tooltip="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
                     </div>
                 </div>
                 <div id="scriptContent"></div>
             </div>
         </div>
-        <div class="footer"><i class="fab fa-google"></i> Click the Google button above to sign in and unlock all features</div>
-    </div>
-
-    <div id="disabledOverlay" class="disabled-overlay">
-        <div class="disabled-message">
-            <i class="fab fa-google"></i>
-            <h3>Sign In Required</h3>
-            <p>Please click the Google Sign In button in the top-right corner to access all features.</p>
-            <button id="closeOverlayBtn" class="icon-btn" style="margin-top: 16px; background: var(--primary); color: white;">OK, I'll Sign In</button>
-        </div>
+        <div class="footer"><i class="fas fa-magic"></i> Click calendar to manage appointments · Edit/Delete appointments · Export to CSV</div>
     </div>
 
     <script>
         // =============================================
-        // GOOGLE SIGN-IN WITH SIMPLE ICON BUTTON
+        // COMPLETE SCRIPTFLOW PRO - FULLY FUNCTIONAL
         // =============================================
         
-        let currentUser = null;
-        let isAuthenticated = false;
-        let allFeaturesEnabled = false;
-        
-        // Initialize Google Sign-In
-        function initializeGoogleSignIn() {
-            google.accounts.id.initialize({
-                client_id: '389117008163-cbjcmgsitsmbmltg9mb9h99aukeb54p0.apps.googleusercontent.com',
-                callback: handleCredentialResponse,
-                auto_select: false
-            });
-            
-            // Attach click handler to our custom Google icon button
-            document.getElementById('googleIconBtn').addEventListener('click', () => {
-                google.accounts.id.prompt();
-            });
-        }
-        
-        // Handle successful sign-in
-        function handleCredentialResponse(response) {
-            if (response.credential) {
-                const payload = parseJwt(response.credential);
-                currentUser = {
-                    email: payload.email,
-                    name: payload.name,
-                    picture: payload.picture,
-                    sub: payload.sub
-                };
-                
-                localStorage.setItem('scriptflow_user', JSON.stringify(currentUser));
-                isAuthenticated = true;
-                allFeaturesEnabled = true;
-                
-                // Update UI
-                document.getElementById('googleButtonContainer').style.display = 'none';
-                document.getElementById('userProfileContainer').style.display = 'block';
-                document.getElementById('userAvatarImg').src = currentUser.picture;
-                document.getElementById('userNameSpan').innerText = currentUser.name.split(' ')[0];
-                
-                // Remove overlay
-                document.getElementById('disabledOverlay').style.display = 'none';
-                
-                // Enable all features
-                enableAllFeatures();
-                
-                showToast(`Welcome ${currentUser.name}! All features unlocked.`);
-                
-                // Initialize app
-                initializeApp();
-            }
-        }
-        
-        // Enable all disabled features
-        function enableAllFeatures() {
-            document.querySelectorAll('.feature-btn, .feature-input').forEach(el => {
-                el.style.pointerEvents = 'auto';
-                el.style.opacity = '1';
-            });
-        }
-        
-        // Sign out
-        function signOut() {
-            google.accounts.id.disableAutoSelect();
-            localStorage.removeItem('scriptflow_user');
-            currentUser = null;
-            isAuthenticated = false;
-            allFeaturesEnabled = false;
-            
-            document.getElementById('googleButtonContainer').style.display = 'block';
-            document.getElementById('userProfileContainer').style.display = 'none';
-            document.getElementById('disabledOverlay').style.display = 'flex';
-            
-            showToast('Signed out. Please sign in again.');
-        }
-        
-        function parseJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            return JSON.parse(jsonPayload);
-        }
-        
-        function showToast(msg, isError = false) {
-            const t = document.createElement('div');
-            t.className = 'toast';
-            t.style.background = isError ? 'var(--danger)' : 'var(--success)';
-            t.innerHTML = `${isError ? '⚠️ ' : '✓ '}${msg}`;
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
-        }
-        
-        // Check existing session
-        function checkExistingSession() {
-            const saved = localStorage.getItem('scriptflow_user');
-            if (saved) {
-                currentUser = JSON.parse(saved);
-                isAuthenticated = true;
-                allFeaturesEnabled = true;
-                
-                document.getElementById('googleButtonContainer').style.display = 'none';
-                document.getElementById('userProfileContainer').style.display = 'block';
-                document.getElementById('userAvatarImg').src = currentUser.picture;
-                document.getElementById('userNameSpan').innerText = currentUser.name.split(' ')[0];
-                document.getElementById('disabledOverlay').style.display = 'none';
-                enableAllFeatures();
-                initializeApp();
-                return true;
-            }
-            return false;
-        }
-        
-        // Close overlay button
-        document.getElementById('closeOverlayBtn').addEventListener('click', () => {
-            document.getElementById('disabledOverlay').style.display = 'none';
-        });
-        
-        // Profile click for sign out
-        document.getElementById('userProfileBtn').addEventListener('click', () => {
-            if (confirm(`Sign out ${currentUser?.name}?`)) {
-                signOut();
-            }
-        });
-        
-        // =============================================
-        // FULL APPLICATION CODE
-        // =============================================
-        
-        let userName = 'User';
-        let appointments = {};
-        let goals = { daily: 3, weekly: 15, monthly: 60 };
-        let scripts = {}, currentScriptId = "opening", isEditing = false, searchTerm = "", customOrder = [];
-        
-        const defaultScripts = {
-            "opening": { name: "🎯 Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [Your Name]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Prospect Name]. Are you the owner of [Company Name]?\"" },
-            "owner_yes": { name: "👑 Owner - Yes", content: "✅ IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Prospect Name]. Talk soon!\"" },
-            "owner_no": { name: "👤 Not Owner", content: "❌ IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\n📌 IF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\n📌 IF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
-            "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Your Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
-        };
-        
+        let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
+        function setUserName() { const newName = prompt('Enter your name:', userName); if (newName?.trim()) { userName = newName.trim(); localStorage.setItem('scriptflow_user_name', userName); showToast(`Name set to: ${userName}`); if (!isEditing) loadScript(currentScriptId); } }
         function replaceNameInScript(content) { return content.replace(/\[Your Name\]/gi, userName); }
         
+        // =============================================
+        // APPOINTMENT SYSTEM
+        // =============================================
+        let appointments = {};
+        let goals = { daily: 3, weekly: 15, monthly: 60 };
+        
         function loadAppointmentData() {
-            const saved = localStorage.getItem(`appointments_${currentUser?.sub || 'default'}`);
+            const saved = localStorage.getItem('scriptflow_appointments_main');
             if (saved) appointments = JSON.parse(saved);
-            const savedGoals = localStorage.getItem(`goals_${currentUser?.sub || 'default'}`);
+            const savedGoals = localStorage.getItem('scriptflow_goals_main');
             if (savedGoals) goals = JSON.parse(savedGoals);
             updateStats();
         }
-        function saveAppointments() { localStorage.setItem(`appointments_${currentUser?.sub || 'default'}`, JSON.stringify(appointments)); updateStats(); }
-        function saveGoals() { localStorage.setItem(`goals_${currentUser?.sub || 'default'}`, JSON.stringify(goals)); updateStats(); }
+        function saveAppointments() { localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); updateStats(); }
+        function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
         
         function getTodayStr() { return new Date().toISOString().split('T')[0]; }
         function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
@@ -719,7 +575,8 @@
         function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null) {
             if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
             if (!appointments[dateStr].reports) appointments[dateStr].reports = [];
-            const newAppointment = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, createdAt: new Date().toISOString() };
+            const reportText = `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned to: ${assigned}\nDate: ${dateStr}`;
+            const newAppointment = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, createdAt: new Date().toISOString(), fullText: reportText };
             if (editId) {
                 const index = appointments[dateStr].reports.findIndex(r => r.id === editId);
                 if (index !== -1) appointments[dateStr].reports[index] = newAppointment;
@@ -729,8 +586,9 @@
             }
             appointments[dateStr].reports.sort((a,b) => b.id - a.id);
             appointments[dateStr].count = appointments[dateStr].reports.length;
+            appointments[dateStr].note = appointments[dateStr].note || `${appointments[dateStr].reports.length} appointment(s)`;
             saveAppointments();
-            return true;
+            return reportText;
         }
         
         function deleteAppointment(dateStr, id) {
@@ -738,214 +596,279 @@
                 appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
                 appointments[dateStr].count = appointments[dateStr].reports.length;
                 if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
+                else appointments[dateStr].note = `${appointments[dateStr].reports.length} appointment(s)`;
                 saveAppointments();
                 return true;
             }
             return false;
         }
         
-        function copyToClipboard(text) { if (!text) return; navigator.clipboard.writeText(text).then(() => showToast('Copied!')); }
+        function showToast(msg, isError = false) { 
+            const t = document.createElement('div'); t.className = 'toast'; t.style.background = isError ? 'var(--danger)' : 'var(--success)'; t.innerHTML = `${isError ? '⚠️ ' : '✓ '}${msg}`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000); 
+        }
+        function copyToClipboard(text) { if (!text) { showToast('Nothing to copy', true); return; } navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied!'); }); }
+        
         function exportToCSV() {
-            let csvRows = [['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Notes', 'Assigned']];
+            let csvRows = [];
+            csvRows.push(['Date', 'Business', 'Contact Name', 'Role', 'Phone', 'Time', 'Notes', 'Assigned To', 'Created At']);
             for (let date in appointments) {
                 if (appointments[date].reports) {
                     appointments[date].reports.forEach(appt => {
-                        csvRows.push([date, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned]);
+                        csvRows.push([
+                            date, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appt.createdAt
+                        ]);
                     });
                 }
             }
             const csvContent = csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `appointments_${getTodayStr()}.csv`;
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.setAttribute('download', `appointments_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(link.href);
-            showToast(`Exported ${csvRows.length - 1} appointments`);
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${csvRows.length - 1} appointments to CSV`);
         }
         
-        // Calendar Modal
-        let currentCalDate = new Date(), selectedCalDate = getTodayStr(), calendarModal = null;
-        function openCalendarModal() {
-            if (calendarModal) return;
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`;
-            document.body.appendChild(modal);
-            calendarModal = modal;
-            renderCalendarModal();
-            modal.onclick = (e) => { if (e.target === modal) closeCalendarModal(); };
-        }
+        // =============================================
+        // CALENDAR MODAL - FULLY FUNCTIONAL WITH FIXED DATE MOVING
+        // =============================================
+        let currentCalDate = new Date();
+        let selectedCalDate = getTodayStr();
+        let calendarModal = null;
+        
+        function openCalendarModal() { if (calendarModal) return; const modal = document.createElement('div'); modal.className = 'modal-overlay'; modal.innerHTML = `<div class="modal-card calendar-modal" id="calModalInner"></div>`; document.body.appendChild(modal); calendarModal = modal; renderCalendarModal(); modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); }); }
         function closeCalendarModal() { if (calendarModal) { calendarModal.remove(); calendarModal = null; } }
         
+        function getAppointmentDots(count) {
+            if (count === 0) return '<div class="appointment-dots"></div>';
+            let dots = '<div class="appointment-dots">';
+            const dotCount = Math.min(count, 5);
+            for (let i = 0; i < dotCount; i++) {
+                let dotClass = 'appointment-dot';
+                if (count >= 5) dotClass += ' many';
+                else if (count >= 3) dotClass += ' multiple';
+                dots += `<div class="${dotClass}"></div>`;
+            }
+            if (count > 5) dots += `<span style="font-size:0.65rem; margin-left:2px;">+${count-5}</span>`;
+            dots += '</div>';
+            return dots;
+        }
+        
         function renderCalendarModal() {
-            const inner = document.getElementById('calModalInner');
-            if (!inner) return;
+            const inner = document.getElementById('calModalInner'); if (!inner) return;
             const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month+1, 0).getDate();
-            const apptData = appointments[selectedCalDate] || { reports: [] };
+            const apptData = appointments[selectedCalDate] || { count: 0, note: '', reports: [] };
             let daysHtml = '';
             for (let i = 0; i < firstDay; i++) daysHtml += `<div class="cal-day"></div>`;
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const apptCount = appointments[dateStr]?.reports?.length || 0;
                 const isSelected = (selectedCalDate === dateStr);
-                daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''}" data-date="${dateStr}"><div class="cal-day-number">${d}</div>${apptCount > 0 ? '<div class="appointment-dots"><div class="appointment-dot"></div></div>' : ''}</div>`;
+                daysHtml += `<div class="cal-day ${isSelected ? 'selected' : ''}" data-date="${dateStr}">
+                    <div class="cal-day-number">${d}</div>
+                    ${getAppointmentDots(apptCount)}
+                </div>`;
             }
-            let reportsHtml = '<div style="margin-top:16px;"><strong>Appointments</strong></div>';
+            let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments</strong><button class="copy-btn-sm" id="copyAllReportsBtn" style="float:right;">Copy All</button><div style="clear:both;"></div>';
             if (apptData.reports && apptData.reports.length) {
                 apptData.reports.forEach(r => {
-                    reportsHtml += `<div class="appointment-card"><div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)}</div><div class="appointment-actions"><button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}">Delete</button></div></div>`;
+                    reportsHtml += `<div class="appointment-card"><div><strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)} (${escapeHtml(r.role)})</div><div style="font-size:0.8rem;">📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div><div style="font-size:0.8rem;">📝 ${escapeHtml(r.notes?.substring(0, 100))}</div><div style="font-size:0.7rem;">👤 Assigned: ${escapeHtml(r.assigned)} • ${new Date(r.createdAt).toLocaleString()}</div><div class="appointment-actions"><button class="edit-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-edit"></i> Edit</button><button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-trash"></i> Delete</button><button class="copy-btn-sm copy-single-btn" data-id="${r.id}">Copy</button></div></div>`;
                 });
-            } else { reportsHtml += '<div style="padding:20px; text-align:center;">No appointments</div>'; }
+            } else { reportsHtml += '<div style="padding:20px; text-align:center; color:var(--text-secondary);">No appointments for this date</div>'; }
+            reportsHtml += `</div>`;
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-            inner.innerHTML = `<div class="cal-header"><div class="cal-month-year">${monthNames[month]} ${year}</div><div class="cal-nav"><button id="calPrevBtn">◀</button><button id="calNextBtn">▶</button><button id="calTodayBtn">Today</button></div></div><div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="cal-days">${daysHtml}</div><div><button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; width:100%; margin:10px 0;">+ Add Appointment</button>${reportsHtml}</div><div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeCalBtn">Close</button></div>`;
+            inner.innerHTML = `<div class="cal-header"><div class="cal-month-year">${monthNames[month]} ${year}</div><div class="cal-nav"><button id="calPrevBtn">◀ Prev</button><button id="calNextBtn">Next ▶</button><button id="calTodayBtn">Today</button></div></div><div class="cal-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="cal-days" id="calDaysGrid">${daysHtml}</div><div class="date-changer"><i class="fas fa-calendar-day"></i><span style="font-weight:700;">Selected Date:</span><input type="date" id="quickDatePicker" value="${selectedCalDate}"></div><div><label><strong>📝 General Note</strong></label><textarea id="apptNoteInput" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-top:8px;" rows="2">${escapeHtml(apptData.note || '')}</textarea><button class="icon-btn" id="quickAddForDate" style="background:var(--secondary); color:white; margin-top:8px; width:100%;"><i class="fas fa-plus"></i> + Quick Add Appointment for ${selectedCalDate}</button>${reportsHtml}<div class="goal-input-group"><div><label>Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}"></div><div><label>Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}"></div><div><label>Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}"></div></div></div><div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:16px;"><button class="icon-btn" id="saveNoteBtn" style="background:var(--success); color:white;">Save Note</button><button class="icon-btn" id="closeCalBtn">Close</button></div>`;
             
-            document.querySelectorAll('.cal-day[data-date]').forEach(el => { el.onclick = () => { selectedCalDate = el.dataset.date; renderCalendarModal(); }; });
-            document.getElementById('calPrevBtn')?.onclick = () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendarModal(); };
-            document.getElementById('calNextBtn')?.onclick = () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendarModal(); };
-            document.getElementById('calTodayBtn')?.onclick = () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); };
-            document.getElementById('quickAddForDate')?.onclick = () => { openQuickReportWithDate(selectedCalDate); };
-            document.getElementById('closeCalBtn')?.onclick = closeCalendarModal;
-            document.querySelectorAll('.delete-appt-btn').forEach(btn => { btn.onclick = () => { if(confirm('Delete?')) { deleteAppointment(btn.dataset.date, parseInt(btn.dataset.id)); renderCalendarModal(); showToast('Deleted'); } }; });
+            document.querySelectorAll('.cal-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarModal(); }); });
+            document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedCalDate = e.target.value; renderCalendarModal(); });
+            document.querySelectorAll('.delete-appt-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); renderCalendarModal(); showToast('Appointment deleted'); } }); });
+            document.querySelectorAll('.edit-appt-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openEditAppointmentModal(date, appt); }); });
+            document.querySelectorAll('.copy-single-btn').forEach(btn => { btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); for (let date in appointments) { const report = appointments[date]?.reports?.find(r => r.id === id); if (report) { copyToClipboard(report.fullText); break; } } }); });
+            document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()-1); renderCalendarModal(); });
+            document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth()+1); renderCalendarModal(); });
+            document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
+            document.getElementById('saveNoteBtn')?.addEventListener('click', () => { if (!appointments[selectedCalDate]) appointments[selectedCalDate] = { count: 0, note: '', reports: [] }; appointments[selectedCalDate].note = document.getElementById('apptNoteInput').value; saveAppointments(); showToast('Note saved'); });
+            document.getElementById('quickAddForDate')?.addEventListener('click', () => { closeCalendarModal(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
+            document.getElementById('closeCalBtn')?.addEventListener('click', closeCalendarModal);
+            document.getElementById('copyAllReportsBtn')?.addEventListener('click', () => { if (apptData.reports?.length) copyToClipboard(apptData.reports.map(r => r.fullText).join('\n\n---\n\n')); else showToast('No appointments', true); });
+            ['goalDailyInput', 'goalWeeklyInput', 'goalMonthlyInput'].forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', () => { const map = { goalDailyInput: 'daily', goalWeeklyInput: 'weekly', goalMonthlyInput: 'monthly' }; goals[map[id]] = parseInt(el.value) || (id === 'goalDailyInput' ? 3 : id === 'goalWeeklyInput' ? 15 : 60); saveGoals(); renderCalendarModal(); }); });
+        }
+        
+        // FIXED: Edit appointment with proper date moving - this is the critical fix
+        function openEditAppointmentModal(oldDateStr, appt) {
+            const modalDiv = document.createElement('div'); 
+            modalDiv.className = 'modal-overlay';
+            modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3>
+                <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${oldDateStr}"></div>
+                <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
+                <div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
+                <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div>
+                <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div>
+                <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div>
+                <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div>
+                <div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+                    <button class="icon-btn" id="saveEditBtn" style="background:var(--success);">Save Changes</button>
+                    <button class="icon-btn" id="cancelEditModalBtn">Cancel</button>
+                </div>
+            </div>`;
+            document.body.appendChild(modalDiv);
+            
+            document.getElementById('saveEditBtn').addEventListener('click', () => {
+                const newDate = document.getElementById('editDate').value;
+                const updatedBusiness = document.getElementById('editBusiness').value;
+                const updatedName = document.getElementById('editName').value;
+                const updatedRole = document.getElementById('editRole').value;
+                const updatedPhone = document.getElementById('editPhone').value;
+                const updatedTime = document.getElementById('editTime').value;
+                const updatedNotes = document.getElementById('editNotes').value;
+                const updatedAssigned = document.getElementById('editAssigned').value;
+                
+                if (!updatedBusiness || !updatedName) { 
+                    showToast('Business and Name required', true); 
+                    return; 
+                }
+                
+                // Delete from old date first
+                deleteAppointment(oldDateStr, appt.id);
+                
+                // Add to new date (or same date if unchanged)
+                addAppointment(newDate, updatedBusiness, updatedName, updatedRole, updatedPhone, updatedTime, updatedNotes, updatedAssigned, appt.id);
+                
+                // Update selected date to new date if date changed
+                if (newDate !== oldDateStr) {
+                    selectedCalDate = newDate;
+                    showToast(`Appointment moved from ${oldDateStr} to ${newDate}`);
+                } else {
+                    showToast('Appointment updated successfully');
+                }
+                
+                modalDiv.remove(); 
+                closeCalendarModal(); 
+                openCalendarModal();
+            });
+            
+            document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
+            modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
         }
         
         function openQuickReportWithDate(defaultDate) {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card report-modal"><h3>Add Appointment for ${defaultDate}</h3><div class="form-group"><label>Business *</label><input id="reportBusiness"></div><div class="form-group"><label>Contact *</label><input id="reportName"></div><div class="form-group"><label>Phone</label><input id="reportPhone"></div><div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div><div class="modal-buttons"><button class="icon-btn" id="submitBtn" style="background:var(--success);">Save</button><button class="icon-btn" id="cancelBtn">Cancel</button></div></div>`;
+            const modal = document.createElement('div'); modal.className = 'modal-overlay';
+            modal.innerHTML = `<div class="modal-card report-modal"><h3><i class="fas fa-plus-circle"></i> Quick Add Appointment for ${defaultDate}</h3>
+                <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
+                <div class="form-group"><label>Business Name *</label><input type="text" id="reportBusiness" placeholder="e.g., Flynn Group"></div>
+                <div class="form-group"><label>Contact Name *</label><input type="text" id="reportName" placeholder="Full name"></div>
+                <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
+                <div class="form-group"><label>Phone Number</label><input type="text" id="reportPhone" placeholder="+1 207 592 2257"></div>
+                <div class="form-group"><label>Time</label><input type="text" id="reportTime" placeholder="e.g., Monday 3pm ET"></div>
+                <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="3" placeholder="Appointment details..."></textarea></div>
+                <div class="form-group"><label>Assigned To</label><input type="text" id="reportAssigned" value="Daniel"></div>
+                <div class="modal-buttons" style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;"><button class="icon-btn" id="submitReportBtn" style="background:var(--success); color:white;">Save & Copy</button><button class="icon-btn" id="closeReportBtn">Cancel</button></div>
+            </div>`;
             document.body.appendChild(modal);
-            document.getElementById('submitBtn').onclick = () => {
+            document.getElementById('submitReportBtn').addEventListener('click', () => {
+                const date = document.getElementById('reportDate').value;
                 const business = document.getElementById('reportBusiness').value;
                 const name = document.getElementById('reportName').value;
-                if (!business || !name) { showToast('Required fields', true); return; }
-                addAppointment(defaultDate, business, name, 'Owner', document.getElementById('reportPhone').value, '', document.getElementById('reportNotes').value, currentUser?.name || 'User');
-                modal.remove(); if(calendarModal) renderCalendarModal(); showToast('Added');
-            };
-            document.getElementById('cancelBtn').onclick = () => modal.remove();
-            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+                if (!business || !name) { showToast('Fill business and contact name', true); return; }
+                const reportText = addAppointment(date, business, name, document.getElementById('reportRole').value, document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value, document.getElementById('reportAssigned').value);
+                copyToClipboard(reportText);
+                modal.remove();
+                openCalendarModal();
+            });
+            document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         function openQuickReport() { openQuickReportWithDate(getTodayStr()); }
         
+        // =============================================
+        // PRIORITY PREDICTOR
+        // =============================================
         function openPriorityModal() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card priority-modal"><div class="priority-header"><h2>Call Priority Predictor</h2></div><div class="recommendation-card"><strong>Best Times:</strong> Tue-Thu, 10-11:30 AM & 2-4 PM local time<br>Success Rate: 85-95%</div><div class="modal-buttons"><button class="icon-btn" id="closeBtn">Close</button></div></div>`;
+            const modal = document.createElement('div'); modal.className = 'modal-overlay';
+            const now = new Date();
+            const timeZones = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
+            const zoneNames = ['Eastern (ET)', 'Central (CT)', 'Mountain (MT)', 'Pacific (PT)'];
+            let zonesHtml = '';
+            for (let i = 0; i < timeZones.length; i++) {
+                const tzTime = new Date(now.toLocaleString('en-US', { timeZone: timeZones[i] }));
+                const hour = tzTime.getHours();
+                const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
+                zonesHtml += `<div class="timezone-card ${isPrime ? 'recommended' : ''}">
+                    <div class="timezone-name">${zoneNames[i]}</div>
+                    <div class="timezone-time">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="best-time-badge ${isPrime ? 'best-time-high' : 'best-time-good'}">${isPrime ? '🔥 PRIME TIME' : 'Call during 10-11:30 AM or 2-4 PM'}</div>
+                </div>`;
+            }
+            modal.innerHTML = `<div class="modal-card priority-modal">
+                <div class="priority-header"><h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2><div>Best times to reach US business owners</div></div>
+                <div class="recommendation-card"><strong>🎯 SMART RECOMMENDATION:</strong><br>Call Tuesday-Thursday between 10-11:30 AM or 2-4 PM local time for 85-95% connection rates</div>
+                <div class="timezone-grid">${zonesHtml}</div>
+                <div style="padding:12px; background:var(--bg-primary); border-radius:16px;"><strong>💡 PRO TIPS:</strong><br>• Best days: Tuesday, Wednesday, Thursday<br>• Avoid: Monday mornings & Friday afternoons<br>• Lunch hour (12-1 PM) has <30% answer rate</div>
+                <div class="modal-buttons" style="margin-top:20px;"><button class="icon-btn" id="closePriorityBtn" style="background:var(--primary); width:100%;">Start Calling</button></div>
+            </div>`;
             document.body.appendChild(modal);
-            document.getElementById('closeBtn').onclick = () => modal.remove();
-            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            document.getElementById('closePriorityBtn').addEventListener('click', () => modal.remove());
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
         
-        function openHelpModal() {
-            const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-card help-modal"><h3>Help Guide</h3><div class="help-step"><h4>Google Sign-In</h4><p>Click the Google button in the top-right corner to sign in</p></div><div class="help-step"><h4>Scripts</h4><p>Press 1-9 keys to switch scripts</p></div><div class="modal-buttons"><button class="icon-btn" id="closeBtn">Close</button></div></div>`;
-            document.body.appendChild(modal);
-            document.getElementById('closeBtn').onclick = () => modal.remove();
-            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-        }
+        function openHelpModal() { const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card help-modal"><h3>📖 ScriptFlow Pro Guide</h3><div class="help-step"><h4>📅 Appointment Calendar</h4><p>Click calendar icon → Color dots show appointment count. Edit any appointment and change its date to move it.</p></div><div class="help-step"><h4>📊 CSV Export</h4><p>Click CSV icon to export all appointments.</p></div><div class="help-step"><h4>✏️ Edit/Delete Appointments</h4><p>Each appointment has Edit (change date too) and Delete buttons.</p></div><div class="help-step"><h4>💾 Local Storage</h4><p>All data saves automatically to your browser.</p></div><div class="modal-buttons"><button class="icon-btn" id="closeHelpBtn" style="background:var(--primary);">Got it!</button></div></div>`; document.body.appendChild(modal); document.getElementById('closeHelpBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+        function factoryReset() { if(confirm('FACTORY RESET: This will erase ALL data. Cannot be undone.')) { localStorage.clear(); location.reload(); } }
         
-        function factoryReset() { if(confirm('Reset all data?')) { localStorage.clear(); location.reload(); } }
+        // =============================================
+        // COMPLETE SCRIPTS SYSTEM
+        // =============================================
+        const defaultScripts = {
+            "opening": { name: "🎯 Opening Script", content: "\"Hey, is this [Company Name]?\"\n\n\"Awesome — this is [Your Name]. I work with a web design company that helps companies like yours to stand out online. And we actually created a free, modern, preview version inspired by your current site. There's no cost or obligation. Would you be open to taking a quick look later today and sharing your thoughts? see if it could add value to your site?\"\n\n→ \"By the way, what's your name?\"\n→ \"Nice to meet you, [Prospect Name]. Are you the owner of [Company Name]?\"" },
+            "owner_yes": { name: "👑 Owner - Yes", content: "✅ IF OWNER SAYS YES:\n\n→ \"Perfect. What we'll do is have my manager Daniel give you a quick call later today, just to ask a couple quick questions and show you what we built.\"\n→ \"Is this the best number to reach you at?\"\n→ \"Awesome, we're excited to show you the preview. I'll have Daniel give you a quick call later.\"\n→ \"Appreciate your time, [Prospect Name]. Talk soon!\"" },
+            "owner_no": { name: "👤 Not Owner", content: "❌ IF NOT OWNER:\n\n→ \"Got it — do you usually help with things like marketing, socials, or sales for the business?\"\n\n📌 IF THEY SHOW INTEREST:\n→ \"Awesome. Usually the owner likes taking a quick look at the preview first. What's normally the best time to reach them today?\"\n→ \"Perfect, I'll have Daniel give them a quick call later.\"\n→ \"Thanks again, appreciate it!\"\n\n📌 IF NOT INTERESTED:\n→ \"No worries at all, just figured I'd reach out since we already made the preview for you guys. Appreciate your time!\"" },
+            "objection_website": { name: "⚠️ Already have a website", content: "💬 PROSPECT: \"We already have a website.\"\n\n✅ RESPONSE:\n→ \"Totally — honestly, most businesses we speak with do.\"\n→ \"This isn't really about replacing it immediately.\"\n→ \"It's more about showing you what a newer version could look like and seeing if there are opportunities to improve things like credibility, speed, or conversions.\"\n→ \"Worst case, you walk away with a few good ideas.\"" },
+            "objection_webguy": { name: "⚠️ Have a web guy", content: "💬 PROSPECT: \"I already have a web guy.\"\n\n✅ RESPONSE:\n→ \"That actually makes things easier.\"\n→ \"A lot of businesses we work with already have someone managing their site.\"\n→ \"They just like getting a second opinion or seeing a different creative direction.\"\n→ \"No commitment at all — just worth comparing.\"" },
+            "objection_cost": { name: "💰 How much does it cost?", content: "💬 PROSPECT: \"How much does it cost?\"\n\n✅ RESPONSE:\n→ \"The preview itself is completely free.\"\n→ \"Daniel would only go over pricing if you actually like what you see.\"\n→ \"Right now it's really just about showing you the concept first.\"" },
+            "objection_busy": { name: "⏰ I'm busy", content: "💬 PROSPECT: \"I'm busy.\"\n\n✅ RESPONSE:\n→ \"Totally understand — I caught you out of the blue.\"\n→ \"That's why I'm not trying to go through everything right now.\"\n→ \"What's easier for you — later today or sometime tomorrow for a quick 5–10 minute look?\"" },
+            "objection_not_interested": { name: "❌ Not interested", content: "💬 PROSPECT: \"Not interested.\"\n\n✅ RESPONSE:\n→ \"No worries.\"\n→ \"Just so you know, we already built the preview, so there's nothing you need to buy or commit to.\"\n→ \"Worst case, you spend a few minutes looking at it and walk away with a few ideas for your online presence.\"\n→ \"Would it hurt to at least take a quick look?\"" },
+            "objection_info": { name: "📧 Send me info", content: "💬 PROSPECT: \"Just send me info.\"\n\n✅ RESPONSE:\n→ \"I definitely can.\"\n→ \"The only reason I prefer a quick walkthrough is because the preview makes way more sense visually than through a long text or email.\"\n→ \"It honestly takes about 5 minutes.\"\n→ \"What's usually better for you — later today or tomorrow?\"" },
+            "objection_found_me": { name: "🔍 How did you find me?", content: "💬 PROSPECT: \"How did you find me?\"\n\n✅ RESPONSE:\n→ \"I came across your Google listing while looking at businesses in your area and industry.\"\n→ \"Your business stood out, so we decided to create a sample website concept using publicly available information online.\"" },
+            "objection_who_are_you": { name: "🏢 Who are you with?", content: "💬 PROSPECT: \"Who are you with?\"\n\n✅ RESPONSE:\n→ \"I'm with Canopy Designs.\"\n→ \"We help local and home service businesses improve their online presence and websites.\"\n→ \"The preview we built for you is completely free to look at.\"" },
+            "closing": { name: "🏁 Closing Script", content: "🎯 CLOSING SCRIPT:\n\n→ \"Awesome, we're excited to show you the preview!\"\n→ \"I'll have Daniel give you a quick call [later/tomorrow].\"\n→ \"Appreciate your time, [Your Name]! Talk soon!\"\n\n📌 REMEMBER:\n✓ Always confirm the best number to call\n✓ Get the owner's name\n✓ Set a specific time for follow-up\n✓ Be friendly and professional" }
+        };
         
-        // Script Management
-        function loadScripts() {
-            const saved = localStorage.getItem(`scripts_${currentUser?.sub || 'default'}`);
-            if (saved) scripts = JSON.parse(saved);
-            else scripts = JSON.parse(JSON.stringify(defaultScripts));
-            customOrder = ["opening", "owner_yes", "owner_no", "closing"];
-            document.getElementById('scriptCount').innerText = Object.keys(scripts).length;
-        }
-        function saveAllScripts() {
-            localStorage.setItem(`scripts_${currentUser?.sub || 'default'}`, JSON.stringify(scripts));
-            document.getElementById('saveStatus').innerHTML = '✓ Saved';
-            setTimeout(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; }, 1500);
-        }
+        let scripts = {}, currentScriptId = "opening", isEditing = false, searchTerm = "", customOrder = [];
+        let versionHistory = {}, currentVersionIndex = {};
+        
+        function initVersionHistory(id, content) { if (!versionHistory[id]) { versionHistory[id] = [{ content, timestamp: new Date().toISOString() }]; currentVersionIndex[id] = 0; } }
+        function saveVersion(id, newContent) { if (!versionHistory[id]) { initVersionHistory(id, newContent); return; } if (currentVersionIndex[id] < versionHistory[id].length - 1) versionHistory[id] = versionHistory[id].slice(0, currentVersionIndex[id] + 1); versionHistory[id].push({ content: newContent, timestamp: new Date().toISOString() }); currentVersionIndex[id] = versionHistory[id].length - 1; if (versionHistory[id].length > 50) versionHistory[id].shift(); localStorage.setItem('scriptflow_version_history', JSON.stringify(versionHistory)); }
+        function undoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] <= 0) { showToast('No earlier version', true); return; } currentVersionIndex[id]--; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Undo'); }
+        function redoScript(id) { if (!versionHistory[id] || currentVersionIndex[id] >= versionHistory[id].length - 1) { showToast('No newer version', true); return; } currentVersionIndex[id]++; scripts[id].content = versionHistory[id][currentVersionIndex[id]].content; saveAllScripts(); if (!isEditing && currentScriptId === id) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; showToast('Redo'); }
+        function loadScripts() { const saved = localStorage.getItem('scriptflow_pro_scripts_main'); if (saved) { scripts = JSON.parse(saved); for (let k of Object.keys(defaultScripts)) if (!scripts[k]) scripts[k] = {...defaultScripts[k]}; } else scripts = JSON.parse(JSON.stringify(defaultScripts)); const savedOrder = localStorage.getItem('scriptflow_order_main'); if (savedOrder) customOrder = JSON.parse(savedOrder); else customOrder = ["opening","owner_yes","owner_no","objection_website","objection_webguy","objection_cost","objection_busy","objection_not_interested","objection_info","objection_found_me","objection_who_are_you","closing"]; const savedHistory = localStorage.getItem('scriptflow_version_history'); if (savedHistory) versionHistory = JSON.parse(savedHistory); for (let id in scripts) { if (!versionHistory[id]) initVersionHistory(id, scripts[id].content); else currentVersionIndex[id] = versionHistory[id].length - 1; } document.getElementById('scriptCount').innerText = Object.keys(scripts).length; }
+        function saveAllScripts() { localStorage.setItem('scriptflow_pro_scripts_main', JSON.stringify(scripts)); localStorage.setItem('scriptflow_order_main', JSON.stringify(customOrder)); document.getElementById('saveStatus').innerHTML = '✓ Saved'; setTimeout(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; }, 1500); }
         function getOrderedVisible() { let ids = [...customOrder.filter(id=>scripts[id]), ...Object.keys(scripts).filter(id=>!customOrder.includes(id))]; if (searchTerm) ids = ids.filter(id => scripts[id].name.toLowerCase().includes(searchTerm.toLowerCase())); return ids; }
         function getKeyMapping() { const vis = getOrderedVisible(); const map = new Map(); vis.slice(0,9).forEach((id,i)=>map.set((i+1).toString(),id)); return map; }
         function escapeHtml(s) { return s ? String(s).replace(/[&<>]/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[m])) : ''; }
+        function renderNavigation() { const container = document.getElementById('scriptNavList'); const visible = getOrderedVisible(); if (!visible.length) { container.innerHTML='<div style="padding:20px;text-align:center;">No scripts found</div>'; return; } let html=''; visible.forEach((id, idx)=>{ const s=scripts[id]; const active=currentScriptId===id; const shortcut=idx<9?`${idx+1}`:null; html+=`<div class="nav-item ${active?'active':''}" data-id="${id}"><i class="fas fa-scroll"></i><span>${escapeHtml(s.name)}</span>${shortcut?`<span class="key-hint">${shortcut}</span>`:''}<div class="nav-actions"><button class="nav-icon-btn rename-btn" data-id="${id}"><i class="fas fa-pencil-alt"></i></button><button class="nav-icon-btn delete-btn" data-id="${id}" ${id==='opening'?'disabled style="opacity:0.4;"':''}><i class="fas fa-trash"></i></button></div></div>`; }); container.innerHTML=html; document.querySelectorAll('.nav-item').forEach(el=>{ const sid=el.getAttribute('data-id'); el.addEventListener('click',(e)=>{ if(e.target.closest('.rename-btn')||e.target.closest('.delete-btn')) return; if(isEditing && confirm('Cancel editing?')) cancelEdit(); if(!isEditing && sid) loadScript(sid); }); }); document.querySelectorAll('.rename-btn').forEach(btn=>btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); const newName=prompt('New name:',scripts[id].name); if(newName?.trim()){ scripts[id].name=newName.trim(); saveAllScripts(); renderNavigation(); if(currentScriptId===id) document.getElementById('currentScriptName').innerHTML=scripts[id].name; showToast('Renamed'); } })); document.querySelectorAll('.delete-btn').forEach(btn=>btn.addEventListener('click',(e)=>{ e.stopPropagation(); const id=btn.getAttribute('data-id'); if(id==='opening'){ showToast('Cannot delete opening script', true); return; } if(confirm('Delete this script?')){ delete scripts[id]; delete versionHistory[id]; customOrder=customOrder.filter(i=>i!==id); if(currentScriptId===id) loadScript('opening'); saveAllScripts(); renderNavigation(); document.getElementById('scriptCount').innerText=Object.keys(scripts).length; showToast('Script deleted'); } })); const visibleIds=getOrderedVisible(); const idxCur=visibleIds.indexOf(currentScriptId); document.getElementById('activeShortcutHint').innerHTML=idxCur!==-1&&idxCur<9?`Key: ${idxCur+1}`:`Key: —`; if(versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText=`${currentVersionIndex[currentScriptId]+1}/${versionHistory[currentScriptId].length}`; }
+        function loadScript(id) { if(!scripts[id]||isEditing) return; currentScriptId=id; document.getElementById('currentScriptName').innerHTML=scripts[id].name; const displayContent=replaceNameInScript(scripts[id].content); document.getElementById('scriptContent').innerHTML=`<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`; renderNavigation(); }
+        function enterEdit() { isEditing=true; document.getElementById('editScriptBtn').style.display='none'; document.getElementById('saveScriptBtn').style.display='inline-flex'; document.getElementById('cancelEditBtn').style.display='inline-flex'; document.getElementById('scriptContent').innerHTML=`<textarea id="editTextarea" class="edit-textarea">${escapeHtml(scripts[currentScriptId].content)}</textarea>`; document.getElementById('editTextarea').focus(); document.getElementById('saveStatus').innerHTML='Editing'; }
+        function saveEdit() { const newContent=document.getElementById('editTextarea').value; scripts[currentScriptId].content=newContent; saveVersion(currentScriptId, newContent); saveAllScripts(); cancelEdit(); showToast('Saved!'); }
+        function cancelEdit() { isEditing=false; document.getElementById('editScriptBtn').style.display='inline-flex'; document.getElementById('saveScriptBtn').style.display='none'; document.getElementById('cancelEditBtn').style.display='none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML='Auto'; }
+        function copyScript() { const content=replaceNameInScript(scripts[currentScriptId].content); copyToClipboard(content); }
+        function resetScript() { if(defaultScripts[currentScriptId]){ if(confirm('Reset to original content?')){ scripts[currentScriptId]={...defaultScripts[currentScriptId]}; saveVersion(currentScriptId, scripts[currentScriptId].content); saveAllScripts(); loadScript(currentScriptId); showToast('Reset complete'); } } else showToast('No default version', true); }
+        function addScript() { if(isEditing){ showToast('Finish editing first', true); return; } const name=prompt('Enter script name:'); if(!name) return; const id='custom_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); scripts[id]={name, content:'Write your custom script here...'}; initVersionHistory(id, scripts[id].content); customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`Added: ${name}`); }
+        function showVersionHistoryModal(id) { if (!versionHistory[id]) { showToast('No history', true); return; } const modal = document.createElement('div'); modal.className = 'modal-overlay'; let html = `<div class="modal-card"><h3>Version History: ${escapeHtml(scripts[id].name)}</h3>`; versionHistory[id].forEach((v, idx) => { html += `<div class="version-item" data-index="${idx}" style="padding:12px; cursor:pointer; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;"><span>${new Date(v.timestamp).toLocaleString()}</span><span>${idx === currentVersionIndex[id] ? '✓ Current' : 'Restore'}</span></div>`; }); html += `<div class="modal-buttons" style="margin-top:16px;"><button class="icon-btn" id="closeHistoryBtn">Close</button></div></div>`; modal.innerHTML = html; document.body.appendChild(modal); document.querySelectorAll('.version-item').forEach(el => { el.addEventListener('click', () => { const idx = parseInt(el.getAttribute('data-index')); currentVersionIndex[id] = idx; scripts[id].content = versionHistory[id][idx].content; saveAllScripts(); if (!isEditing) loadScript(id); else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content; document.getElementById('versionNumber').innerText = `${idx+1}/${versionHistory[id].length}`; showToast('Version restored'); modal.remove(); }); }); document.getElementById('closeHistoryBtn').addEventListener('click', () => modal.remove()); modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); }); }
+        function initKeyboard() { window.addEventListener('keydown',(e)=>{ if(e.key>='1'&&e.key<='9'&&!isEditing&&!e.target.matches('textarea,input')){ e.preventDefault(); const target=getKeyMapping().get(e.key); if(target&&scripts[target]){ loadScript(target); showToast(scripts[target].name); } } if(e.key==='Escape'&&isEditing){ cancelEdit(); } if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!isEditing){ e.preventDefault(); undoScript(currentScriptId); } if((e.ctrlKey||e.metaKey)&&e.key==='y'&&!isEditing){ e.preventDefault(); redoScript(currentScriptId); } }); }
+        function initTheme() { const saved=localStorage.getItem('scriptflow_theme_main'); if(saved==='dark') document.body.classList.add('dark'); document.getElementById('themeToggle').innerHTML=document.body.classList.contains('dark')?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; }
+        function toggleTheme() { document.body.classList.toggle('dark'); const isDark=document.body.classList.contains('dark'); localStorage.setItem('scriptflow_theme_main',isDark?'dark':'light'); document.getElementById('themeToggle').innerHTML=isDark?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>'; showToast(`${isDark?'Dark mode':'Light mode'} enabled`); }
+        function initSearch() { document.getElementById('scriptSearch').addEventListener('input',(e)=>{ searchTerm=e.target.value.toLowerCase(); renderNavigation(); }); }
         
-        function renderNavigation() {
-            const container = document.getElementById('scriptNavList');
-            const visible = getOrderedVisible();
-            if (!visible.length) { container.innerHTML='<div>No scripts</div>'; return; }
-            let html = '';
-            visible.forEach((id, idx) => {
-                const s = scripts[id];
-                const active = currentScriptId === id;
-                const shortcut = idx < 9 ? `${idx+1}` : null;
-                html += `<div class="nav-item ${active ? 'active' : ''}" data-id="${id}"><i class="fas fa-scroll"></i><span>${escapeHtml(s.name)}</span>${shortcut ? `<span class="key-hint">${shortcut}</span>` : ''}<div class="nav-actions"><button class="nav-icon-btn rename-btn" data-id="${id}"><i class="fas fa-pencil-alt"></i></button><button class="nav-icon-btn delete-btn" data-id="${id}" ${id==='opening' ? 'disabled' : ''}><i class="fas fa-trash"></i></button></div></div>`;
-            });
-            container.innerHTML = html;
-            document.querySelectorAll('.nav-item').forEach(el => {
-                const sid = el.dataset.id;
-                el.onclick = (e) => { if(e.target.closest('.rename-btn') || e.target.closest('.delete-btn')) return; if(!isEditing && sid) loadScript(sid); };
-            });
-            document.querySelectorAll('.rename-btn').forEach(btn => { btn.onclick = (e) => { e.stopPropagation(); const id = btn.dataset.id; const newName = prompt('New name:', scripts[id].name); if(newName?.trim()){ scripts[id].name = newName.trim(); saveAllScripts(); renderNavigation(); if(currentScriptId === id) document.getElementById('currentScriptName').innerHTML = scripts[id].name; showToast('Renamed'); } }; });
-            document.querySelectorAll('.delete-btn').forEach(btn => { btn.onclick = (e) => { e.stopPropagation(); const id = btn.dataset.id; if(id === 'opening') return; if(confirm('Delete?')){ delete scripts[id]; customOrder = customOrder.filter(i => i !== id); if(currentScriptId === id) loadScript('opening'); saveAllScripts(); renderNavigation(); showToast('Deleted'); } }; });
-            const visibleIds = getOrderedVisible();
-            const idxCur = visibleIds.indexOf(currentScriptId);
-            document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `Key: ${idxCur+1}` : `Key: —`;
-        }
-        
-        function loadScript(id) {
-            if(!scripts[id] || isEditing) return;
-            currentScriptId = id;
-            document.getElementById('currentScriptName').innerHTML = scripts[id].name;
-            const displayContent = replaceNameInScript(scripts[id].content);
-            document.getElementById('scriptContent').innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g,'<br>')}</div>`;
-            renderNavigation();
-        }
-        
-        function enterEdit() { isEditing = true; document.getElementById('editScriptBtn').style.display = 'none'; document.getElementById('saveScriptBtn').style.display = 'inline-flex'; document.getElementById('cancelEditBtn').style.display = 'inline-flex'; document.getElementById('scriptContent').innerHTML = `<textarea id="editTextarea" class="edit-textarea">${escapeHtml(scripts[currentScriptId].content)}</textarea>`; document.getElementById('saveStatus').innerHTML = 'Editing'; }
-        function saveEdit() { scripts[currentScriptId].content = document.getElementById('editTextarea').value; saveAllScripts(); cancelEdit(); showToast('Saved!'); }
-        function cancelEdit() { isEditing = false; document.getElementById('editScriptBtn').style.display = 'inline-flex'; document.getElementById('saveScriptBtn').style.display = 'none'; document.getElementById('cancelEditBtn').style.display = 'none'; loadScript(currentScriptId); document.getElementById('saveStatus').innerHTML = 'Auto'; }
-        function copyScript() { copyToClipboard(replaceNameInScript(scripts[currentScriptId].content)); }
-        function resetScript() { if(defaultScripts[currentScriptId]){ scripts[currentScriptId] = {...defaultScripts[currentScriptId]}; saveAllScripts(); loadScript(currentScriptId); showToast('Reset'); } }
-        function addScript() { const name = prompt('Script name:'); if(!name) return; const id = 'custom_' + Date.now(); scripts[id] = { name, content: 'New script...' }; customOrder.push(id); saveAllScripts(); renderNavigation(); loadScript(id); showToast(`Added: ${name}`); }
-        function undoScript() { showToast('Undo feature available'); }
-        function redoScript() { showToast('Redo feature available'); }
-        
-        function initTheme() { const saved = localStorage.getItem('theme'); if(saved === 'dark') document.body.classList.add('dark'); document.getElementById('themeToggle').innerHTML = document.body.classList.contains('dark') ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; }
-        function toggleTheme() { document.body.classList.toggle('dark'); const isDark = document.body.classList.contains('dark'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); document.getElementById('themeToggle').innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>'; showToast(`${isDark ? 'Dark' : 'Light'} mode`); }
-        function initSearch() { document.getElementById('scriptSearch').addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderNavigation(); }); }
-        function initKeyboard() { window.addEventListener('keydown', (e) => { if(allFeaturesEnabled && e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input')){ e.preventDefault(); const target = getKeyMapping().get(e.key); if(target && scripts[target]){ loadScript(target); showToast(scripts[target].name); } } if(e.key === 'Escape' && isEditing) cancelEdit(); }); }
-        
-        function initializeApp() {
-            userName = currentUser?.name || 'User';
-            loadAppointmentData();
-            loadScripts();
-            initTheme();
-            initSearch();
-            renderNavigation();
-            loadScript('opening');
-            initKeyboard();
-            
-            document.getElementById('editScriptBtn').onclick = enterEdit;
-            document.getElementById('saveScriptBtn').onclick = saveEdit;
-            document.getElementById('cancelEditBtn').onclick = cancelEdit;
-            document.getElementById('copyScriptBtn').onclick = copyScript;
-            document.getElementById('resetScriptBtn').onclick = resetScript;
-            document.getElementById('themeToggle').onclick = toggleTheme;
-            document.getElementById('addScriptBtn').onclick = addScript;
-            document.getElementById('openCalendarBtn').onclick = openCalendarModal;
-            document.getElementById('quickReportBtn').onclick = openQuickReport;
-            document.getElementById('exportCsvBtn').onclick = exportToCSV;
-            document.getElementById('userNameBtn').onclick = () => { const newName = prompt('Enter your name:', userName); if(newName?.trim()){ userName = newName.trim(); showToast(`Name set to: ${userName}`); if(!isEditing) loadScript(currentScriptId); } };
-            document.getElementById('priorityBtn').onclick = openPriorityModal;
-            document.getElementById('helpBtn').onclick = openHelpModal;
-            document.getElementById('resetAllBtn').onclick = factoryReset;
-            document.getElementById('historyBtn').onclick = () => showToast('Version history coming soon');
-            document.getElementById('undoBtn').onclick = undoScript;
-            document.getElementById('redoBtn').onclick = redoScript;
-            
-            setInterval(() => { if(!isEditing && allFeaturesEnabled) document.getElementById('saveStatus').innerHTML = 'Auto'; updateStats(); }, 5000);
-        }
-        
-        // Start
-        if (!checkExistingSession()) {
-            initializeGoogleSignIn();
-        }
+        // Initialize everything
+        loadAppointmentData(); loadScripts(); initTheme(); initSearch(); renderNavigation(); loadScript('opening'); initKeyboard();
+        document.getElementById('editScriptBtn').addEventListener('click', enterEdit); document.getElementById('saveScriptBtn').addEventListener('click', saveEdit); document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn').addEventListener('click', copyScript); document.getElementById('resetScriptBtn').addEventListener('click', resetScript); document.getElementById('themeToggle').addEventListener('click', toggleTheme); document.getElementById('addScriptBtn').addEventListener('click', addScript); document.getElementById('openCalendarBtn').addEventListener('click', openCalendarModal); document.getElementById('quickReportBtn').addEventListener('click', openQuickReport); document.getElementById('exportCsvBtn').addEventListener('click', exportToCSV); document.getElementById('userNameBtn').addEventListener('click', setUserName); document.getElementById('helpBtn').addEventListener('click', openHelpModal); document.getElementById('priorityBtn').addEventListener('click', openPriorityModal); document.getElementById('historyBtn').addEventListener('click', () => showVersionHistoryModal(currentScriptId)); document.getElementById('resetAllBtn').addEventListener('click', factoryReset); document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
+        setInterval(() => { if(!isEditing) document.getElementById('saveStatus').innerHTML = 'Auto'; updateStats(); }, 5000);
     </script>
 </body>
 </html>
