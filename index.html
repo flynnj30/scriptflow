@@ -39,14 +39,14 @@
                 <i class="fas fa-chevron-right tools-chevron" id="toolsChevron"></i>
             </div>
             <div class="tools-menu" id="toolsMenu">
-                <div class="tool-item" data-tool="insights"><i class="fas fa-chart-pie"></i> Insights Dashboard</div>
-                <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> Appointment Calendar</div>
-                <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> Call Priority Predictor</div>
-                <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> Export to CSV</div>
-                <div class="tool-item" data-tool="username"><i class="fas fa-user-circle"></i> Set Your Name</div>
-                <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> Dark/Light Mode</div>
-                <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> Help Guide</div>
-                <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> Factory Reset</div>
+                <div class="tool-item" data-tool="insights"><i class="fas fa-chart-pie"></i> <span>Insights Dashboard</span></div>
+                <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> <span>Appointment Calendar</span></div>
+                <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> <span>Call Priority Predictor</span></div>
+                <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> <span>Export to CSV</span></div>
+                <div class="tool-item" data-tool="username"><i class="fas fa-user-circle"></i> <span>Set Your Name</span></div>
+                <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> <span>Dark/Light Mode</span></div>
+                <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> <span>Help Guide</span></div>
+                <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> <span>Factory Reset</span></div>
             </div>
         </div>
         <div class="sidebar-footer"><i class="fas fa-crown"></i> Press 1-9 to switch scripts</div>
@@ -79,7 +79,7 @@
             </div>
         </div>
         
-        <!-- MAIN SCRIPT CONTENT AREA (Always visible, never replaced) -->
+        <!-- MAIN SCRIPT CONTENT AREA (Always visible, dimmed when overlay active) -->
         <div class="script-card" id="scriptCard">
             <div class="script-header-bar">
                 <div class="script-title-area">
@@ -101,7 +101,7 @@
             <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
         </div>
         
-        <!-- FEATURE PANEL (Hidden by default, shows OVER the script content when tool selected) -->
+        <!-- FEATURE OVERLAY (Hidden by default, appears when tool selected) -->
         <div id="featureOverlay" class="feature-overlay" style="display: none;">
             <div class="feature-overlay-header">
                 <button id="closeFeatureBtn" class="close-feature-btn"><i class="fas fa-times"></i> Close</button>
