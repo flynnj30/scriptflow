@@ -10,6 +10,10 @@ let customOrder = [];
 let versionHistory = {};
 let currentVersionIndex = {};
 
+// Dashboard State
+let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
+let dashboardChart = null;
+
 // Calendar Modal State
 let currentCalDate = new Date();
 let selectedCalDate = new Date().toISOString().split('T')[0];
@@ -47,12 +51,383 @@ function getTodayStr() {
     return new Date().toISOString().split('T')[0];
 }
 
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function replaceNameInScript(content) {
     return content.replace(/\[Your Name\]/gi, userName);
 }
 
-// ==================== CENTRALIZED REAL-TIME PRIORITY DASHBOARD ====================
-// Shows ALL time zones with color-coded priority indicators
+// ==================== INSIGHTS DASHBOARD FUNCTIONS ====================
+function getAppointmentsInRange(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    const results = [];
+    for (let date in appointments) {
+        const dateObj = new Date(date);
+        if (dateObj >= start && dateObj <= end && appointments[date].reports) {
+            appointments[date].reports.forEach(appt => {
+                results.push({
+                    ...appt,
+                    date: date
+                });
+            });
+        }
+    }
+    return results;
+}
+
+function getDailyAppointmentCounts(startDate, endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    const counts = {};
+    const current = new Date(start);
+    
+    while (current <= end) {
+        const dateStr = current.toISOString().split('T')[0];
+        counts[dateStr] = appointments[dateStr]?.reports?.length || 0;
+        current.setDate(current.getDate() + 1);
+    }
+    
+    return counts;
+}
+
+function calculateInsights(startDate, endDate) {
+    const appointmentsInRange = getAppointmentsInRange(startDate, endDate);
+    const totalAppointments = appointmentsInRange.length;
+    
+    // Unique businesses count
+    const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
+    
+    // Assigned to stats
+    const assignedStats = {};
+    appointmentsInRange.forEach(a => {
+        const assigned = a.assigned || 'Unassigned';
+        assignedStats[assigned] = (assignedStats[assigned] || 0) + 1;
+    });
+    
+    // Role distribution
+    const roleStats = {};
+    appointmentsInRange.forEach(a => {
+        const role = a.role || 'Other';
+        roleStats[role] = (roleStats[role] || 0) + 1;
+    });
+    
+    // Most active days
+    const dayStats = {};
+    appointmentsInRange.forEach(a => {
+        const day = new Date(a.date).toLocaleDateString('en-US', { weekday: 'long' });
+        dayStats[day] = (dayStats[day] || 0) + 1;
+    });
+    
+    // Completion rate vs goals
+    const todayCount = getTodayCount();
+    const weekCount = getWeekCount();
+    const monthCount = getMonthCount();
+    
+    return {
+        totalAppointments,
+        uniqueBusinesses,
+        assignedStats,
+        roleStats,
+        dayStats,
+        todayCount,
+        weekCount,
+        monthCount,
+        todayGoal: goals.daily,
+        weekGoal: goals.weekly,
+        monthGoal: goals.monthly,
+        todayProgress: Math.min(100, Math.round((todayCount / goals.daily) * 100)),
+        weekProgress: Math.min(100, Math.round((weekCount / goals.weekly) * 100)),
+        monthProgress: Math.min(100, Math.round((monthCount / goals.monthly) * 100))
+    };
+}
+
+function renderInsightsDashboard() {
+    const insightsPanel = document.getElementById('insightsPanel');
+    if (!insightsPanel) return;
+    
+    const insights = calculateInsights(dashboardDateRange.start, dashboardDateRange.end);
+    const dailyCounts = getDailyAppointmentCounts(dashboardDateRange.start, dashboardDateRange.end);
+    const dateLabels = Object.keys(dailyCounts);
+    const chartData = Object.values(dailyCounts);
+    
+    // Build assigned to list HTML
+    let assignedHtml = '';
+    Object.entries(insights.assignedStats).forEach(([name, count]) => {
+        const percentage = insights.totalAppointments ? Math.round((count / insights.totalAppointments) * 100) : 0;
+        assignedHtml += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                <span style="font-size:0.8rem;"><i class="fas fa-user"></i> ${escapeHtml(name)}</span>
+                <span><strong>${count}</strong> <span style="color:var(--text-muted);">(${percentage}%)</span></span>
+            </div>
+        `;
+    });
+    
+    // Build role distribution HTML
+    let roleHtml = '';
+    Object.entries(insights.roleStats).forEach(([role, count]) => {
+        const percentage = insights.totalAppointments ? Math.round((count / insights.totalAppointments) * 100) : 0;
+        roleHtml += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                <span style="font-size:0.8rem;"><i class="fas fa-briefcase"></i> ${escapeHtml(role)}</span>
+                <span><strong>${count}</strong> <span style="color:var(--text-muted);">(${percentage}%)</span></span>
+            </div>
+        `;
+    });
+    
+    // Build day stats HTML
+    let dayHtml = '';
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    dayOrder.forEach(day => {
+        const count = insights.dayStats[day] || 0;
+        if (count > 0 || true) {
+            dayHtml += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-color);">
+                    <span style="font-size:0.8rem;">${day}</span>
+                    <span><strong>${count}</strong> appts</span>
+                </div>
+            `;
+        }
+    });
+    
+    insightsPanel.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-chart-line" style="color:var(--primary); font-size:1.3rem;"></i>
+                <h3 style="font-weight:600;">My Insights</h3>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span style="font-size:0.7rem; color:var(--text-muted);">Range</span>
+                <input type="date" id="insightStartDate" value="${dashboardDateRange.start}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); font-size:0.8rem;">
+                <span>to</span>
+                <input type="date" id="insightEndDate" value="${dashboardDateRange.end}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); font-size:0.8rem;">
+                <button id="applyInsightRange" class="btn-icon" style="padding:6px 16px;"><i class="fas fa-check"></i> Apply</button>
+                <button id="resetInsightRange" class="btn-icon" style="padding:6px 16px; background:var(--bg-primary);"><i class="fas fa-calendar-day"></i> Today</button>
+                <div style="display:flex; align-items:center; gap:6px; padding:4px 12px; background:var(--bg-primary); border-radius:40px;">
+                    <i class="fas fa-globe"></i>
+                    <span style="font-size:0.7rem;">Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Header Summary Cards -->
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
+            <div style="background:var(--bg-card); border-radius:20px; padding:16px; border:1px solid var(--border-color); box-shadow:var(--shadow-sm);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    <div style="width:40px; height:40px; background:rgba(59,130,246,0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-calendar-check" style="color:var(--primary); font-size:1.2rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">Total Appointments</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--primary);">${insights.totalAppointments}</div>
+                    </div>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">in selected date range</div>
+            </div>
+            
+            <div style="background:var(--bg-card); border-radius:20px; padding:16px; border:1px solid var(--border-color); box-shadow:var(--shadow-sm);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    <div style="width:40px; height:40px; background:rgba(16,185,129,0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-building" style="color:var(--success); font-size:1.2rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">Unique Businesses</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--success);">${insights.uniqueBusinesses}</div>
+                    </div>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">distinct companies contacted</div>
+            </div>
+            
+            <div style="background:var(--bg-card); border-radius:20px; padding:16px; border:1px solid var(--border-color); box-shadow:var(--shadow-sm);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    <div style="width:40px; height:40px; background:rgba(245,158,11,0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-chart-simple" style="color:var(--warning); font-size:1.2rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">Avg Daily</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--warning);">${Math.round(insights.totalAppointments / Math.max(1, dateLabels.length))}</div>
+                    </div>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">appointments per day</div>
+            </div>
+            
+            <div style="background:var(--bg-card); border-radius:20px; padding:16px; border:1px solid var(--border-color); box-shadow:var(--shadow-sm);">
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                    <div style="width:40px; height:40px; background:rgba(139,92,246,0.1); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <i class="fas fa-percent" style="color:var(--secondary); font-size:1.2rem;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">Goal Progress</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:var(--secondary);">${insights.todayProgress}%</div>
+                    </div>
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">of daily goal achieved</div>
+            </div>
+        </div>
+        
+        <!-- Chart Section -->
+        <div style="background:var(--bg-card); border-radius:24px; padding:20px; margin-bottom:24px; border:1px solid var(--border-color);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <div><i class="fas fa-chart-column"></i> <strong>Appointment Trend</strong></div>
+                <div style="display:flex; gap:8px;">
+                    <button class="chart-view-btn" data-view="bar" style="padding:4px 12px; border-radius:20px; background:var(--primary); color:white; border:none; cursor:pointer;">Bar</button>
+                    <button class="chart-view-btn" data-view="line" style="padding:4px 12px; border-radius:20px; background:var(--bg-primary); border:1px solid var(--border-color); cursor:pointer;">Line</button>
+                </div>
+            </div>
+            <canvas id="insightsChart" style="width:100%; max-height:300px;"></canvas>
+        </div>
+        
+        <!-- Two Column Layout for Detailed Stats -->
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:24px;">
+            <!-- Left Column: Assignment & Role Distribution -->
+            <div style="background:var(--bg-card); border-radius:24px; padding:20px; border:1px solid var(--border-color);">
+                <h4 style="margin-bottom:16px; display:flex; align-items:center; gap:8px;"><i class="fas fa-users"></i> Assignment Distribution</h4>
+                <div style="max-height:200px; overflow-y:auto;">
+                    ${assignedHtml || '<div style="padding:20px; text-align:center; color:var(--text-muted);">No data available</div>'}
+                </div>
+            </div>
+            
+            <div style="background:var(--bg-card); border-radius:24px; padding:20px; border:1px solid var(--border-color);">
+                <h4 style="margin-bottom:16px; display:flex; align-items:center; gap:8px;"><i class="fas fa-briefcase"></i> Role Distribution</h4>
+                <div style="max-height:200px; overflow-y:auto;">
+                    ${roleHtml || '<div style="padding:20px; text-align:center; color:var(--text-muted);">No data available</div>'}
+                </div>
+            </div>
+            
+            <!-- Goal Progress Section -->
+            <div style="background:var(--bg-card); border-radius:24px; padding:20px; border:1px solid var(--border-color);">
+                <h4 style="margin-bottom:16px; display:flex; align-items:center; gap:8px;"><i class="fas fa-bullseye"></i> Goal Progress</h4>
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:0.8rem;">Daily Goal: ${insights.todayCount}/${insights.todayGoal}</span>
+                        <span style="font-size:0.8rem;">${insights.todayProgress}%</span>
+                    </div>
+                    <div style="background:var(--bg-primary); border-radius:20px; height:8px; overflow:hidden;">
+                        <div style="width:${insights.todayProgress}%; background:var(--primary); height:100%; border-radius:20px;"></div>
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:0.8rem;">Weekly Goal: ${insights.weekCount}/${insights.weekGoal}</span>
+                        <span style="font-size:0.8rem;">${insights.weekProgress}%</span>
+                    </div>
+                    <div style="background:var(--bg-primary); border-radius:20px; height:8px; overflow:hidden;">
+                        <div style="width:${insights.weekProgress}%; background:var(--success); height:100%; border-radius:20px;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:0.8rem;">Monthly Goal: ${insights.monthCount}/${insights.monthGoal}</span>
+                        <span style="font-size:0.8rem;">${insights.monthProgress}%</span>
+                    </div>
+                    <div style="background:var(--bg-primary); border-radius:20px; height:8px; overflow:hidden;">
+                        <div style="width:${insights.monthProgress}%; background:var(--secondary); height:100%; border-radius:20px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="background:var(--bg-card); border-radius:24px; padding:20px; border:1px solid var(--border-color);">
+                <h4 style="margin-bottom:16px; display:flex; align-items:center; gap:8px;"><i class="fas fa-calendar-week"></i> Most Active Days</h4>
+                <div style="max-height:200px; overflow-y:auto;">
+                    ${dayHtml || '<div style="padding:20px; text-align:center; color:var(--text-muted);">No data available</div>'}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Initialize or update chart
+    const ctx = document.getElementById('insightsChart');
+    if (ctx) {
+        if (window.insightsChartInstance) {
+            window.insightsChartInstance.destroy();
+        }
+        window.insightsChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: dateLabels.map(d => formatDate(d)),
+                datasets: [{
+                    label: 'Appointments',
+                    data: chartData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.raw} appointments` } }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Number of Appointments' }, grid: { color: 'var(--border-color)' } },
+                    x: { title: { display: true, text: 'Date' }, grid: { display: false } }
+                }
+            }
+        });
+        
+        // Chart view toggle
+        document.querySelectorAll('.chart-view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.getAttribute('data-view');
+                if (window.insightsChartInstance) {
+                    window.insightsChartInstance.config.type = view;
+                    window.insightsChartInstance.update();
+                }
+                document.querySelectorAll('.chart-view-btn').forEach(b => {
+                    if (b.getAttribute('data-view') === view) {
+                        b.style.background = 'var(--primary)';
+                        b.style.color = 'white';
+                        b.style.border = 'none';
+                    } else {
+                        b.style.background = 'var(--bg-primary)';
+                        b.style.color = 'var(--text-primary)';
+                        b.style.border = '1px solid var(--border-color)';
+                    }
+                });
+            });
+        });
+    }
+    
+    // Bind insight controls
+    const startInput = document.getElementById('insightStartDate');
+    const endInput = document.getElementById('insightEndDate');
+    const applyBtn = document.getElementById('applyInsightRange');
+    const resetBtn = document.getElementById('resetInsightRange');
+    
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            if (startInput && endInput) {
+                dashboardDateRange.start = startInput.value;
+                dashboardDateRange.end = endInput.value;
+                renderInsightsDashboard();
+                showToast('Insights updated', 'info');
+            }
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            dashboardDateRange.start = getTodayStr();
+            dashboardDateRange.end = getTodayStr();
+            if (startInput) startInput.value = dashboardDateRange.start;
+            if (endInput) endInput.value = dashboardDateRange.end;
+            renderInsightsDashboard();
+            showToast('Reset to today\'s range', 'info');
+        });
+    }
+}
+
+// ==================== REAL-TIME PRIORITY DASHBOARD ====================
 function updateRealTimePriorityDashboard() {
     const now = new Date();
     const timeZones = [
@@ -62,10 +437,9 @@ function updateRealTimePriorityDashboard() {
         { name: 'Pacific (PT)', zone: 'America/Los_Angeles', priority: 4, label: 'LOWER', color: '#8b5cf6' }
     ];
     
-    let dashboardHtml = '';
+    let anyPrimeTime = false;
     let bestZone = '';
     let bestTimeStr = '';
-    let anyPrimeTime = false;
     
     for (let tz of timeZones) {
         const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
@@ -84,47 +458,16 @@ function updateRealTimePriorityDashboard() {
                 bestTimeStr = timeStr;
             }
         }
-        
-        let statusBadge = '';
-        let statusClass = '';
-        if (isPrimeTime) {
-            statusBadge = '<span style="background:#10b981; color:white; padding:2px 8px; border-radius:20px; font-size:0.65rem; font-weight:600;">🔥 PRIME NOW</span>';
-            statusClass = 'prime-active';
-        } else {
-            statusBadge = '<span style="background:#64748b; color:white; padding:2px 8px; border-radius:20px; font-size:0.65rem;">Awaiting prime</span>';
-            statusClass = '';
-        }
-        
-        dashboardHtml += `
-            <div class="tz-priority-card ${statusClass}" style="background:var(--bg-primary); border-radius:16px; padding:12px 16px; margin-bottom:8px; border-left:4px solid ${tz.color};">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <div>
-                        <strong style="font-size:0.9rem;">${tz.name}</strong>
-                        <span style="font-size:0.7rem; color:${tz.color}; margin-left:8px;">${tz.label}</span>
-                    </div>
-                    <div style="font-size:1.2rem; font-weight:700; font-family:monospace;">${timeStr}</div>
-                    ${statusBadge}
-                </div>
-                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">
-                    Best: 10-11:30 AM & 2-4 PM local
-                </div>
-            </div>
-        `;
     }
     
-    // Update the priority indicator in the top bar
     const priorityText = document.getElementById('priorityTimeText');
     const tooltipStatus = document.getElementById('tooltipPrimeStatus');
     
     if (priorityText) {
         if (anyPrimeTime && bestZone) {
             priorityText.innerHTML = `<i class="fas fa-fire" style="color:#ff6b6b;"></i> ${bestZone} PRIME (${bestTimeStr})`;
-            priorityText.style.background = "rgba(16,185,129,0.2)";
-            if (tooltipStatus) {
-                tooltipStatus.innerHTML = `🔥 ACTIVE PRIME WINDOW in ${bestZone} - Best time to call NOW!`;
-            }
+            if (tooltipStatus) tooltipStatus.innerHTML = `🔥 ACTIVE PRIME WINDOW in ${bestZone} - Best time to call NOW!`;
         } else {
-            // Find next best time recommendation
             const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
             const hour = etTime.getHours();
             let nextInfo = '';
@@ -136,20 +479,6 @@ function updateRealTimePriorityDashboard() {
             if (tooltipStatus) tooltipStatus.innerHTML = `⏳ No active prime window · ${nextInfo}`;
         }
     }
-    
-    // Store dashboard HTML for modal
-    window.realtimeDashboardHtml = dashboardHtml;
-    window.realtimeSummary = {
-        anyPrimeTime,
-        bestZone,
-        bestTimeStr,
-        recommendations: timeZones.map(tz => {
-            const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
-            const hour = tzTime.getHours();
-            const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
-            return { zone: tz.name, time: tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), isPrime, label: tz.label };
-        })
-    };
 }
 
 // ==================== APPOINTMENT SYSTEM ====================
@@ -164,11 +493,20 @@ function loadAppointmentData() {
 function saveAppointments() {
     localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments));
     updateStats();
+    // Refresh insights if panel is visible
+    const insightsPanel = document.getElementById('insightsPanel');
+    if (insightsPanel && insightsPanel.style.display !== 'none') {
+        renderInsightsDashboard();
+    }
 }
 
 function saveGoals() {
     localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals));
     updateStats();
+    const insightsPanel = document.getElementById('insightsPanel');
+    if (insightsPanel && insightsPanel.style.display !== 'none') {
+        renderInsightsDashboard();
+    }
 }
 
 function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
@@ -537,7 +875,7 @@ function showVersionHistoryModal() {
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
-// ==================== FULLY FUNCTIONAL CALENDAR MODAL ====================
+// ==================== CALENDAR MODAL ====================
 function openCalendarModal() {
     if (calendarModal) return;
     const modal = document.createElement('div');
@@ -745,6 +1083,7 @@ function attachCalendarEvents() {
                 if (goalWeeklySpan) goalWeeklySpan.innerText = goals.weekly;
                 if (goalMonthlySpan) goalMonthlySpan.innerText = goals.monthly;
                 showToast('Goals updated');
+                renderInsightsDashboard();
             });
         }
     });
@@ -795,13 +1134,14 @@ function openEditAppointmentModal(oldDateStr, appt) {
         closeCalendarModal();
         openCalendarModal();
         showToast('Appointment updated and moved to ' + newDate, 'success');
+        renderInsightsDashboard();
     });
     
     document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
     modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
 }
 
-// ==================== OTHER MODAL FUNCTIONS ====================
+// ==================== MODAL FUNCTIONS ====================
 function openQuickReportWithDate(defaultDate) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -840,6 +1180,7 @@ function openQuickReportWithDate(defaultDate) {
         modal.remove();
         if (calendarModal) openCalendarModal();
         showToast('Appointment saved!', 'success');
+        renderInsightsDashboard();
     });
     document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
@@ -849,7 +1190,6 @@ function openQuickReport() {
     openQuickReportWithDate(getTodayStr());
 }
 
-// ==================== CENTRALIZED CALL PRIORITY PREDICTOR (ALL TIME ZONES) ====================
 function openPriorityModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -946,15 +1286,16 @@ function toggleTheme() {
     document.body.classList.toggle('dark');
     localStorage.setItem('scriptflow_theme_main', document.body.classList.contains('dark') ? 'dark' : 'light');
     showToast(`${document.body.classList.contains('dark') ? 'Dark' : 'Light'} mode enabled`, 'info');
+    renderInsightsDashboard();
 }
 
 function openHelpModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
-        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Dashboard</strong><br>• Hover over the colored indicator next to Quick Add button<br>• Click "Call Priority Predictor" in Tools for full dashboard<br>• Shows all 4 US time zones with real-time status<br>• Green border = PRIME TIME - Best time to call NOW</div>
-        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click "Appointment Calendar" in Tools menu<br>• Edit appointments to change date/time<br>• Delete appointments with confirmation<br>• Copy appointment details to clipboard</div>
-        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant script switching<br>• Edit scripts with undo/redo (Ctrl+Z / Ctrl+Y)</div>
+        <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>• View total appointments, unique businesses, and goal progress<br>• Select date range to filter insights<br>• Toggle between bar/line chart views<br>• See assignment and role distribution</div>
+        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Dashboard</strong><br>• Shows all 4 US time zones with real-time status<br>• Green border = PRIME TIME - Best time to call NOW</div>
+        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click "Appointment Calendar" in Tools menu<br>• Edit/Delete appointments, change dates</div>
         <button id="closeHelp" class="btn-icon" style="margin-top:16px; width:100%;"><i class="fas fa-check"></i> Got it</button></div>`;
     document.body.appendChild(modal);
     document.getElementById('closeHelp').addEventListener('click', () => modal.remove());
@@ -1003,6 +1344,19 @@ function toggleToolsMenu() {
         if (toolsChevronElem) toolsChevronElem.classList.remove('rotated');
     }
     localStorage.setItem('toolsMenuOpen', toolsOpen);
+}
+
+function toggleInsights() {
+    const insightsPanel = document.getElementById('insightsPanel');
+    const insightsBtn = document.getElementById('insightsNavBtn');
+    if (insightsPanel.style.display === 'none') {
+        insightsPanel.style.display = 'block';
+        if (insightsBtn) insightsBtn.style.background = 'var(--sidebar-active)';
+        renderInsightsDashboard();
+    } else {
+        insightsPanel.style.display = 'none';
+        if (insightsBtn) insightsBtn.style.background = 'transparent';
+    }
 }
 
 // ==================== INITIALIZATION ====================
@@ -1078,12 +1432,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (helpNav) helpNav.addEventListener('click', openHelpModal);
     const resetNav = document.getElementById('resetNavBtn');
     if (resetNav) resetNav.addEventListener('click', factoryReset);
+    const insightsNav = document.getElementById('insightsNavBtn');
+    if (insightsNav) insightsNav.addEventListener('click', toggleInsights);
     const scriptSearch = document.getElementById('scriptSearch');
     if (scriptSearch) {
         scriptSearch.addEventListener('input', (e) => {
             searchTerm = e.target.value.toLowerCase();
             renderSidebar();
         });
+    }
+    
+    // Initialize Insights Panel (hidden by default, toggle to show)
+    const insightsPanel = document.getElementById('insightsPanel');
+    if (insightsPanel) {
+        insightsPanel.style.display = 'none';
     }
     
     // Keyboard shortcuts
