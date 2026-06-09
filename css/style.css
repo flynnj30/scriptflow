@@ -758,3 +758,126 @@ body {
     .top-bar { flex-direction: column; }
     .stats-row { justify-content: space-between; }
 }
+/* ==================== INSIGHTS DASHBOARD STYLES ==================== */
+#insightsPanel {
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.4s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#insightsPanel .stat-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#insightsPanel .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+#insightsPanel .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#insightsPanel .stat-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+}
+
+#insightsPanel .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+#insightsPanel .chart-container {
+    background: var(--bg-card);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+#insightsPanel .insights-section {
+    background: var(--bg-card);
+    border-radius: 24px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+#insightsPanel .progress-bar-container {
+    background: var(--bg-primary);
+    border-radius: 20px;
+    height: 8px;
+    overflow: hidden;
+}
+
+#insightsPanel .progress-bar-fill {
+    height: 100%;
+    border-radius: 20px;
+    transition: width 0.3s ease;
+}
+
+#insightsPanel .distribution-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#insightsPanel .distribution-item:last-child {
+    border-bottom: none;
+}
+
+#insightsPanel .distribution-name {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#insightsPanel .distribution-value {
+    font-weight: 600;
+}
+
+#insightsPanel .date-range-selector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+#insightsPanel .date-input {
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+
+/* Chart view toggle buttons */
+.chart-view-btn {
+    transition: all 0.2s ease;
+}
+
+.chart-view-btn:hover {
+    transform: translateY(-1px);
+}
