@@ -1,6 +1,3 @@
-// ==================== SCRIPTFLOW PRO - FULLY FUNCTIONAL ====================
-// All features working: Appointment Calendar with Edit/Delete/Move, Scripts, Priority Predictor
-
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
 let appointments = {};
@@ -54,37 +51,105 @@ function replaceNameInScript(content) {
     return content.replace(/\[Your Name\]/gi, userName);
 }
 
-// ==================== REAL-TIME PRIORITY INDICATOR ====================
-function updatePriorityIndicator() {
+// ==================== CENTRALIZED REAL-TIME PRIORITY DASHBOARD ====================
+// Shows ALL time zones with color-coded priority indicators
+function updateRealTimePriorityDashboard() {
     const now = new Date();
-    const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const hour = etTime.getHours();
-    const minute = etTime.getMinutes();
-    const isWeekday = etTime.getDay() >= 1 && etTime.getDay() <= 5;
-    const isPrimeMorning = (hour === 10) || (hour === 11 && minute <= 30);
-    const isPrimeAfternoon = (hour >= 14 && hour <= 15) || (hour === 16 && minute === 0);
-    const isPrimeTime = (isPrimeMorning || isPrimeAfternoon) && isWeekday;
+    const timeZones = [
+        { name: 'Eastern (ET)', zone: 'America/New_York', priority: 1, label: '★ PRIORITY', color: '#10b981' },
+        { name: 'Central (CT)', zone: 'America/Chicago', priority: 2, label: 'HIGH', color: '#3b82f6' },
+        { name: 'Mountain (MT)', zone: 'America/Denver', priority: 3, label: 'MEDIUM', color: '#f59e0b' },
+        { name: 'Pacific (PT)', zone: 'America/Los_Angeles', priority: 4, label: 'LOWER', color: '#8b5cf6' }
+    ];
     
-    const timeStr = etTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const dayName = etTime.toLocaleDateString('en-US', { weekday: 'short' });
+    let dashboardHtml = '';
+    let bestZone = '';
+    let bestTimeStr = '';
+    let anyPrimeTime = false;
     
+    for (let tz of timeZones) {
+        const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
+        const hour = tzTime.getHours();
+        const minute = tzTime.getMinutes();
+        const isWeekday = tzTime.getDay() >= 1 && tzTime.getDay() <= 5;
+        const isPrimeMorning = (hour === 10) || (hour === 11 && minute <= 30);
+        const isPrimeAfternoon = (hour >= 14 && hour <= 15) || (hour === 16 && minute === 0);
+        const isPrimeTime = (isPrimeMorning || isPrimeAfternoon) && isWeekday;
+        const timeStr = tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        if (isPrimeTime) {
+            anyPrimeTime = true;
+            if (!bestZone) {
+                bestZone = tz.name;
+                bestTimeStr = timeStr;
+            }
+        }
+        
+        let statusBadge = '';
+        let statusClass = '';
+        if (isPrimeTime) {
+            statusBadge = '<span style="background:#10b981; color:white; padding:2px 8px; border-radius:20px; font-size:0.65rem; font-weight:600;">🔥 PRIME NOW</span>';
+            statusClass = 'prime-active';
+        } else {
+            statusBadge = '<span style="background:#64748b; color:white; padding:2px 8px; border-radius:20px; font-size:0.65rem;">Awaiting prime</span>';
+            statusClass = '';
+        }
+        
+        dashboardHtml += `
+            <div class="tz-priority-card ${statusClass}" style="background:var(--bg-primary); border-radius:16px; padding:12px 16px; margin-bottom:8px; border-left:4px solid ${tz.color};">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="font-size:0.9rem;">${tz.name}</strong>
+                        <span style="font-size:0.7rem; color:${tz.color}; margin-left:8px;">${tz.label}</span>
+                    </div>
+                    <div style="font-size:1.2rem; font-weight:700; font-family:monospace;">${timeStr}</div>
+                    ${statusBadge}
+                </div>
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">
+                    Best: 10-11:30 AM & 2-4 PM local
+                </div>
+            </div>
+        `;
+    }
+    
+    // Update the priority indicator in the top bar
     const priorityText = document.getElementById('priorityTimeText');
     const tooltipStatus = document.getElementById('tooltipPrimeStatus');
     
     if (priorityText) {
-        if (isPrimeTime) {
-            priorityText.innerHTML = `<i class="fas fa-fire"></i> PRIME TIME (${dayName} ${timeStr} ET)`;
-            if (tooltipStatus) tooltipStatus.innerHTML = '🔥 ACTIVE PRIME WINDOW - High answer rate expected';
+        if (anyPrimeTime && bestZone) {
+            priorityText.innerHTML = `<i class="fas fa-fire" style="color:#ff6b6b;"></i> ${bestZone} PRIME (${bestTimeStr})`;
+            priorityText.style.background = "rgba(16,185,129,0.2)";
+            if (tooltipStatus) {
+                tooltipStatus.innerHTML = `🔥 ACTIVE PRIME WINDOW in ${bestZone} - Best time to call NOW!`;
+            }
         } else {
+            // Find next best time recommendation
+            const etTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+            const hour = etTime.getHours();
             let nextInfo = '';
             if (hour < 10) nextInfo = 'Next prime window: 10-11:30 AM ET';
             else if (hour < 14) nextInfo = 'Next prime window: 2-4 PM ET';
             else if (hour >= 16) nextInfo = 'Tomorrow 10-11:30 AM ET';
             else nextInfo = 'Check back during 10-11:30 AM or 2-4 PM ET';
-            priorityText.innerHTML = `<i class="fas fa-clock"></i> ET: ${timeStr}`;
-            if (tooltipStatus) tooltipStatus.innerHTML = `⏳ Currently NOT prime time · ${nextInfo}`;
+            priorityText.innerHTML = `<i class="fas fa-clock"></i> ${nextInfo}`;
+            if (tooltipStatus) tooltipStatus.innerHTML = `⏳ No active prime window · ${nextInfo}`;
         }
     }
+    
+    // Store dashboard HTML for modal
+    window.realtimeDashboardHtml = dashboardHtml;
+    window.realtimeSummary = {
+        anyPrimeTime,
+        bestZone,
+        bestTimeStr,
+        recommendations: timeZones.map(tz => {
+            const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
+            const hour = tzTime.getHours();
+            const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
+            return { zone: tz.name, time: tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }), isPrime, label: tz.label };
+        })
+    };
 }
 
 // ==================== APPOINTMENT SYSTEM ====================
@@ -569,12 +634,10 @@ function renderCalendarModal() {
         </div>
     `;
     
-    // Attach all calendar event listeners
     attachCalendarEvents();
 }
 
 function attachCalendarEvents() {
-    // Day selection
     document.querySelectorAll('.cal-day[data-date]').forEach(el => {
         el.addEventListener('click', () => {
             selectedCalDate = el.getAttribute('data-date');
@@ -582,7 +645,6 @@ function attachCalendarEvents() {
         });
     });
     
-    // Date picker
     const datePicker = document.getElementById('quickDatePicker');
     if (datePicker) {
         datePicker.addEventListener('change', (e) => {
@@ -591,7 +653,6 @@ function attachCalendarEvents() {
         });
     }
     
-    // Delete buttons
     document.querySelectorAll('.delete-appt-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -605,7 +666,6 @@ function attachCalendarEvents() {
         });
     });
     
-    // Edit buttons
     document.querySelectorAll('.edit-appt-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -616,7 +676,6 @@ function attachCalendarEvents() {
         });
     });
     
-    // Copy single buttons
     document.querySelectorAll('.copy-single-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -631,7 +690,6 @@ function attachCalendarEvents() {
         });
     });
     
-    // Navigation buttons
     const prevBtn = document.getElementById('calPrevBtn');
     const nextBtn = document.getElementById('calNextBtn');
     const todayBtn = document.getElementById('calTodayBtn');
@@ -639,7 +697,6 @@ function attachCalendarEvents() {
     if (nextBtn) nextBtn.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarModal(); });
     if (todayBtn) todayBtn.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
     
-    // Save note
     const saveNoteBtn = document.getElementById('saveNoteBtn');
     if (saveNoteBtn) {
         saveNoteBtn.addEventListener('click', () => {
@@ -651,7 +708,6 @@ function attachCalendarEvents() {
         });
     }
     
-    // Quick add button
     const quickAddBtn = document.getElementById('quickAddForDate');
     if (quickAddBtn) {
         quickAddBtn.addEventListener('click', () => {
@@ -660,11 +716,9 @@ function attachCalendarEvents() {
         });
     }
     
-    // Close button
     const closeBtn = document.getElementById('closeCalBtn');
     if (closeBtn) closeBtn.addEventListener('click', closeCalendarModal);
     
-    // Copy all button
     const copyAllBtn = document.getElementById('copyAllReportsBtn');
     if (copyAllBtn) {
         copyAllBtn.addEventListener('click', () => {
@@ -677,7 +731,6 @@ function attachCalendarEvents() {
         });
     }
     
-    // Goal inputs
     ['goalDailyInput', 'goalWeeklyInput', 'goalMonthlyInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -685,7 +738,6 @@ function attachCalendarEvents() {
                 const map = { goalDailyInput: 'daily', goalWeeklyInput: 'weekly', goalMonthlyInput: 'monthly' };
                 goals[map[id]] = parseInt(el.value) || (id === 'goalDailyInput' ? 3 : id === 'goalWeeklyInput' ? 15 : 60);
                 saveGoals();
-                // Update display in top bar
                 const goalDailySpan = document.getElementById('goalDaily');
                 const goalWeeklySpan = document.getElementById('goalWeekly');
                 const goalMonthlySpan = document.getElementById('goalMonthly');
@@ -727,14 +779,9 @@ function openEditAppointmentModal(oldDateStr, appt) {
             return;
         }
         
-        // Delete from old date
         deleteAppointment(oldDateStr, appt.id);
-        
-        // Add to new date with same ID
         addAppointment(
-            newDate,
-            updatedBusiness,
-            updatedName,
+            newDate, updatedBusiness, updatedName,
             document.getElementById('editRole').value,
             document.getElementById('editPhone').value,
             document.getElementById('editTime').value,
@@ -802,38 +849,81 @@ function openQuickReport() {
     openQuickReportWithDate(getTodayStr());
 }
 
+// ==================== CENTRALIZED CALL PRIORITY PREDICTOR (ALL TIME ZONES) ====================
 function openPriorityModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     const now = new Date();
     const timeZones = [
-        { name: 'Eastern (ET) ★ PRIORITY', zone: 'America/New_York' },
-        { name: 'Central (CT)', zone: 'America/Chicago' },
-        { name: 'Mountain (MT)', zone: 'America/Denver' },
-        { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }
+        { name: 'Eastern (ET) ★ PRIORITY', zone: 'America/New_York', priority: 1, recommendation: 'Call NOW if within 10-11:30 AM or 2-4 PM' },
+        { name: 'Central (CT)', zone: 'America/Chicago', priority: 2, recommendation: 'Second priority - good connection rates' },
+        { name: 'Mountain (MT)', zone: 'America/Denver', priority: 3, recommendation: 'Medium priority - best in late morning' },
+        { name: 'Pacific (PT)', zone: 'America/Los_Angeles', priority: 4, recommendation: 'Lower priority - call later in day' }
     ];
+    
     let zonesHtml = '';
-    timeZones.forEach(tz => {
+    let activePrimeZones = [];
+    
+    for (let tz of timeZones) {
         const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
         const hour = tzTime.getHours();
-        const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
-        zonesHtml += `<div class="timezone-card ${isPrime ? 'recommended' : ''}">
-            <div class="timezone-name" style="font-weight:700;">${tz.name}</div>
-            <div style="font-size:1.3rem; font-weight:700; margin:8px 0; color:var(--primary);">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-            <div class="best-time-badge ${isPrime ? 'best-time-high' : ''}" style="${!isPrime ? 'background:var(--primary); color:white;' : ''}">${isPrime ? '🔥 PRIME TIME' : 'Call during 10-11:30 AM or 2-4 PM'}</div>
-        </div>`;
-    });
-    modal.innerHTML = `<div class="modal-card priority-modal" style="width:650px; max-width:95%;">
+        const minute = tzTime.getMinutes();
+        const isWeekday = tzTime.getDay() >= 1 && tzTime.getDay() <= 5;
+        const isPrimeMorning = (hour === 10) || (hour === 11 && minute <= 30);
+        const isPrimeAfternoon = (hour >= 14 && hour <= 15) || (hour === 16 && minute === 0);
+        const isPrimeTime = (isPrimeMorning || isPrimeAfternoon) && isWeekday;
+        const timeStr = tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        if (isPrimeTime) {
+            activePrimeZones.push(tz.name);
+        }
+        
+        const priorityLevel = tz.priority === 1 ? 'HIGHEST' : (tz.priority === 2 ? 'HIGH' : (tz.priority === 3 ? 'MEDIUM' : 'LOWER'));
+        const priorityColor = tz.priority === 1 ? '#10b981' : (tz.priority === 2 ? '#3b82f6' : (tz.priority === 3 ? '#f59e0b' : '#8b5cf6'));
+        
+        zonesHtml += `
+            <div class="timezone-card ${isPrimeTime ? 'recommended' : ''}" style="border-left:4px solid ${priorityColor};">
+                <div class="timezone-name" style="font-weight:700; font-size:1rem;">${tz.name}</div>
+                <div style="font-size:1.5rem; font-weight:800; margin:8px 0; color:var(--primary);">${timeStr}</div>
+                <div class="best-time-badge ${isPrimeTime ? 'best-time-high' : ''}" style="${!isPrimeTime ? 'background:var(--primary); color:white;' : ''}">
+                    ${isPrimeTime ? '🔥 PRIME TIME - CALL NOW' : 'Awaiting Prime Window'}
+                </div>
+                <div style="font-size:0.7rem; margin-top:8px; color:var(--text-muted);">Priority: ${priorityLevel}</div>
+                <div style="font-size:0.7rem; margin-top:4px;">${tz.recommendation}</div>
+            </div>
+        `;
+    }
+    
+    const primeMessage = activePrimeZones.length > 0 
+        ? `<div style="background:#10b981; color:white; padding:12px; border-radius:16px; margin-bottom:16px; text-align:center;">
+            <strong><i class="fas fa-bell"></i> ACTIVE PRIME WINDOWS NOW:</strong> ${activePrimeZones.join(', ')}
+           </div>`
+        : `<div style="background:var(--warning); color:#1e293b; padding:12px; border-radius:16px; margin-bottom:16px; text-align:center;">
+            <strong><i class="fas fa-clock"></i> No Active Prime Windows</strong><br>Next prime window: 10-11:30 AM or 2-4 PM local time
+           </div>`;
+    
+    modal.innerHTML = `<div class="modal-card priority-modal" style="width:700px; max-width:95%;">
         <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color:white; padding:20px; border-radius:24px; margin-bottom:20px; text-align:center;">
-            <h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2>
-            <div style="margin-top:8px;">Best times to reach US business owners</div>
+            <h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY DASHBOARD</h2>
+            <div style="margin-top:8px;">All US Time Zones - Call When Green</div>
         </div>
-        <div style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(59,130,246,0.15)); border-radius:20px; padding:20px; margin-bottom:20px; text-align:center; border:2px solid var(--success);">
-            <strong>🎯 EASTERN TIME (ET) IS PRIORITY</strong><br>Most US decision-makers operate on ET. Schedule calls 10-11:30 AM or 2-4 PM ET for 85-95% connection rates.
+        ${primeMessage}
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:20px;">
+            ${zonesHtml}
         </div>
-        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:20px;">${zonesHtml}</div>
-        <div style="padding:16px; background:var(--bg-primary); border-radius:20px;">
-            <strong>💡 PRO TIPS:</strong><br>• Best days: Tuesday, Wednesday, Thursday<br>• Avoid: Monday mornings & Friday afternoons<br>• Lunch hour (12-1 PM local) has <30% answer rate
+        <div style="padding:16px; background:var(--bg-primary); border-radius:20px; margin-top:8px;">
+            <strong>🎯 CALL PRIORITY ORDER (Highest to Lowest):</strong><br>
+            1. <span style="color:#10b981;">Eastern (ET)</span> - Most business owners, best connection rates<br>
+            2. <span style="color:#3b82f6;">Central (CT)</span> - Strong second priority<br>
+            3. <span style="color:#f59e0b;">Mountain (MT)</span> - Medium priority<br>
+            4. <span style="color:#8b5cf6;">Pacific (PT)</span> - Call later in their day
+        </div>
+        <div style="padding:16px; background:var(--bg-primary); border-radius:20px; margin-top:12px;">
+            <strong>💡 BEST PRACTICES:</strong><br>
+            • Best days: Tuesday, Wednesday, Thursday<br>
+            • Best hours: 10-11:30 AM or 2-4 PM local time<br>
+            • Avoid: Monday mornings & Friday afternoons<br>
+            • Lunch hour (12-1 PM) has <30% answer rate
         </div>
         <div style="margin-top:20px;"><button id="closePriorityBtn" class="btn-icon" style="background:var(--primary); width:100%;"><i class="fas fa-phone"></i> Start Calling</button></div>
     </div>`;
@@ -862,10 +952,9 @@ function openHelpModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
-        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Indicator</strong><br>Hover over the colored indicator next to Quick Add button - shows Eastern Time and prime calling windows</div>
-        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click "Appointment Calendar" in Tools menu<br>• Edit appointments to change date/time<br>• Delete appointments with confirmation<br>• Copy appointment details to clipboard<br>• Set daily/weekly/monthly goals</div>
-        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant script switching<br>• Edit scripts with undo/redo (Ctrl+Z / Ctrl+Y)<br>• Version history saves all changes</div>
-        <div style="margin:16px 0;"><strong>⚙️ Tools</strong><br>• Export all appointments to CSV<br>• Set your name to personalize scripts<br>• Dark/Light theme toggle</div>
+        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Dashboard</strong><br>• Hover over the colored indicator next to Quick Add button<br>• Click "Call Priority Predictor" in Tools for full dashboard<br>• Shows all 4 US time zones with real-time status<br>• Green border = PRIME TIME - Best time to call NOW</div>
+        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click "Appointment Calendar" in Tools menu<br>• Edit appointments to change date/time<br>• Delete appointments with confirmation<br>• Copy appointment details to clipboard</div>
+        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant script switching<br>• Edit scripts with undo/redo (Ctrl+Z / Ctrl+Y)</div>
         <button id="closeHelp" class="btn-icon" style="margin-top:16px; width:100%;"><i class="fas fa-check"></i> Got it</button></div>`;
     document.body.appendChild(modal);
     document.getElementById('closeHelp').addEventListener('click', () => modal.remove());
@@ -1021,8 +1110,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Start real-time priority indicator
-    updatePriorityIndicator();
-    setInterval(updatePriorityIndicator, 1000);
+    // Start real-time priority updates
+    updateRealTimePriorityDashboard();
+    setInterval(updateRealTimePriorityDashboard, 1000);
     setInterval(() => updateStats(), 5000);
 });
