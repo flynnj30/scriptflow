@@ -76,9 +76,10 @@
             </div>
         </div>
         
-        <!-- SCRIPT CONTENT AREA (Replaced when tools are used) -->
-        <div id="rightPanelContainer">
-            <div class="script-card" id="scriptCard">
+        <!-- RIGHT PANEL - Shows Scripts OR Feature Pages -->
+        <div id="rightPanel">
+            <!-- Script Content (shown by default) -->
+            <div id="scriptPanel" class="script-card">
                 <div class="script-header-bar">
                     <div class="script-title-area">
                         <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
@@ -98,14 +99,20 @@
                 </div>
                 <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
             </div>
+            
+            <!-- Feature Panel (hidden by default, shown when Insights or Calendar is clicked) -->
+            <div id="featurePanel" class="feature-panel" style="display: none;">
+                <div class="feature-panel-header">
+                    <h2 id="featurePanelTitle">Feature</h2>
+                    <button id="closeFeaturePanelBtn" class="btn-icon"><i class="fas fa-times"></i> Close</button>
+                </div>
+                <div class="feature-panel-body" id="featurePanelBody">
+                    <!-- Dynamic content loads here -->
+                </div>
+            </div>
         </div>
         
-        <!-- BACK BUTTON (shows when a feature is active) -->
-        <div id="backToScriptsBtn" class="back-to-scripts-btn" style="display: none;">
-            <button class="btn-icon" id="backToScriptsAction"><i class="fas fa-arrow-left"></i> Back to Scripts</button>
-        </div>
-        
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool to replace the script area · Click "Back to Scripts" to return</div>
+        <div class="footer-note"><i class="fas fa-chart-line"></i> Click Insights or Calendar to replace script area · Priority Predictor opens as popup</div>
     </div>
 </div>
 
