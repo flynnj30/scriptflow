@@ -1,4 +1,5 @@
 // ==================== SCRIPTFLOW PRO - COMPLETE APPLICATION ====================
+// All features fully functional: Appointment Calendar with Edit/Delete/Move, Scripts, Priority Predictor
 
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
@@ -11,7 +12,12 @@ let searchTerm = "";
 let customOrder = [];
 let versionHistory = {};
 let currentVersionIndex = {};
-let currentCalDate = new Date(), selectedCalDate = new Date().toISOString().split('T')[0], calendarModal = null;
+
+// Calendar Modal State
+let currentCalDate = new Date();
+let selectedCalDate = new Date().toISOString().split('T')[0];
+let calendarModal = null;
+
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 
 // ==================== HELPER FUNCTIONS ====================
@@ -68,7 +74,7 @@ function updatePriorityIndicator() {
     if (priorityText) {
         if (isPrimeTime) {
             priorityText.innerHTML = `<i class="fas fa-fire"></i> PRIME TIME (${dayName} ${timeStr} ET)`;
-            tooltipStatus.innerHTML = '🔥 ACTIVE PRIME WINDOW - High answer rate expected';
+            if (tooltipStatus) tooltipStatus.innerHTML = '🔥 ACTIVE PRIME WINDOW - High answer rate expected';
         } else {
             let nextInfo = '';
             if (hour < 10) nextInfo = 'Next prime window: 10-11:30 AM ET';
@@ -76,7 +82,7 @@ function updatePriorityIndicator() {
             else if (hour >= 16) nextInfo = 'Tomorrow 10-11:30 AM ET';
             else nextInfo = 'Check back during 10-11:30 AM or 2-4 PM ET';
             priorityText.innerHTML = `<i class="fas fa-clock"></i> ET: ${timeStr} (${nextInfo})`;
-            tooltipStatus.innerHTML = `⏳ Currently NOT prime time · ${nextInfo}`;
+            if (tooltipStatus) tooltipStatus.innerHTML = `⏳ Currently NOT prime time · ${nextInfo}`;
         }
     }
 }
@@ -129,12 +135,18 @@ function getMonthCount() {
 }
 
 function updateStats() {
-    document.getElementById('statToday').innerText = getTodayCount();
-    document.getElementById('statWeek').innerText = getWeekCount();
-    document.getElementById('statMonth').innerText = getMonthCount();
-    document.getElementById('goalDaily').innerText = goals.daily;
-    document.getElementById('goalWeekly').innerText = goals.weekly;
-    document.getElementById('goalMonthly').innerText = goals.monthly;
+    const todayEl = document.getElementById('statToday');
+    const weekEl = document.getElementById('statWeek');
+    const monthEl = document.getElementById('statMonth');
+    if (todayEl) todayEl.innerText = getTodayCount();
+    if (weekEl) weekEl.innerText = getWeekCount();
+    if (monthEl) monthEl.innerText = getMonthCount();
+    const goalDaily = document.getElementById('goalDaily');
+    const goalWeekly = document.getElementById('goalWeekly');
+    const goalMonthly = document.getElementById('goalMonthly');
+    if (goalDaily) goalDaily.innerText = goals.daily;
+    if (goalWeekly) goalWeekly.innerText = goals.weekly;
+    if (goalMonthly) goalMonthly.innerText = goals.monthly;
 }
 
 function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null) {
@@ -209,7 +221,8 @@ function undoScript(id) {
     scripts[id].content = versionHistory[id][currentVersionIndex[id]].content;
     saveAllScripts();
     if (!isEditing && currentScriptId === id) loadScript(id);
-    else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content;
+    else if (isEditing && currentScriptId === id && document.getElementById('editTextarea')) 
+        document.getElementById('editTextarea').value = scripts[id].content;
     showToast('Undo successful', 'info');
 }
 
@@ -222,7 +235,8 @@ function redoScript(id) {
     scripts[id].content = versionHistory[id][currentVersionIndex[id]].content;
     saveAllScripts();
     if (!isEditing && currentScriptId === id) loadScript(id);
-    else if (isEditing && currentScriptId === id) document.getElementById('editTextarea').value = scripts[id].content;
+    else if (isEditing && currentScriptId === id && document.getElementById('editTextarea')) 
+        document.getElementById('editTextarea').value = scripts[id].content;
     showToast('Redo successful', 'info');
 }
 
@@ -244,10 +258,13 @@ function loadScripts() {
 function saveAllScripts() {
     localStorage.setItem('scriptflow_pro_scripts_main', JSON.stringify(scripts));
     localStorage.setItem('scriptflow_order_main', JSON.stringify(customOrder));
-    document.getElementById('saveStatus').innerHTML = '<i class="fas fa-check"></i> Saved';
-    setTimeout(() => {
-        if (!isEditing) document.getElementById('saveStatus').innerHTML = '<i class="fas fa-save"></i> Auto';
-    }, 1500);
+    const saveStatus = document.getElementById('saveStatus');
+    if (saveStatus) {
+        saveStatus.innerHTML = '<i class="fas fa-check"></i> Saved';
+        setTimeout(() => {
+            if (!isEditing && saveStatus) saveStatus.innerHTML = '<i class="fas fa-save"></i> Auto';
+        }, 1500);
+    }
 }
 
 function getOrderedVisible() {
@@ -265,6 +282,7 @@ function getKeyMapping() {
 
 function renderSidebar() {
     const container = document.getElementById('scriptListContainer');
+    if (!container) return;
     const visible = getOrderedVisible();
     if (!visible.length) {
         container.innerHTML = '<div style="padding:20px; color: var(--sidebar-text-secondary);">No scripts</div>';
@@ -286,8 +304,11 @@ function renderSidebar() {
     container.innerHTML = html;
     attachScriptEvents();
     const idxCur = visible.indexOf(currentScriptId);
-    document.getElementById('activeShortcutHint').innerHTML = idxCur !== -1 && idxCur < 9 ? `Key: ${idxCur + 1}` : `Key: —`;
-    if (versionHistory[currentScriptId]) document.getElementById('versionNumber').innerText = `${currentVersionIndex[currentScriptId] + 1}/${versionHistory[currentScriptId].length}`;
+    const shortcutHint = document.getElementById('activeShortcutHint');
+    if (shortcutHint) shortcutHint.innerHTML = idxCur !== -1 && idxCur < 9 ? `Key: ${idxCur + 1}` : `Key: —`;
+    const versionNum = document.getElementById('versionNumber');
+    if (versionNum && versionHistory[currentScriptId]) 
+        versionNum.innerText = `${currentVersionIndex[currentScriptId] + 1}/${versionHistory[currentScriptId].length}`;
 }
 
 function attachScriptEvents() {
@@ -308,7 +329,10 @@ function attachScriptEvents() {
                 scripts[id].name = newName.trim();
                 saveAllScripts();
                 renderSidebar();
-                if (currentScriptId === id) document.getElementById('currentScriptName').innerHTML = scripts[id].name;
+                if (currentScriptId === id) {
+                    const nameEl = document.getElementById('currentScriptName');
+                    if (nameEl) nameEl.innerHTML = scripts[id].name;
+                }
                 showToast('Script renamed', 'success');
             }
         });
@@ -337,24 +361,35 @@ function attachScriptEvents() {
 function loadScript(id) {
     if (!scripts[id] || isEditing) return;
     currentScriptId = id;
-    document.getElementById('currentScriptName').innerHTML = scripts[id].name;
+    const nameEl = document.getElementById('currentScriptName');
+    if (nameEl) nameEl.innerHTML = scripts[id].name;
     const displayContent = replaceNameInScript(scripts[id].content);
-    document.getElementById('scriptContent').innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g, '<br>')}</div>`;
+    const contentEl = document.getElementById('scriptContent');
+    if (contentEl) contentEl.innerHTML = `<div class="script-display">${escapeHtml(displayContent).replace(/\n/g, '<br>')}</div>`;
     renderSidebar();
 }
 
 function enterEdit() {
     isEditing = true;
-    document.getElementById('editScriptBtn').style.display = 'none';
-    document.getElementById('saveScriptBtn').style.display = 'inline-flex';
-    document.getElementById('cancelEditBtn').style.display = 'inline-flex';
-    document.getElementById('scriptContent').innerHTML = `<textarea id="editTextarea" class="edit-textarea">${escapeHtml(scripts[currentScriptId].content)}</textarea>`;
-    document.getElementById('editTextarea').focus();
+    const editBtn = document.getElementById('editScriptBtn');
+    const saveBtn = document.getElementById('saveScriptBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    if (editBtn) editBtn.style.display = 'none';
+    if (saveBtn) saveBtn.style.display = 'inline-flex';
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
+    const contentEl = document.getElementById('scriptContent');
+    if (contentEl) {
+        contentEl.innerHTML = `<textarea id="editTextarea" class="edit-textarea">${escapeHtml(scripts[currentScriptId].content)}</textarea>`;
+        const textarea = document.getElementById('editTextarea');
+        if (textarea) textarea.focus();
+    }
     showToast('Edit mode enabled', 'info');
 }
 
 function saveEdit() {
-    const newContent = document.getElementById('editTextarea').value;
+    const textarea = document.getElementById('editTextarea');
+    if (!textarea) return;
+    const newContent = textarea.value;
     scripts[currentScriptId].content = newContent;
     saveVersion(currentScriptId, newContent);
     saveAllScripts();
@@ -364,9 +399,12 @@ function saveEdit() {
 
 function cancelEdit() {
     isEditing = false;
-    document.getElementById('editScriptBtn').style.display = 'inline-flex';
-    document.getElementById('saveScriptBtn').style.display = 'none';
-    document.getElementById('cancelEditBtn').style.display = 'none';
+    const editBtn = document.getElementById('editScriptBtn');
+    const saveBtn = document.getElementById('saveScriptBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    if (editBtn) editBtn.style.display = 'inline-flex';
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (cancelBtn) cancelBtn.style.display = 'none';
     loadScript(currentScriptId);
 }
 
@@ -424,7 +462,8 @@ function showVersionHistoryModal() {
             scripts[currentScriptId].content = versionHistory[currentScriptId][idx].content;
             saveAllScripts();
             if (!isEditing) loadScript(currentScriptId);
-            else if (isEditing) document.getElementById('editTextarea').value = scripts[currentScriptId].content;
+            else if (isEditing && document.getElementById('editTextarea')) 
+                document.getElementById('editTextarea').value = scripts[currentScriptId].content;
             showToast('Version restored', 'success');
             modal.remove();
         });
@@ -432,7 +471,248 @@ function showVersionHistoryModal() {
     document.getElementById('closeHistBtn').addEventListener('click', () => modal.remove());
 }
 
-// ==================== MODAL FUNCTIONS ====================
+// ==================== FULLY FUNCTIONAL CALENDAR MODAL ====================
+function openCalendarModal() {
+    if (calendarModal) return;
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal-card" id="calModalInner"></div>`;
+    document.body.appendChild(modal);
+    calendarModal = modal;
+    renderCalendarModal();
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeCalendarModal(); });
+}
+
+function closeCalendarModal() {
+    if (calendarModal) {
+        calendarModal.remove();
+        calendarModal = null;
+    }
+}
+
+function getAppointmentDots(count) {
+    if (count === 0) return '<div class="appointment-dots"></div>';
+    let dots = '<div class="appointment-dots">';
+    for (let i = 0; i < Math.min(count, 3); i++) dots += `<div class="appointment-dot"></div>`;
+    if (count > 3) dots += `<span style="font-size:0.65rem; margin-left:2px;">+${count - 3}</span>`;
+    dots += '</div>';
+    return dots;
+}
+
+function renderCalendarModal() {
+    const inner = document.getElementById('calModalInner');
+    if (!inner) return;
+    
+    const year = currentCalDate.getFullYear();
+    const month = currentCalDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    let daysHtml = '';
+    for (let i = 0; i < firstDay; i++) daysHtml += `<div class="cal-day"></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const apptCount = appointments[dateStr]?.reports?.length || 0;
+        daysHtml += `<div class="cal-day ${selectedCalDate === dateStr ? 'selected' : ''}" data-date="${dateStr}">
+            <div>${d}</div>${getAppointmentDots(apptCount)}
+        </div>`;
+    }
+    
+    const apptData = appointments[selectedCalDate] || { reports: [], note: '' };
+    let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments</strong><button id="copyAllReportsBtn" style="float:right; background:var(--bg-primary); border:none; padding:4px 12px; border-radius:20px; cursor:pointer;">Copy All</button><div style="clear:both;"></div>';
+    
+    if (apptData.reports?.length) {
+        apptData.reports.forEach(r => {
+            reportsHtml += `<div class="appointment-card">
+                <strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)}
+                <div>📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div>
+                <div class="appointment-actions">
+                    <button class="edit-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}">Edit</button>
+                    <button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}">Delete</button>
+                    <button class="copy-single-btn" data-id="${r.id}" style="background:transparent; border:none; cursor:pointer;">Copy</button>
+                </div>
+            </div>`;
+        });
+    } else {
+        reportsHtml += '<div style="padding:20px; text-align:center;">No appointments for this date</div>';
+    }
+    reportsHtml += '</div>';
+    
+    inner.innerHTML = `
+        <div class="cal-header">
+            <div><strong>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</strong></div>
+            <div>
+                <button class="btn-icon" id="calPrevBtn">◀ Prev</button>
+                <button class="btn-icon" id="calNextBtn">Next ▶</button>
+                <button class="btn-icon" id="calTodayBtn">Today</button>
+            </div>
+        </div>
+        <div class="cal-weekdays">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<span>${d}</span>`).join('')}</div>
+        <div class="cal-days">${daysHtml}</div>
+        <div><input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin:12px 0; padding:10px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); width:100%;"></div>
+        <textarea id="apptNoteInput" rows="2" placeholder="General note..." style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-bottom:8px;">${escapeHtml(apptData.note || '')}</textarea>
+        <button id="quickAddForDate" class="btn-icon" style="margin:8px 0; background:var(--secondary); color:white;">+ Add Appointment</button>
+        ${reportsHtml}
+        <div class="goal-input-group">
+            <input type="number" id="goalDailyInput" placeholder="Daily Goal" value="${goals.daily}">
+            <input type="number" id="goalWeeklyInput" placeholder="Weekly" value="${goals.weekly}">
+            <input type="number" id="goalMonthlyInput" placeholder="Monthly" value="${goals.monthly}">
+        </div>
+        <div style="display:flex; gap:12px; margin-top:16px; justify-content:flex-end;">
+            <button id="saveNoteBtn" class="btn-icon">Save Note</button>
+            <button id="closeCalBtn" class="btn-icon">Close</button>
+        </div>
+    `;
+    
+    attachCalendarEvents();
+}
+
+function attachCalendarEvents() {
+    document.querySelectorAll('.cal-day[data-date]').forEach(el => {
+        el.addEventListener('click', () => {
+            selectedCalDate = el.getAttribute('data-date');
+            renderCalendarModal();
+        });
+    });
+    
+    const datePicker = document.getElementById('quickDatePicker');
+    if (datePicker) {
+        datePicker.addEventListener('change', (e) => {
+            selectedCalDate = e.target.value;
+            renderCalendarModal();
+        });
+    }
+    
+    document.querySelectorAll('.delete-appt-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = parseInt(btn.getAttribute('data-id'));
+            const date = btn.getAttribute('data-date');
+            if (confirm('Delete this appointment?')) {
+                deleteAppointment(date, id);
+                renderCalendarModal();
+                showToast('Appointment deleted');
+            }
+        });
+    });
+    
+    document.querySelectorAll('.edit-appt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.getAttribute('data-id'));
+            const date = btn.getAttribute('data-date');
+            const appt = appointments[date]?.reports?.find(r => r.id === id);
+            if (appt) openEditAppointmentModal(date, appt);
+        });
+    });
+    
+    document.querySelectorAll('.copy-single-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = parseInt(btn.getAttribute('data-id'));
+            for (let d in appointments) {
+                const rep = appointments[d]?.reports?.find(r => r.id === id);
+                if (rep) {
+                    copyToClipboard(rep.fullText);
+                    break;
+                }
+            }
+        });
+    });
+    
+    const prevBtn = document.getElementById('calPrevBtn');
+    const nextBtn = document.getElementById('calNextBtn');
+    const todayBtn = document.getElementById('calTodayBtn');
+    if (prevBtn) prevBtn.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderCalendarModal(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarModal(); });
+    if (todayBtn) todayBtn.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
+    
+    const saveNoteBtn = document.getElementById('saveNoteBtn');
+    if (saveNoteBtn) {
+        saveNoteBtn.addEventListener('click', () => {
+            if (!appointments[selectedCalDate]) appointments[selectedCalDate] = { count: 0, note: '', reports: [] };
+            const noteInput = document.getElementById('apptNoteInput');
+            if (noteInput) appointments[selectedCalDate].note = noteInput.value;
+            saveAppointments();
+            showToast('Note saved');
+        });
+    }
+    
+    const quickAddBtn = document.getElementById('quickAddForDate');
+    if (quickAddBtn) {
+        quickAddBtn.addEventListener('click', () => {
+            closeCalendarModal();
+            setTimeout(() => openQuickReportWithDate(selectedCalDate), 100);
+        });
+    }
+    
+    const closeBtn = document.getElementById('closeCalBtn');
+    if (closeBtn) closeBtn.addEventListener('click', closeCalendarModal);
+    
+    const copyAllBtn = document.getElementById('copyAllReportsBtn');
+    if (copyAllBtn) {
+        copyAllBtn.addEventListener('click', () => {
+            const data = appointments[selectedCalDate];
+            if (data?.reports?.length) copyToClipboard(data.reports.map(r => r.fullText).join('\n\n---\n\n'));
+            else showToast('No appointments', 'error');
+        });
+    }
+    
+    ['goalDailyInput', 'goalWeeklyInput', 'goalMonthlyInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', () => {
+                const map = { goalDailyInput: 'daily', goalWeeklyInput: 'weekly', goalMonthlyInput: 'monthly' };
+                goals[map[id]] = parseInt(el.value) || (id === 'goalDailyInput' ? 3 : id === 'goalWeeklyInput' ? 15 : 60);
+                saveGoals();
+                renderCalendarModal();
+            });
+        }
+    });
+}
+
+function openEditAppointmentModal(oldDateStr, appt) {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal-overlay';
+    modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${oldDateStr}"></div>
+        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
+        <div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
+        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div>
+        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div>
+        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div>
+        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div>
+        <div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+            <button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save Changes</button>
+            <button id="cancelEditModalBtn" class="btn-icon">Cancel</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modalDiv);
+    
+    document.getElementById('saveEditBtn').addEventListener('click', () => {
+        const newDate = document.getElementById('editDate').value;
+        deleteAppointment(oldDateStr, appt.id);
+        addAppointment(
+            newDate,
+            document.getElementById('editBusiness').value,
+            document.getElementById('editName').value,
+            document.getElementById('editRole').value,
+            document.getElementById('editPhone').value,
+            document.getElementById('editTime').value,
+            document.getElementById('editNotes').value,
+            document.getElementById('editAssigned').value,
+            appt.id
+        );
+        selectedCalDate = newDate;
+        modalDiv.remove();
+        closeCalendarModal();
+        openCalendarModal();
+        showToast('Appointment updated');
+    });
+    
+    document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
+    modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) modalDiv.remove(); });
+}
+
+// ==================== OTHER MODAL FUNCTIONS ====================
 function openQuickReportWithDate(defaultDate) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -448,6 +728,7 @@ function openQuickReportWithDate(defaultDate) {
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success); color:white;">Save & Copy</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div>
     </div>`;
     document.body.appendChild(modal);
+    
     document.getElementById('submitReportBtn').addEventListener('click', () => {
         const bus = document.getElementById('reportBusiness').value;
         const name = document.getElementById('reportName').value;
@@ -465,9 +746,11 @@ function openQuickReportWithDate(defaultDate) {
         );
         copyToClipboard(text);
         modal.remove();
+        if (calendarModal) openCalendarModal();
         showToast('Appointment saved!');
     });
     document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 function openQuickReport() {
@@ -510,15 +793,6 @@ function openPriorityModal() {
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
-function openCalendarModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card"><h3>📅 Appointment Calendar</h3><p style="margin:20px 0;">Use "Quick Add" to create appointments. All appointments are saved locally.</p><button class="btn-icon" id="closeCalBtn">Close</button></div>`;
-    document.body.appendChild(modal);
-    document.getElementById('closeCalBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
 function setUserName() {
     const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
     if (newName?.trim()) {
@@ -540,10 +814,12 @@ function openHelpModal() {
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card"><h3>📖 ScriptFlow Pro Guide</h3>
         <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Indicator</strong><br>Hover over the indicator next to Quick Add button - shows Eastern Time priority and prime calling windows</div>
-        <div style="margin:16px 0;"><strong>📅 Features</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant script switching<br>• Edit scripts with undo/redo (Ctrl+Z/Y)<br>• Appointment tracking and CSV export</div>
+        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click calendar icon to open full calendar<br>• Edit/Delete appointments<br>• Change date to move appointments<br>• Set daily/weekly/monthly goals</div>
+        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant switching<br>• Edit scripts with undo/redo (Ctrl+Z/Y)<br>• Version history tracks all changes</div>
         <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
     document.body.appendChild(modal);
     document.getElementById('closeHelp').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 function exportToCSV() {
@@ -565,7 +841,7 @@ function exportToCSV() {
 }
 
 function factoryReset() {
-    if (confirm('⚠️ FACTORY RESET: This will erase ALL data. Cannot be undone.')) {
+    if (confirm('⚠️ FACTORY RESET: This will erase ALL scripts, appointments, and settings. Cannot be undone.')) {
         localStorage.clear();
         location.reload();
     }
@@ -574,14 +850,14 @@ function factoryReset() {
 // ==================== TOGGLE FUNCTIONS ====================
 function toggleToolsMenu() {
     toolsOpen = !toolsOpen;
-    const toolsMenu = document.getElementById('toolsMenu');
-    const toolsChevron = document.getElementById('toolsChevron');
+    const toolsMenuElem = document.getElementById('toolsMenu');
+    const toolsChevronElem = document.getElementById('toolsChevron');
     if (toolsOpen) {
-        toolsMenu.classList.add('open');
-        toolsChevron.classList.add('rotated');
+        if (toolsMenuElem) toolsMenuElem.classList.add('open');
+        if (toolsChevronElem) toolsChevronElem.classList.add('rotated');
     } else {
-        toolsMenu.classList.remove('open');
-        toolsChevron.classList.remove('rotated');
+        if (toolsMenuElem) toolsMenuElem.classList.remove('open');
+        if (toolsChevronElem) toolsChevronElem.classList.remove('rotated');
     }
     localStorage.setItem('toolsMenuOpen', toolsOpen);
 }
@@ -592,7 +868,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const toolsHeaderElem = document.getElementById('toolsHeader');
     if (toolsHeaderElem) toolsHeaderElem.addEventListener('click', toggleToolsMenu);
     
-    // Set initial tools menu state
     const toolsMenuElem = document.getElementById('toolsMenu');
     const toolsChevronElem = document.getElementById('toolsChevron');
     if (toolsOpen && toolsMenuElem && toolsChevronElem) {
@@ -604,14 +879,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuToggle = document.getElementById('menuToggleBtn');
     const sidebar = document.getElementById('mainSidebar');
     const mainContent = document.getElementById('mainContent');
-    menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('closed');
-        mainContent.classList.toggle('expanded');
-        localStorage.setItem('sidebarClosed', sidebar.classList.contains('closed'));
-    });
-    if (localStorage.getItem('sidebarClosed') === 'true') {
+    if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+            if (sidebar) sidebar.classList.toggle('closed');
+            if (mainContent) mainContent.classList.toggle('expanded');
+            if (sidebar) localStorage.setItem('sidebarClosed', sidebar.classList.contains('closed'));
+        });
+    }
+    if (sidebar && localStorage.getItem('sidebarClosed') === 'true') {
         sidebar.classList.add('closed');
-        mainContent.classList.add('expanded');
+        if (mainContent) mainContent.classList.add('expanded');
     }
     
     // Load data and initialize
@@ -624,27 +901,47 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
     
     // Set up event listeners
-    document.getElementById('addScriptBtnSide').addEventListener('click', addNewScript);
-    document.getElementById('editScriptBtn').addEventListener('click', enterEdit);
-    document.getElementById('saveScriptBtn').addEventListener('click', saveEdit);
-    document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
-    document.getElementById('copyScriptBtn').addEventListener('click', copyScript);
-    document.getElementById('resetScriptBtn').addEventListener('click', resetScript);
-    document.getElementById('undoBtn').addEventListener('click', () => undoScript(currentScriptId));
-    document.getElementById('redoBtn').addEventListener('click', () => redoScript(currentScriptId));
-    document.getElementById('quickReportBtn').addEventListener('click', openQuickReport);
-    document.getElementById('historyBtn').addEventListener('click', showVersionHistoryModal);
-    document.getElementById('calendarNavBtn').addEventListener('click', openCalendarModal);
-    document.getElementById('priorityNavBtn').addEventListener('click', openPriorityModal);
-    document.getElementById('exportNavBtn').addEventListener('click', exportToCSV);
-    document.getElementById('userNavBtn').addEventListener('click', setUserName);
-    document.getElementById('themeNavBtn').addEventListener('click', toggleTheme);
-    document.getElementById('helpNavBtn').addEventListener('click', openHelpModal);
-    document.getElementById('resetNavBtn').addEventListener('click', factoryReset);
-    document.getElementById('scriptSearch').addEventListener('input', (e) => {
-        searchTerm = e.target.value.toLowerCase();
-        renderSidebar();
-    });
+    const addBtn = document.getElementById('addScriptBtnSide');
+    if (addBtn) addBtn.addEventListener('click', addNewScript);
+    const editBtn = document.getElementById('editScriptBtn');
+    if (editBtn) editBtn.addEventListener('click', enterEdit);
+    const saveBtn = document.getElementById('saveScriptBtn');
+    if (saveBtn) saveBtn.addEventListener('click', saveEdit);
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    if (cancelBtn) cancelBtn.addEventListener('click', cancelEdit);
+    const copyBtn = document.getElementById('copyScriptBtn');
+    if (copyBtn) copyBtn.addEventListener('click', copyScript);
+    const resetBtn = document.getElementById('resetScriptBtn');
+    if (resetBtn) resetBtn.addEventListener('click', resetScript);
+    const undo = document.getElementById('undoBtn');
+    if (undo) undo.addEventListener('click', () => undoScript(currentScriptId));
+    const redo = document.getElementById('redoBtn');
+    if (redo) redo.addEventListener('click', () => redoScript(currentScriptId));
+    const quickReport = document.getElementById('quickReportBtn');
+    if (quickReport) quickReport.addEventListener('click', openQuickReport);
+    const history = document.getElementById('historyBtn');
+    if (history) history.addEventListener('click', showVersionHistoryModal);
+    const calendarNav = document.getElementById('calendarNavBtn');
+    if (calendarNav) calendarNav.addEventListener('click', openCalendarModal);
+    const priorityNav = document.getElementById('priorityNavBtn');
+    if (priorityNav) priorityNav.addEventListener('click', openPriorityModal);
+    const exportNav = document.getElementById('exportNavBtn');
+    if (exportNav) exportNav.addEventListener('click', exportToCSV);
+    const userNav = document.getElementById('userNavBtn');
+    if (userNav) userNav.addEventListener('click', setUserName);
+    const themeNav = document.getElementById('themeNavBtn');
+    if (themeNav) themeNav.addEventListener('click', toggleTheme);
+    const helpNav = document.getElementById('helpNavBtn');
+    if (helpNav) helpNav.addEventListener('click', openHelpModal);
+    const resetNav = document.getElementById('resetNavBtn');
+    if (resetNav) resetNav.addEventListener('click', factoryReset);
+    const scriptSearch = document.getElementById('scriptSearch');
+    if (scriptSearch) {
+        scriptSearch.addEventListener('input', (e) => {
+            searchTerm = e.target.value.toLowerCase();
+            renderSidebar();
+        });
+    }
     
     // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
