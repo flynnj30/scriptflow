@@ -1,4 +1,4 @@
-// ==================== SCRIPTFLOW PRO - COMPLETE WITH IMPROVED UI ====================
+// ==================== SCRIPTFLOW PRO - COMPLETE ====================
 
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
@@ -17,8 +17,8 @@ let currentCalDate = new Date();
 let selectedCalDate = new Date().toISOString().split('T')[0];
 
 // Dashboard State
-let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
 let dashboardDatePreset = 'today';
+let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let currentActiveTool = null;
@@ -35,7 +35,7 @@ function showToast(msg, type = 'success') {
 
 function copyToClipboard(text) {
     if (!text) { showToast('Nothing to copy', 'error'); return; }
-    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!')).catch(() => {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => {
         const ta = document.createElement('textarea');
         ta.value = text;
         document.body.appendChild(ta);
@@ -56,7 +56,7 @@ function getTodayStr() {
 
 function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function replaceNameInScript(content) {
@@ -102,19 +102,7 @@ function getDateRange(preset) {
 
 // ==================== FEATURE OVERLAY ====================
 function showFeatureOverlay(toolId, title) {
-    const overlay = document.getElementById('featureOverlay');
-    const overlayTitle = document.getElementById('featureOverlayTitle');
-    const overlayContent = document.getElementById('featureOverlayContent');
-    
-    if (!overlay) {
-        console.error('Feature overlay element not found');
-        return;
-    }
-    
-    currentActiveTool = toolId;
-    overlayTitle.textContent = title;
-    
-    // For simple actions, just show toast and don't open overlay
+    // Simple actions - no overlay needed
     if (toolId === 'username') {
         const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
         if (newName?.trim()) {
@@ -149,7 +137,16 @@ function showFeatureOverlay(toolId, title) {
         return;
     }
     
-    // Render overlay content for complex features
+    // Complex features - show overlay
+    const overlay = document.getElementById('featureOverlay');
+    const overlayTitle = document.getElementById('featureOverlayTitle');
+    const overlayContent = document.getElementById('featureOverlayContent');
+    
+    if (!overlay) return;
+    
+    currentActiveTool = toolId;
+    overlayTitle.textContent = title;
+    
     switch(toolId) {
         case 'insights':
             renderInsightsOverlay(overlayContent);
@@ -185,7 +182,7 @@ function showHelpModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `
-        <div class="modal-card" style="max-width:500px;">
+        <div class="modal-card">
             <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
             <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics, trends, and goal progress</div>
             <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage all your appointments</div>
@@ -201,7 +198,6 @@ function showHelpModal() {
 
 // ==================== INSIGHTS OVERLAY ====================
 function renderInsightsOverlay(container) {
-    // Calculate date range based on preset
     const range = getDateRange(dashboardDatePreset);
     dashboardDateRange = range;
     
@@ -252,7 +248,7 @@ function renderInsightsOverlay(container) {
     container.innerHTML = `
         <div class="insights-header">
             <div class="date-range-selector">
-                <span style="font-size:0.8rem; color:var(--text-muted);">Range</span>
+                <span style="font-size:0.8rem;">Range</span>
                 <select id="datePresetSelect" class="date-preset">
                     <option value="today" ${dashboardDatePreset === 'today' ? 'selected' : ''}>Today</option>
                     <option value="yesterday" ${dashboardDatePreset === 'yesterday' ? 'selected' : ''}>Yesterday</option>
@@ -287,7 +283,7 @@ function renderInsightsOverlay(container) {
             <div class="insight-stat">
                 <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
                 <div class="insight-stat-label">Today's Progress</div>
-                <div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%; border-radius:10px;"></div></div>
+                <div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div>
             </div>
             <div class="insight-stat">
                 <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, daysDiff))}</div>
@@ -365,8 +361,7 @@ function renderInsightsOverlay(container) {
                 customRangeDiv.style.display = 'flex';
             } else {
                 customRangeDiv.style.display = 'none';
-                const range = getDateRange(dashboardDatePreset);
-                dashboardDateRange = range;
+                dashboardDateRange = getDateRange(dashboardDatePreset);
                 renderInsightsOverlay(container);
             }
         });
@@ -382,8 +377,7 @@ function renderInsightsOverlay(container) {
                     renderInsightsOverlay(container);
                 }
             } else {
-                const range = getDateRange(dashboardDatePreset);
-                dashboardDateRange = range;
+                dashboardDateRange = getDateRange(dashboardDatePreset);
                 renderInsightsOverlay(container);
             }
         });
@@ -419,7 +413,7 @@ function renderCalendarOverlay(container) {
                     <button id="calTodayBtn" class="close-feature-btn" style="padding:6px 12px;">Today</button>
                 </div>
             </div>
-            <div class="calendar-grid" id="calendarGrid">${daysHtml}</div>
+            <div class="calendar-grid">${daysHtml}</div>
             
             <div style="margin-top:20px;">
                 <label><strong>Quick Jump:</strong></label>
@@ -620,17 +614,6 @@ function addAppointment(dateStr, business, contactName, role, phone, time, notes
     appointments[dateStr].count = appointments[dateStr].reports.length;
     saveAppointments();
     return newAppt.fullText;
-}
-
-function deleteAppointment(dateStr, id) {
-    if (appointments[dateStr]?.reports) {
-        appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
-        if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
-        else appointments[dateStr].count = appointments[dateStr].reports.length;
-        saveAppointments();
-        return true;
-    }
-    return false;
 }
 
 // ==================== DEFAULT SCRIPTS ====================
@@ -1049,13 +1032,9 @@ function toggleToolsMenu() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('ScriptFlow Pro initializing...');
-    
     // Setup tools dropdown
     const toolsHeaderElem = document.getElementById('toolsHeader');
-    if (toolsHeaderElem) {
-        toolsHeaderElem.addEventListener('click', toggleToolsMenu);
-    }
+    if (toolsHeaderElem) toolsHeaderElem.addEventListener('click', toggleToolsMenu);
     
     const toolsMenuElem = document.getElementById('toolsMenu');
     const toolsChevronElem = document.getElementById('toolsChevron');
@@ -1066,8 +1045,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Setup tool item click handlers
     const toolItems = document.querySelectorAll('.tool-item');
-    console.log(`Found ${toolItems.length} tool items`);
-    
     toolItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1083,18 +1060,13 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (text.includes('Help')) toolType = 'help';
             else if (text.includes('Factory Reset')) toolType = 'reset';
             
-            if (toolType) {
-                console.log(`Opening tool: ${toolType}`);
-                showFeatureOverlay(toolType, text);
-            }
+            if (toolType) showFeatureOverlay(toolType, text);
         });
     });
     
     // Close button handler
     const closeBtn = document.getElementById('closeFeatureBtn');
-    if (closeBtn) {
-        closeBtn.addEventListener('click', hideFeatureOverlay);
-    }
+    if (closeBtn) closeBtn.addEventListener('click', hideFeatureOverlay);
     
     // Sidebar toggle
     const menuToggle = document.getElementById('menuToggleBtn');
@@ -1121,7 +1093,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme
     if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
     
-    // Set up event listeners for script buttons
+    // Set up event listeners
     document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript);
     document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit);
     document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit);
@@ -1169,6 +1141,4 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRealTimePriorityDashboard();
     setInterval(updateRealTimePriorityDashboard, 1000);
     setInterval(() => updateStats(), 5000);
-    
-    console.log('ScriptFlow Pro initialized successfully');
 });
