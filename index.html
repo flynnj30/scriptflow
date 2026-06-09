@@ -22,8 +22,8 @@
             </div>
         </div>
         
-        <!-- SCRIPTS SECTION (Visible by default) -->
-        <div id="scriptsSection" class="scripts-section">
+        <!-- SCRIPTS LIST SECTION (Always visible in sidebar) -->
+        <div id="scriptsListSection" class="scripts-list-section">
             <div class="search-area"><input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..."></div>
             <div class="scripts-container">
                 <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
@@ -32,17 +32,7 @@
             </div>
         </div>
         
-        <!-- FEATURE PANEL SECTION (Hidden by default, shows when tool is selected) -->
-        <div id="featurePanel" class="feature-panel" style="display: none;">
-            <div class="feature-header">
-                <button id="backToScriptsBtn" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Scripts</button>
-                <h3 id="featureTitle" class="feature-title">Feature</h3>
-            </div>
-            <div id="featureContent" class="feature-content">
-                <!-- Dynamic content loads here -->
-            </div>
-        </div>
-        
+        <!-- TOOLS SECTION -->
         <div class="tools-section">
             <div class="tools-header" id="toolsHeader">
                 <div class="section-title"><i class="fas fa-tools"></i> TOOLS & SETTINGS</div>
@@ -89,7 +79,8 @@
             </div>
         </div>
         
-        <div class="script-card">
+        <!-- MAIN SCRIPT CONTENT AREA (Always visible, never replaced) -->
+        <div class="script-card" id="scriptCard">
             <div class="script-header-bar">
                 <div class="script-title-area">
                     <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
@@ -110,7 +101,18 @@
             <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
         </div>
         
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool in the sidebar to view its feature panel · Click "Back to Scripts" to return</div>
+        <!-- FEATURE PANEL (Hidden by default, shows OVER the script content when tool selected) -->
+        <div id="featureOverlay" class="feature-overlay" style="display: none;">
+            <div class="feature-overlay-header">
+                <button id="closeFeatureBtn" class="close-feature-btn"><i class="fas fa-times"></i> Close</button>
+                <h3 id="featureOverlayTitle">Feature</h3>
+            </div>
+            <div id="featureOverlayContent" class="feature-overlay-content">
+                <!-- Dynamic content loads here -->
+            </div>
+        </div>
+        
+        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool in the sidebar to open its panel · Press ESC to close</div>
     </div>
 </div>
 
