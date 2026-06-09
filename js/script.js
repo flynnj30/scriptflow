@@ -1,5 +1,4 @@
-// ==================== SCRIPTFLOW PRO - WITH FEATURE OVERLAY ====================
-// When a tool is selected, an overlay appears over the script content
+// ==================== SCRIPTFLOW PRO - COMPLETE WITH IMPROVED UI ====================
 
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
@@ -16,6 +15,10 @@ let currentVersionIndex = {};
 // Calendar State
 let currentCalDate = new Date();
 let selectedCalDate = new Date().toISOString().split('T')[0];
+
+// Dashboard State
+let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
+let dashboardDatePreset = 'today';
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let currentActiveTool = null;
@@ -53,11 +56,48 @@ function getTodayStr() {
 
 function formatDate(dateStr) {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function replaceNameInScript(content) {
     return content.replace(/\[Your Name\]/gi, userName);
+}
+
+// ==================== DATE RANGE HELPERS ====================
+function getDateRange(preset) {
+    const today = new Date();
+    const start = new Date();
+    const end = new Date();
+    
+    switch(preset) {
+        case 'today':
+            return { start: getTodayStr(), end: getTodayStr() };
+        case 'yesterday':
+            start.setDate(today.getDate() - 1);
+            end.setDate(today.getDate() - 1);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'this_week':
+            start.setDate(today.getDate() - today.getDay());
+            end.setDate(start.getDate() + 6);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'last_week':
+            start.setDate(today.getDate() - today.getDay() - 7);
+            end.setDate(start.getDate() + 6);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'this_month':
+            start.setDate(1);
+            end.setMonth(today.getMonth() + 1);
+            end.setDate(0);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'last_month':
+            start.setMonth(today.getMonth() - 1);
+            start.setDate(1);
+            end.setMonth(today.getMonth());
+            end.setDate(0);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        default:
+            return { start: getTodayStr(), end: getTodayStr() };
+    }
 }
 
 // ==================== FEATURE OVERLAY ====================
@@ -74,7 +114,42 @@ function showFeatureOverlay(toolId, title) {
     currentActiveTool = toolId;
     overlayTitle.textContent = title;
     
-    // Render the appropriate feature content
+    // For simple actions, just show toast and don't open overlay
+    if (toolId === 'username') {
+        const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
+        if (newName?.trim()) {
+            userName = newName.trim();
+            localStorage.setItem('scriptflow_user_name', userName);
+            showToast(`Name set to: ${userName}`, 'success');
+            if (!isEditing) loadScript(currentScriptId);
+        }
+        return;
+    }
+    
+    if (toolId === 'theme') {
+        toggleTheme();
+        return;
+    }
+    
+    if (toolId === 'help') {
+        showHelpModal();
+        return;
+    }
+    
+    if (toolId === 'export') {
+        exportToCSV();
+        return;
+    }
+    
+    if (toolId === 'reset') {
+        if (confirm('⚠️ FACTORY RESET: This will erase ALL scripts, appointments, and settings. Cannot be undone.')) {
+            localStorage.clear();
+            location.reload();
+        }
+        return;
+    }
+    
+    // Render overlay content for complex features
     switch(toolId) {
         case 'insights':
             renderInsightsOverlay(overlayContent);
@@ -84,21 +159,6 @@ function showFeatureOverlay(toolId, title) {
             break;
         case 'priority':
             renderPriorityOverlay(overlayContent);
-            break;
-        case 'export':
-            renderExportOverlay(overlayContent);
-            break;
-        case 'username':
-            renderUsernameOverlay(overlayContent);
-            break;
-        case 'theme':
-            renderThemeOverlay(overlayContent);
-            break;
-        case 'help':
-            renderHelpOverlay(overlayContent);
-            break;
-        case 'reset':
-            renderResetOverlay(overlayContent);
             break;
         default:
             overlayContent.innerHTML = '<div class="feature-card"><p>Feature coming soon...</p></div>';
@@ -121,50 +181,100 @@ function hideFeatureOverlay() {
     }
 }
 
-// ==================== OVERLAY RENDERERS ====================
+function showHelpModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-card" style="max-width:500px;">
+            <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
+            <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics, trends, and goal progress</div>
+            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage all your appointments</div>
+            <div style="margin:16px 0;"><strong>🎯 Call Priority Predictor</strong><br>Real-time US time zone recommendations</div>
+            <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>11 scripts, edit with undo/redo, press 1-9 to switch</div>
+            <button id="closeHelpModal" class="btn-icon" style="margin-top:16px; width:100%;">Got it</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('closeHelpModal').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+// ==================== INSIGHTS OVERLAY ====================
 function renderInsightsOverlay(container) {
-    // Get data
-    const appointmentsList = [];
+    // Calculate date range based on preset
+    const range = getDateRange(dashboardDatePreset);
+    dashboardDateRange = range;
+    
+    // Get appointments in range
+    const appointmentsInRange = [];
     for (let date in appointments) {
-        if (appointments[date].reports) {
+        if (date >= dashboardDateRange.start && date <= dashboardDateRange.end && appointments[date].reports) {
             appointments[date].reports.forEach(a => {
-                appointmentsList.push({ ...a, date });
+                appointmentsInRange.push({ ...a, date });
             });
         }
     }
     
-    const totalAppointments = appointmentsList.length;
-    const uniqueBusinesses = new Set(appointmentsList.map(a => a.business)).size;
+    const totalAppointments = appointmentsInRange.length;
+    const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
     const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
     
-    // Last 7 days for chart
-    const last7Days = [];
+    // Daily counts for chart
+    const startDate = new Date(dashboardDateRange.start);
+    const endDate = new Date(dashboardDateRange.end);
+    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const chartLabels = [];
     const chartData = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
+    
+    for (let i = 0; i < daysDiff; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
         const dateStr = d.toISOString().split('T')[0];
-        last7Days.push(dateStr);
+        chartLabels.push(formatDate(dateStr));
         chartData.push(appointments[dateStr]?.reports?.length || 0);
     }
-    const chartLabels = last7Days.map(d => formatDate(d));
     
     // Assignment distribution
     const assignedStats = {};
-    appointmentsList.forEach(a => {
+    appointmentsInRange.forEach(a => {
         const assigned = a.assigned || 'Unassigned';
         assignedStats[assigned] = (assignedStats[assigned] || 0) + 1;
     });
     
     // Role distribution
     const roleStats = {};
-    appointmentsList.forEach(a => {
+    appointmentsInRange.forEach(a => {
         const role = a.role || 'Other';
         roleStats[role] = (roleStats[role] || 0) + 1;
     });
     
     container.innerHTML = `
+        <div class="insights-header">
+            <div class="date-range-selector">
+                <span style="font-size:0.8rem; color:var(--text-muted);">Range</span>
+                <select id="datePresetSelect" class="date-preset">
+                    <option value="today" ${dashboardDatePreset === 'today' ? 'selected' : ''}>Today</option>
+                    <option value="yesterday" ${dashboardDatePreset === 'yesterday' ? 'selected' : ''}>Yesterday</option>
+                    <option value="this_week" ${dashboardDatePreset === 'this_week' ? 'selected' : ''}>This Week</option>
+                    <option value="last_week" ${dashboardDatePreset === 'last_week' ? 'selected' : ''}>Last Week</option>
+                    <option value="this_month" ${dashboardDatePreset === 'this_month' ? 'selected' : ''}>This Month</option>
+                    <option value="last_month" ${dashboardDatePreset === 'last_month' ? 'selected' : ''}>Last Month</option>
+                    <option value="custom" ${dashboardDatePreset === 'custom' ? 'selected' : ''}>Custom</option>
+                </select>
+                <div id="customDateRange" style="display: ${dashboardDatePreset === 'custom' ? 'flex' : 'none'}; gap: 8px; align-items: center;">
+                    <input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input">
+                    <span>to</span>
+                    <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input">
+                </div>
+                <button id="applyDateRange" class="btn-icon" style="padding:6px 16px;">Apply</button>
+                <div class="timezone-display">
+                    <i class="fas fa-globe"></i>
+                    <span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+                </div>
+            </div>
+        </div>
+        
         <div class="insights-summary">
             <div class="insight-stat">
                 <div class="insight-stat-value">${totalAppointments}</div>
@@ -177,15 +287,16 @@ function renderInsightsOverlay(container) {
             <div class="insight-stat">
                 <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
                 <div class="insight-stat-label">Today's Progress</div>
+                <div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%; border-radius:10px;"></div></div>
             </div>
             <div class="insight-stat">
-                <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, last7Days.length))}</div>
+                <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, daysDiff))}</div>
                 <div class="insight-stat-label">Avg per Day</div>
             </div>
         </div>
         
         <div class="feature-card">
-            <h4><i class="fas fa-chart-line"></i> 7-Day Trend</h4>
+            <h4><i class="fas fa-chart-line"></i> Appointment Trend</h4>
             <canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas>
         </div>
         
@@ -241,6 +352,42 @@ function renderInsightsOverlay(container) {
             options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
         });
     }
+    
+    // Bind events
+    const presetSelect = document.getElementById('datePresetSelect');
+    const customRangeDiv = document.getElementById('customDateRange');
+    const applyBtn = document.getElementById('applyDateRange');
+    
+    if (presetSelect) {
+        presetSelect.addEventListener('change', (e) => {
+            dashboardDatePreset = e.target.value;
+            if (dashboardDatePreset === 'custom') {
+                customRangeDiv.style.display = 'flex';
+            } else {
+                customRangeDiv.style.display = 'none';
+                const range = getDateRange(dashboardDatePreset);
+                dashboardDateRange = range;
+                renderInsightsOverlay(container);
+            }
+        });
+    }
+    
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            if (dashboardDatePreset === 'custom') {
+                const start = document.getElementById('customStartDate')?.value;
+                const end = document.getElementById('customEndDate')?.value;
+                if (start && end) {
+                    dashboardDateRange = { start, end };
+                    renderInsightsOverlay(container);
+                }
+            } else {
+                const range = getDateRange(dashboardDatePreset);
+                dashboardDateRange = range;
+                renderInsightsOverlay(container);
+            }
+        });
+    }
 }
 
 function renderCalendarOverlay(container) {
@@ -261,8 +408,6 @@ function renderCalendarOverlay(container) {
             </div>
         `;
     }
-    
-    const apptData = appointments[selectedCalDate] || { reports: [] };
     
     container.innerHTML = `
         <div class="feature-card">
@@ -393,101 +538,6 @@ function renderPriorityOverlay(container) {
             </div>
         </div>
     `;
-}
-
-function renderExportOverlay(container) {
-    container.innerHTML = `
-        <div class="feature-card">
-            <h4><i class="fas fa-file-csv"></i> Export Data</h4>
-            <p>Export all your appointments to a CSV file that can be opened in Excel, Google Sheets, or any spreadsheet application.</p>
-            <button id="exportCsvBtn" class="close-feature-btn" style="background:var(--success); color:white; margin-top:16px;"><i class="fas fa-download"></i> Export to CSV</button>
-        </div>
-    `;
-    document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
-        exportToCSV();
-        hideFeatureOverlay();
-    });
-}
-
-function renderUsernameOverlay(container) {
-    container.innerHTML = `
-        <div class="feature-card">
-            <h4><i class="fas fa-user-circle"></i> Set Your Name</h4>
-            <p>Your name replaces <strong>[Your Name]</strong> in all scripts.</p>
-            <p>Current name: <strong>${escapeHtml(userName)}</strong></p>
-            <input type="text" id="userNameInput" value="${escapeHtml(userName)}" placeholder="Enter your name" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin:16px 0;">
-            <button id="saveUserNameBtn" class="close-feature-btn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save Name</button>
-        </div>
-    `;
-    document.getElementById('saveUserNameBtn')?.addEventListener('click', () => {
-        const newName = document.getElementById('userNameInput').value;
-        if (newName.trim()) {
-            userName = newName.trim();
-            localStorage.setItem('scriptflow_user_name', userName);
-            showToast(`Name set to: ${userName}`, 'success');
-            if (!isEditing) loadScript(currentScriptId);
-            hideFeatureOverlay();
-        }
-    });
-}
-
-function renderThemeOverlay(container) {
-    const isDark = document.body.classList.contains('dark');
-    container.innerHTML = `
-        <div class="feature-card">
-            <h4><i class="fas fa-palette"></i> Theme Settings</h4>
-            <p>Choose your preferred appearance for the application.</p>
-            <div style="display:flex; gap:16px; margin-top:16px;">
-                <button id="lightThemeBtn" class="close-feature-btn" style="flex:1; justify-content:center;"><i class="fas fa-sun"></i> Light Mode</button>
-                <button id="darkThemeBtn" class="close-feature-btn" style="flex:1; justify-content:center;"><i class="fas fa-moon"></i> Dark Mode</button>
-            </div>
-            <p style="margin-top:16px;">Current: <strong>${isDark ? 'Dark Mode' : 'Light Mode'}</strong></p>
-        </div>
-    `;
-    document.getElementById('lightThemeBtn')?.addEventListener('click', () => {
-        if (document.body.classList.contains('dark')) toggleTheme();
-        hideFeatureOverlay();
-    });
-    document.getElementById('darkThemeBtn')?.addEventListener('click', () => {
-        if (!document.body.classList.contains('dark')) toggleTheme();
-        hideFeatureOverlay();
-    });
-}
-
-function renderHelpOverlay(container) {
-    container.innerHTML = `
-        <div class="feature-card">
-            <h4><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h4>
-            <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics about your appointments and progress.</div>
-            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage appointments, view by date.</div>
-            <div style="margin:16px 0;"><strong>🎯 Call Priority Predictor</strong><br>Real-time US time zones - shows best calling windows.</div>
-            <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>11 scripts, edit with undo/redo, press 1-9 to switch.</div>
-            <div style="margin:16px 0;"><strong>⚙️ Tools</strong><br>Export CSV, set name, theme toggle, factory reset.</div>
-        </div>
-    `;
-}
-
-function renderResetOverlay(container) {
-    container.innerHTML = `
-        <div class="feature-card">
-            <h4><i class="fas fa-exclamation-triangle"></i> Factory Reset</h4>
-            <p style="color:var(--danger);"><strong>⚠️ Warning: This action cannot be undone!</strong></p>
-            <p>Factory reset will erase ALL of the following:</p>
-            <ul style="margin:16px 0; padding-left:20px;">
-                <li>All call scripts and custom scripts</li>
-                <li>All appointments and notes</li>
-                <li>All goals and settings</li>
-                <li>Version history</li>
-            </ul>
-            <button id="confirmResetBtn" class="close-feature-btn" style="background:var(--danger); color:white;"><i class="fas fa-trash"></i> Reset Everything</button>
-        </div>
-    `;
-    document.getElementById('confirmResetBtn')?.addEventListener('click', () => {
-        if (confirm('⚠️ ARE YOU ABSOLUTELY SURE? This will erase ALL data and cannot be undone.')) {
-            localStorage.clear();
-            location.reload();
-        }
-    });
 }
 
 // ==================== APPOINTMENT SYSTEM ====================
@@ -922,16 +972,6 @@ function openQuickReport() {
     openQuickReportWithDate(getTodayStr());
 }
 
-function setUserName() {
-    const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
-    if (newName?.trim()) {
-        userName = newName.trim();
-        localStorage.setItem('scriptflow_user_name', userName);
-        showToast(`Name set to: ${userName}`, 'success');
-        if (!isEditing) loadScript(currentScriptId);
-    }
-}
-
 function toggleTheme() {
     document.body.classList.toggle('dark');
     localStorage.setItem('scriptflow_theme_main', document.body.classList.contains('dark') ? 'dark' : 'light');
@@ -1024,20 +1064,16 @@ document.addEventListener('DOMContentLoaded', () => {
         toolsChevronElem.classList.add('rotated');
     }
     
-    // Setup tool item click handlers - IMPORTANT: Use class selector .tool-item
+    // Setup tool item click handlers
     const toolItems = document.querySelectorAll('.tool-item');
     console.log(`Found ${toolItems.length} tool items`);
     
     toolItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Get the tool type from the icon or text content
-            const icon = item.querySelector('i');
             const text = item.querySelector('span')?.innerText || item.innerText;
             
             let toolType = '';
-            let toolTitle = text;
-            
             if (text.includes('Insights')) toolType = 'insights';
             else if (text.includes('Appointment Calendar')) toolType = 'calendar';
             else if (text.includes('Call Priority')) toolType = 'priority';
@@ -1049,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (toolType) {
                 console.log(`Opening tool: ${toolType}`);
-                showFeatureOverlay(toolType, toolTitle);
+                showFeatureOverlay(toolType, text);
             }
         });
     });
@@ -1086,43 +1122,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
     
     // Set up event listeners for script buttons
-    const addBtn = document.getElementById('addScriptBtnSide');
-    if (addBtn) addBtn.addEventListener('click', addNewScript);
-    
-    const editBtn = document.getElementById('editScriptBtn');
-    if (editBtn) editBtn.addEventListener('click', enterEdit);
-    
-    const saveBtn = document.getElementById('saveScriptBtn');
-    if (saveBtn) saveBtn.addEventListener('click', saveEdit);
-    
-    const cancelBtn = document.getElementById('cancelEditBtn');
-    if (cancelBtn) cancelBtn.addEventListener('click', cancelEdit);
-    
-    const copyBtn = document.getElementById('copyScriptBtn');
-    if (copyBtn) copyBtn.addEventListener('click', copyScript);
-    
-    const resetScriptBtn = document.getElementById('resetScriptBtn');
-    if (resetScriptBtn) resetScriptBtn.addEventListener('click', resetScript);
-    
-    const undoBtn = document.getElementById('undoBtn');
-    if (undoBtn) undoBtn.addEventListener('click', () => undoScript(currentScriptId));
-    
-    const redoBtn = document.getElementById('redoBtn');
-    if (redoBtn) redoBtn.addEventListener('click', () => redoScript(currentScriptId));
-    
-    const quickReport = document.getElementById('quickReportBtn');
-    if (quickReport) quickReport.addEventListener('click', openQuickReport);
-    
-    const historyBtn = document.getElementById('historyBtn');
-    if (historyBtn) historyBtn.addEventListener('click', showVersionHistoryModal);
-    
-    const scriptSearch = document.getElementById('scriptSearch');
-    if (scriptSearch) {
-        scriptSearch.addEventListener('input', (e) => {
-            searchTerm = e.target.value.toLowerCase();
-            renderSidebar();
-        });
-    }
+    document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript);
+    document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit);
+    document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', cancelEdit);
+    document.getElementById('copyScriptBtn')?.addEventListener('click', copyScript);
+    document.getElementById('resetScriptBtn')?.addEventListener('click', resetScript);
+    document.getElementById('undoBtn')?.addEventListener('click', () => undoScript(currentScriptId));
+    document.getElementById('redoBtn')?.addEventListener('click', () => redoScript(currentScriptId));
+    document.getElementById('quickReportBtn')?.addEventListener('click', openQuickReport);
+    document.getElementById('historyBtn')?.addEventListener('click', showVersionHistoryModal);
+    document.getElementById('scriptSearch')?.addEventListener('input', (e) => {
+        searchTerm = e.target.value.toLowerCase();
+        renderSidebar();
+    });
     
     // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
