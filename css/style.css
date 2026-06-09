@@ -416,9 +416,7 @@ body {
     border: 1px solid var(--border-color);
     overflow: hidden;
     box-shadow: var(--shadow-md);
-    transition: opacity 0.3s ease;
 }
-body.feature-active .script-card { opacity: 0.3; pointer-events: none; }
 
 .script-header-bar {
     padding: 20px 28px;
@@ -458,64 +456,54 @@ body.feature-active .script-card { opacity: 0.3; pointer-events: none; }
     color: var(--text-primary);
 }
 
-/* Feature Overlay */
-.feature-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-primary);
-    z-index: 2000;
-    overflow-y: auto;
-    animation: slideUp 0.3s ease;
+/* Feature Panel (replaces script area) */
+.feature-panel {
+    background: var(--bg-secondary);
+    border-radius: 28px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    animation: fadeIn 0.3s ease;
 }
-@keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
+
+.feature-panel-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--bg-card);
+}
+
+.feature-panel-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.feature-panel-body {
+    padding: 28px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.back-to-scripts-btn {
+    margin-top: 16px;
+    text-align: center;
+}
+.back-to-scripts-btn button {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
-.feature-overlay-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 32px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.close-feature-btn {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    padding: 8px 20px;
-    border-radius: 40px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-    color: var(--text-primary);
-}
-.close-feature-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
-
-.feature-overlay-header h3 { font-size: 1.2rem; font-weight: 600; margin: 0; }
-.feature-overlay-content { padding: 32px; max-width: 1200px; margin: 0 auto; }
-
-/* Feature Cards */
-.feature-card {
-    background: var(--bg-secondary);
-    border-radius: 24px;
-    padding: 24px;
-    margin-bottom: 24px;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-}
-.feature-card h4 { margin-bottom: 16px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-.feature-card p { color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; }
 
 /* Insights Dashboard */
 .insights-header { margin-bottom: 24px; }
@@ -572,6 +560,15 @@ body.feature-active .script-card { opacity: 0.3; pointer-events: none; }
 .insight-stat-value { font-size: 2rem; font-weight: 800; color: var(--primary); }
 .insight-stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
 .progress-mini { background: var(--bg-primary); border-radius: 10px; height: 4px; margin-top: 8px; overflow: hidden; }
+
+.feature-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border-color);
+}
+.feature-card h4 { margin-bottom: 16px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
 
 /* Goal Progress */
 .goal-progress-item { margin-bottom: 20px; }
@@ -713,8 +710,6 @@ body.feature-active .script-card { opacity: 0.3; pointer-events: none; }
     .top-bar { flex-direction: column; align-items: stretch; }
     .stats-row { justify-content: space-between; }
     .action-buttons { justify-content: center; }
-    .feature-overlay-header { padding: 16px 20px; }
-    .feature-overlay-content { padding: 20px; }
     .insights-summary { grid-template-columns: 1fr; }
     .calendar-grid { gap: 4px; }
     .calendar-day { font-size: 0.7rem; }
