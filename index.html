@@ -21,11 +21,26 @@
                 <div class="logo-text"><h2>ScriptFlow Pro</h2><p>Smart Call Scripts</p></div>
             </div>
         </div>
-        <div class="search-area"><input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..."></div>
-        <div class="scripts-container">
-            <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
-            <div id="scriptListContainer"></div>
-            <button id="addScriptBtnSide" class="add-script-btn"><i class="fas fa-plus"></i> New Script</button>
+        
+        <!-- SCRIPTS SECTION (Visible by default) -->
+        <div id="scriptsSection" class="scripts-section">
+            <div class="search-area"><input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..."></div>
+            <div class="scripts-container">
+                <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
+                <div id="scriptListContainer"></div>
+                <button id="addScriptBtnSide" class="add-script-btn"><i class="fas fa-plus"></i> New Script</button>
+            </div>
+        </div>
+        
+        <!-- FEATURE PANEL SECTION (Hidden by default, shows when tool is selected) -->
+        <div id="featurePanel" class="feature-panel" style="display: none;">
+            <div class="feature-header">
+                <button id="backToScriptsBtn" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Scripts</button>
+                <h3 id="featureTitle" class="feature-title">Feature</h3>
+            </div>
+            <div id="featureContent" class="feature-content">
+                <!-- Dynamic content loads here -->
+            </div>
         </div>
         
         <div class="tools-section">
@@ -34,14 +49,14 @@
                 <i class="fas fa-chevron-right tools-chevron" id="toolsChevron"></i>
             </div>
             <div class="tools-menu" id="toolsMenu">
-                <div class="tool-item" id="insightsNavBtn"><i class="fas fa-chart-pie"></i> Insights Dashboard</div>
-                <div class="tool-item" id="calendarNavBtn"><i class="fas fa-calendar-alt"></i> Appointment Calendar</div>
-                <div class="tool-item" id="priorityNavBtn"><i class="fas fa-chart-line"></i> Call Priority Predictor</div>
-                <div class="tool-item" id="exportNavBtn"><i class="fas fa-file-csv"></i> Export to CSV</div>
-                <div class="tool-item" id="userNavBtn"><i class="fas fa-user-circle"></i> Set Your Name</div>
-                <div class="tool-item" id="themeNavBtn"><i class="fas fa-moon"></i> Dark/Light Mode</div>
-                <div class="tool-item" id="helpNavBtn"><i class="fas fa-question-circle"></i> Help Guide</div>
-                <div class="tool-item" id="resetNavBtn"><i class="fas fa-trash-alt"></i> Factory Reset</div>
+                <div class="tool-item" data-tool="insights"><i class="fas fa-chart-pie"></i> Insights Dashboard</div>
+                <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> Appointment Calendar</div>
+                <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> Call Priority Predictor</div>
+                <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> Export to CSV</div>
+                <div class="tool-item" data-tool="username"><i class="fas fa-user-circle"></i> Set Your Name</div>
+                <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> Dark/Light Mode</div>
+                <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> Help Guide</div>
+                <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> Factory Reset</div>
             </div>
         </div>
         <div class="sidebar-footer"><i class="fas fa-crown"></i> Press 1-9 to switch scripts</div>
@@ -95,10 +110,7 @@
             <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
         </div>
         
-        <!-- Insights Dashboard Panel - Hidden by default, toggled via button -->
-        <div id="insightsPanel" style="margin-top: 24px; display: none;"></div>
-        
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Click "Insights Dashboard" in Tools menu to view analytics · Real-time priority indicator shows best calling times</div>
+        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool in the sidebar to view its feature panel · Click "Back to Scripts" to return</div>
     </div>
 </div>
 
