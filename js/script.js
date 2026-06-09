@@ -10,14 +10,13 @@ let customOrder = [];
 let versionHistory = {};
 let currentVersionIndex = {};
 
-// Calendar Modal State
+// Calendar State
 let currentCalDate = new Date();
 let selectedCalDate = new Date().toISOString().split('T')[0];
-let calendarModal = null;
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let currentActiveTool = null;
-let insightsChartInstance = null;
+let featureChartInstance = null;
 
 // ==================== HELPER FUNCTIONS ====================
 function showToast(msg, type = 'success') {
@@ -58,67 +57,67 @@ function replaceNameInScript(content) {
     return content.replace(/\[Your Name\]/gi, userName);
 }
 
-// ==================== FEATURE PANEL TOGGLE ====================
-function showFeaturePanel(toolId, title) {
-    const scriptsSection = document.getElementById('scriptsSection');
-    const featurePanel = document.getElementById('featurePanel');
-    const featureTitle = document.getElementById('featureTitle');
-    const featureContent = document.getElementById('featureContent');
+// ==================== FEATURE OVERLAY ====================
+function showFeatureOverlay(toolId, title) {
+    const overlay = document.getElementById('featureOverlay');
+    const overlayTitle = document.getElementById('featureOverlayTitle');
+    const overlayContent = document.getElementById('featureOverlayContent');
     
-    if (!scriptsSection || !featurePanel) return;
+    if (!overlay) return;
     
     currentActiveTool = toolId;
-    featureTitle.textContent = title;
+    overlayTitle.textContent = title;
     
     // Render the appropriate feature content
     switch(toolId) {
         case 'insights':
-            renderInsightsFeature(featureContent);
+            renderInsightsOverlay(overlayContent);
             break;
         case 'calendar':
-            renderCalendarFeature(featureContent);
+            renderCalendarOverlay(overlayContent);
             break;
         case 'priority':
-            renderPriorityFeature(featureContent);
+            renderPriorityOverlay(overlayContent);
             break;
         case 'export':
-            renderExportFeature(featureContent);
+            renderExportOverlay(overlayContent);
             break;
         case 'username':
-            renderUsernameFeature(featureContent);
+            renderUsernameOverlay(overlayContent);
             break;
         case 'theme':
-            renderThemeFeature(featureContent);
+            renderThemeOverlay(overlayContent);
             break;
         case 'help':
-            renderHelpFeature(featureContent);
+            renderHelpOverlay(overlayContent);
             break;
         case 'reset':
-            renderResetFeature(featureContent);
+            renderResetOverlay(overlayContent);
             break;
         default:
-            featureContent.innerHTML = '<p>Feature coming soon...</p>';
+            overlayContent.innerHTML = '<div class="feature-card"><p>Feature coming soon...</p></div>';
     }
     
-    // Hide scripts section, show feature panel
-    scriptsSection.style.display = 'none';
-    featurePanel.style.display = 'block';
+    overlay.style.display = 'block';
+    document.body.classList.add('feature-active');
 }
 
-function hideFeaturePanel() {
-    const scriptsSection = document.getElementById('scriptsSection');
-    const featurePanel = document.getElementById('featurePanel');
-    
-    if (scriptsSection && featurePanel) {
-        scriptsSection.style.display = 'block';
-        featurePanel.style.display = 'none';
+function hideFeatureOverlay() {
+    const overlay = document.getElementById('featureOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        document.body.classList.remove('feature-active');
         currentActiveTool = null;
+        if (featureChartInstance) {
+            featureChartInstance.destroy();
+            featureChartInstance = null;
+        }
     }
 }
 
-// ==================== FEATURE RENDERERS ====================
-function renderInsightsFeature(container) {
-    // Get data for insights
+// ==================== OVERLAY RENDERERS ====================
+function renderInsightsOverlay(container) {
+    // Get data
     const appointmentsList = [];
     for (let date in appointments) {
         if (appointments[date].reports) {
@@ -133,193 +132,235 @@ function renderInsightsFeature(container) {
     const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
     
-    // Group by day for chart
+    // Last 7 days for chart
     const last7Days = [];
+    const chartData = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        last7Days.push(d.toISOString().split('T')[0]);
+        const dateStr = d.toISOString().split('T')[0];
+        last7Days.push(dateStr);
+        chartData.push(appointments[dateStr]?.reports?.length || 0);
     }
-    const chartData = last7Days.map(date => appointments[date]?.reports?.length || 0);
     const chartLabels = last7Days.map(d => formatDate(d));
     
+    // Assignment distribution
+    const assignedStats = {};
+    appointmentsList.forEach(a => {
+        const assigned = a.assigned || 'Unassigned';
+        assignedStats[assigned] = (assignedStats[assigned] || 0) + 1;
+    });
+    
+    // Role distribution
+    const roleStats = {};
+    appointmentsList.forEach(a => {
+        const role = a.role || 'Other';
+        roleStats[role] = (roleStats[role] || 0) + 1;
+    });
+    
     container.innerHTML = `
-        <div style="margin-bottom: 20px;">
-            <div class="insights-summary">
-                <div class="insight-stat">
-                    <div class="insight-stat-value">${totalAppointments}</div>
-                    <div class="insight-stat-label">Total Appointments</div>
-                </div>
-                <div class="insight-stat">
-                    <div class="insight-stat-value">${uniqueBusinesses}</div>
-                    <div class="insight-stat-label">Unique Businesses</div>
-                </div>
-                <div class="insight-stat">
-                    <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
-                    <div class="insight-stat-label">Today's Progress</div>
-                    <div style="background:var(--bg-primary); border-radius:10px; height:4px; margin-top:8px; overflow:hidden;">
-                        <div style="width:${todayProgress}%; background:var(--success); height:100%;"></div>
-                    </div>
-                </div>
-                <div class="insight-stat">
-                    <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, appointmentsList.length)) || 0}</div>
-                    <div class="insight-stat-label">Avg per Appointment</div>
-                </div>
+        <div class="insights-summary">
+            <div class="insight-stat">
+                <div class="insight-stat-value">${totalAppointments}</div>
+                <div class="insight-stat-label">Total Appointments</div>
             </div>
-            <div class="feature-card">
-                <h4><i class="fas fa-chart-line"></i> Last 7 Days Trend</h4>
-                <canvas id="featureInsightsChart" style="width:100%; max-height:200px;"></canvas>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${uniqueBusinesses}</div>
+                <div class="insight-stat-label">Unique Businesses</div>
             </div>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
+                <div class="insight-stat-label">Today's Progress</div>
+            </div>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, last7Days.length))}</div>
+                <div class="insight-stat-label">Avg per Day</div>
+            </div>
+        </div>
+        
+        <div class="feature-card">
+            <h4><i class="fas fa-chart-line"></i> 7-Day Trend</h4>
+            <canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas>
+        </div>
+        
+        <div class="feature-card">
+            <h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Daily Goal</span><span>${getTodayCount()} / ${goals.daily}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div>
+            </div>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Weekly Goal</span><span>${getWeekCount()} / ${goals.weekly}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div>
+            </div>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Monthly Goal</span><span>${getMonthCount()} / ${goals.monthly}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div>
+            </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
             <div class="feature-card">
                 <h4><i class="fas fa-users"></i> Assignment Distribution</h4>
-                <div id="assignmentList"></div>
+                <div class="distribution-list">
+                    ${Object.entries(assignedStats).map(([name, count]) => `
+                        <div class="distribution-item">
+                            <span class="distribution-name"><i class="fas fa-user"></i> ${escapeHtml(name)}</span>
+                            <span class="distribution-count">${count}</span>
+                        </div>
+                    `).join('') || '<div>No data</div>'}
+                </div>
             </div>
             <div class="feature-card">
-                <h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
-                <div>Daily: ${getTodayCount()}/${goals.daily} (${Math.round((getTodayCount()/goals.daily)*100)}%)</div>
-                <div style="background:var(--bg-primary); border-radius:10px; height:6px; margin:8px 0; overflow:hidden;">
-                    <div style="width:${Math.min(100, (getTodayCount()/goals.daily)*100)}%; background:var(--primary); height:100%;"></div>
-                </div>
-                <div>Weekly: ${getWeekCount()}/${goals.weekly} (${Math.round((getWeekCount()/goals.weekly)*100)}%)</div>
-                <div style="background:var(--bg-primary); border-radius:10px; height:6px; margin:8px 0; overflow:hidden;">
-                    <div style="width:${Math.min(100, (getWeekCount()/goals.weekly)*100)}%; background:var(--success); height:100%;"></div>
-                </div>
-                <div>Monthly: ${getMonthCount()}/${goals.monthly} (${Math.round((getMonthCount()/goals.monthly)*100)}%)</div>
-                <div style="background:var(--bg-primary); border-radius:10px; height:6px; margin:8px 0; overflow:hidden;">
-                    <div style="width:${Math.min(100, (getMonthCount()/goals.monthly)*100)}%; background:var(--secondary); height:100%;"></div>
+                <h4><i class="fas fa-briefcase"></i> Role Distribution</h4>
+                <div class="distribution-list">
+                    ${Object.entries(roleStats).map(([role, count]) => `
+                        <div class="distribution-item">
+                            <span class="distribution-name"><i class="fas fa-tag"></i> ${escapeHtml(role)}</span>
+                            <span class="distribution-count">${count}</span>
+                        </div>
+                    `).join('') || '<div>No data</div>'}
                 </div>
             </div>
         </div>
     `;
     
     // Create chart
-    const ctx = document.getElementById('featureInsightsChart');
+    const ctx = document.getElementById('insightsChartCanvas');
     if (ctx) {
-        if (window.featureChartInstance) window.featureChartInstance.destroy();
-        window.featureChartInstance = new Chart(ctx, {
+        if (featureChartInstance) featureChartInstance.destroy();
+        featureChartInstance = new Chart(ctx, {
             type: 'bar',
-            data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 6 }] },
+            data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] },
             options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
         });
     }
-    
-    // Render assignment distribution
-    const assignedStats = {};
-    appointmentsList.forEach(a => {
-        const assigned = a.assigned || 'Unassigned';
-        assignedStats[assigned] = (assignedStats[assigned] || 0) + 1;
-    });
-    const assignmentHtml = Object.entries(assignedStats).map(([name, count]) => 
-        `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1);">
-            <span>${escapeHtml(name)}</span><span><strong>${count}</strong></span>
-        </div>`
-    ).join('');
-    document.getElementById('assignmentList').innerHTML = assignmentHtml || '<div>No data</div>';
 }
 
-function renderCalendarFeature(container) {
+function renderCalendarOverlay(container) {
     const year = currentCalDate.getFullYear();
     const month = currentCalDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
     let daysHtml = '';
-    for (let i = 0; i < firstDay; i++) daysHtml += `<div class="calendar-feature-day"></div>`;
+    for (let i = 0; i < firstDay; i++) daysHtml += `<div class="calendar-day"></div>`;
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const apptCount = appointments[dateStr]?.reports?.length || 0;
-        daysHtml += `<div class="calendar-feature-day" data-date="${dateStr}">
-            <div>${d}</div>
-            ${apptCount > 0 ? `<span style="font-size:0.6rem; background:var(--success); padding:2px 4px; border-radius:10px;">${apptCount}</span>` : ''}
-        </div>`;
+        daysHtml += `
+            <div class="calendar-day ${selectedCalDate === dateStr ? 'selected' : ''}" data-date="${dateStr}">
+                <span>${d}</span>
+                ${apptCount > 0 ? `<span class="appt-badge">${apptCount}</span>` : ''}
+            </div>
+        `;
     }
+    
+    const apptData = appointments[selectedCalDate] || { reports: [] };
     
     container.innerHTML = `
         <div class="feature-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
                 <h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4>
-                <div>
-                    <button id="calFeaturePrev" class="back-btn" style="padding:4px 12px;">◀</button>
-                    <button id="calFeatureNext" class="back-btn" style="padding:4px 12px;">▶</button>
-                    <button id="calFeatureToday" class="back-btn" style="padding:4px 12px;">Today</button>
+                <div style="display:flex; gap:8px;">
+                    <button id="calPrevBtn" class="close-feature-btn" style="padding:6px 12px;">◀ Prev</button>
+                    <button id="calNextBtn" class="close-feature-btn" style="padding:6px 12px;">Next ▶</button>
+                    <button id="calTodayBtn" class="close-feature-btn" style="padding:6px 12px;">Today</button>
                 </div>
             </div>
-            <div class="calendar-feature-grid">${daysHtml}</div>
-            <div style="margin-top:16px;">
-                <strong>Quick Add:</strong>
-                <input type="date" id="calFeatureDate" value="${getTodayStr()}" style="margin-left:12px; padding:6px 12px; border-radius:20px; background:var(--bg-primary); border:1px solid var(--border-color);">
-                <button id="calFeatureAddBtn" class="back-btn" style="margin-left:12px;"><i class="fas fa-plus"></i> Add</button>
+            <div class="calendar-grid" id="calendarGrid">${daysHtml}</div>
+            
+            <div style="margin-top:20px;">
+                <label><strong>Quick Jump:</strong></label>
+                <input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin-left:12px; padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);">
+                <button id="quickAddFromCalendar" class="close-feature-btn" style="margin-left:12px;"><i class="fas fa-plus"></i> Add Appointment</button>
             </div>
-            <div id="calFeatureAppointments" style="margin-top:16px; max-height:200px; overflow-y:auto;">
-                <strong>Appointments for ${selectedCalDate}:</strong>
-                ${renderAppointmentsForDate(selectedCalDate)}
+            
+            <div style="margin-top:24px;">
+                <h4>Appointments for ${selectedCalDate}</h4>
+                <div id="appointmentsList">
+                    ${renderAppointmentsList(selectedCalDate)}
+                </div>
             </div>
         </div>
     `;
     
-    // Bind calendar events
-    document.querySelectorAll('.calendar-feature-day[data-date]').forEach(el => {
+    // Bind events
+    document.querySelectorAll('.calendar-day[data-date]').forEach(el => {
         el.addEventListener('click', () => {
             selectedCalDate = el.getAttribute('data-date');
-            renderCalendarFeature(container);
+            renderCalendarOverlay(container);
         });
     });
     
-    document.getElementById('calFeaturePrev')?.addEventListener('click', () => {
+    document.getElementById('calPrevBtn')?.addEventListener('click', () => {
         currentCalDate.setMonth(currentCalDate.getMonth() - 1);
-        renderCalendarFeature(container);
+        renderCalendarOverlay(container);
     });
-    document.getElementById('calFeatureNext')?.addEventListener('click', () => {
+    document.getElementById('calNextBtn')?.addEventListener('click', () => {
         currentCalDate.setMonth(currentCalDate.getMonth() + 1);
-        renderCalendarFeature(container);
+        renderCalendarOverlay(container);
     });
-    document.getElementById('calFeatureToday')?.addEventListener('click', () => {
+    document.getElementById('calTodayBtn')?.addEventListener('click', () => {
         currentCalDate = new Date();
         selectedCalDate = getTodayStr();
-        renderCalendarFeature(container);
+        renderCalendarOverlay(container);
     });
-    document.getElementById('calFeatureAddBtn')?.addEventListener('click', () => {
-        const date = document.getElementById('calFeatureDate').value;
-        hideFeaturePanel();
-        setTimeout(() => openQuickReportWithDate(date), 100);
+    document.getElementById('quickDatePicker')?.addEventListener('change', (e) => {
+        selectedCalDate = e.target.value;
+        renderCalendarOverlay(container);
+    });
+    document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => {
+        hideFeatureOverlay();
+        setTimeout(() => openQuickReportWithDate(selectedCalDate), 100);
     });
 }
 
-function renderAppointmentsForDate(dateStr) {
+function renderAppointmentsList(dateStr) {
     const apptData = appointments[dateStr]?.reports || [];
-    if (!apptData.length) return '<div style="color:var(--text-muted); padding:12px;">No appointments</div>';
+    if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments for this date</div>';
     return apptData.map(r => `
-        <div style="padding:8px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="padding:12px; border-bottom:1px solid var(--border-color);">
             <strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)}
-            <div style="font-size:0.7rem; color:var(--text-muted);">${escapeHtml(r.time || 'No time')}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted);">📞 ${escapeHtml(r.phone || 'No phone')} | ⏰ ${escapeHtml(r.time || 'No time')}</div>
+            <div style="font-size:0.75rem;">📝 ${escapeHtml(r.notes || 'No notes')}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">👤 Assigned: ${escapeHtml(r.assigned || 'Unassigned')}</div>
         </div>
     `).join('');
 }
 
-function renderPriorityFeature(container) {
+function renderPriorityOverlay(container) {
     const now = new Date();
     const timeZones = [
-        { name: 'Eastern (ET) ★', zone: 'America/New_York', priority: 1 },
-        { name: 'Central (CT)', zone: 'America/Chicago', priority: 2 },
-        { name: 'Mountain (MT)', zone: 'America/Denver', priority: 3 },
-        { name: 'Pacific (PT)', zone: 'America/Los_Angeles', priority: 4 }
+        { name: 'Eastern (ET) ★ PRIORITY', zone: 'America/New_York' },
+        { name: 'Central (CT)', zone: 'America/Chicago' },
+        { name: 'Mountain (MT)', zone: 'America/Denver' },
+        { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }
     ];
     
     let zonesHtml = '';
+    let activePrimeZones = [];
+    
     for (let tz of timeZones) {
         const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
         const hour = tzTime.getHours();
         const minute = tzTime.getMinutes();
-        const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
+        const isWeekday = tzTime.getDay() >= 1 && tzTime.getDay() <= 5;
+        const isPrimeMorning = (hour === 10) || (hour === 11 && minute <= 30);
+        const isPrimeAfternoon = (hour >= 14 && hour <= 15) || (hour === 16 && minute === 0);
+        const isPrimeTime = (isPrimeMorning || isPrimeAfternoon) && isWeekday;
+        const timeStr = tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        
+        if (isPrimeTime) activePrimeZones.push(tz.name);
+        
         zonesHtml += `
-            <div class="priority-feature-timezone ${isPrime ? 'prime' : ''}">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong>${tz.name}</strong>
-                    <span style="font-size:1.2rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+            <div class="priority-timezone ${isPrimeTime ? 'prime' : ''}">
+                <div class="priority-timezone-name">${tz.name}</div>
+                <div class="priority-timezone-time">${timeStr}</div>
+                <div class="priority-badge ${isPrimeTime ? 'prime' : 'waiting'}">
+                    ${isPrimeTime ? '🔥 PRIME TIME - CALL NOW' : 'Awaiting Prime Window'}
                 </div>
-                <div style="font-size:0.75rem; margin-top:8px;">
-                    ${isPrime ? '🔥 PRIME TIME - Best time to call now!' : 'Best hours: 10-11:30 AM or 2-4 PM local'}
-                </div>
+                <div style="font-size:0.75rem; margin-top:8px;">Best hours: 10-11:30 AM or 2-4 PM local</div>
             </div>
         `;
     }
@@ -327,9 +368,18 @@ function renderPriorityFeature(container) {
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-chart-line"></i> Real-Time Call Priority</h4>
-            <p style="margin-bottom:16px;">Best times to reach US business owners based on their local time:</p>
+            <p>Best times to reach US business owners based on their local time:</p>
+            ${activePrimeZones.length > 0 ? `
+                <div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
+                    <strong><i class="fas fa-bell"></i> ACTIVE PRIME WINDOWS:</strong> ${activePrimeZones.join(', ')}
+                </div>
+            ` : `
+                <div style="background:var(--warning); color:#1e293b; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
+                    <strong><i class="fas fa-clock"></i> No Active Prime Windows</strong><br>Next: 10-11:30 AM or 2-4 PM local time
+                </div>
+            `}
             ${zonesHtml}
-            <div style="margin-top:16px; padding:12px; background:rgba(16,185,129,0.1); border-radius:12px;">
+            <div style="margin-top:20px; padding:16px; background:var(--bg-primary); border-radius:16px;">
                 <strong>💡 Pro Tips:</strong><br>
                 • Best days: Tuesday, Wednesday, Thursday<br>
                 • Avoid: Monday mornings & Friday afternoons<br>
@@ -339,79 +389,79 @@ function renderPriorityFeature(container) {
     `;
 }
 
-function renderExportFeature(container) {
+function renderExportOverlay(container) {
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-file-csv"></i> Export Data</h4>
             <p>Export all your appointments to a CSV file that can be opened in Excel, Google Sheets, or any spreadsheet application.</p>
-            <button id="doExportBtn" class="back-btn" style="margin-top:16px; width:100%; justify-content:center;"><i class="fas fa-download"></i> Export to CSV</button>
+            <button id="exportCsvBtn" class="close-feature-btn" style="background:var(--success); color:white; margin-top:16px;"><i class="fas fa-download"></i> Export to CSV</button>
         </div>
     `;
-    document.getElementById('doExportBtn')?.addEventListener('click', exportToCSV);
+    document.getElementById('exportCsvBtn')?.addEventListener('click', () => {
+        exportToCSV();
+        hideFeatureOverlay();
+    });
 }
 
-function renderUsernameFeature(container) {
+function renderUsernameOverlay(container) {
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-user-circle"></i> Set Your Name</h4>
-            <p>Your name replaces <strong>[Your Name]</strong> in all scripts. Current name: <strong>${escapeHtml(userName)}</strong></p>
-            <input type="text" id="newUserName" value="${escapeHtml(userName)}" placeholder="Enter your name" style="width:100%; padding:10px; border-radius:20px; background:var(--bg-primary); border:1px solid var(--border-color); margin:16px 0;">
-            <button id="saveUserNameBtn" class="back-btn" style="width:100%; justify-content:center;"><i class="fas fa-save"></i> Save Name</button>
+            <p>Your name replaces <strong>[Your Name]</strong> in all scripts.</p>
+            <p>Current name: <strong>${escapeHtml(userName)}</strong></p>
+            <input type="text" id="userNameInput" value="${escapeHtml(userName)}" placeholder="Enter your name" style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin:16px 0;">
+            <button id="saveUserNameBtn" class="close-feature-btn" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save Name</button>
         </div>
     `;
     document.getElementById('saveUserNameBtn')?.addEventListener('click', () => {
-        const newName = document.getElementById('newUserName').value;
+        const newName = document.getElementById('userNameInput').value;
         if (newName.trim()) {
             userName = newName.trim();
             localStorage.setItem('scriptflow_user_name', userName);
             showToast(`Name set to: ${userName}`, 'success');
             if (!isEditing) loadScript(currentScriptId);
-            hideFeaturePanel();
+            hideFeatureOverlay();
         }
     });
 }
 
-function renderThemeFeature(container) {
+function renderThemeOverlay(container) {
     const isDark = document.body.classList.contains('dark');
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-palette"></i> Theme Settings</h4>
             <p>Choose your preferred appearance for the application.</p>
             <div style="display:flex; gap:16px; margin-top:16px;">
-                <button id="setLightTheme" class="back-btn" style="flex:1; justify-content:center;"><i class="fas fa-sun"></i> Light Mode</button>
-                <button id="setDarkTheme" class="back-btn" style="flex:1; justify-content:center;"><i class="fas fa-moon"></i> Dark Mode</button>
+                <button id="lightThemeBtn" class="close-feature-btn" style="flex:1; justify-content:center;"><i class="fas fa-sun"></i> Light Mode</button>
+                <button id="darkThemeBtn" class="close-feature-btn" style="flex:1; justify-content:center;"><i class="fas fa-moon"></i> Dark Mode</button>
             </div>
-            <div style="margin-top:16px; padding:12px; background:rgba(59,130,246,0.1); border-radius:12px;">
-                Current: <strong>${isDark ? 'Dark Mode' : 'Light Mode'}</strong>
-            </div>
+            <p style="margin-top:16px;">Current: <strong>${isDark ? 'Dark Mode' : 'Light Mode'}</strong></p>
         </div>
     `;
-    document.getElementById('setLightTheme')?.addEventListener('click', () => {
+    document.getElementById('lightThemeBtn')?.addEventListener('click', () => {
         if (document.body.classList.contains('dark')) toggleTheme();
-        hideFeaturePanel();
+        hideFeatureOverlay();
     });
-    document.getElementById('setDarkTheme')?.addEventListener('click', () => {
+    document.getElementById('darkThemeBtn')?.addEventListener('click', () => {
         if (!document.body.classList.contains('dark')) toggleTheme();
-        hideFeaturePanel();
+        hideFeatureOverlay();
     });
 }
 
-function renderHelpFeature(container) {
+function renderHelpOverlay(container) {
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h4>
             <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics about your appointments and progress.</div>
-            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage appointments, view by date, edit or delete.</div>
+            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage appointments, view by date.</div>
             <div style="margin:16px 0;"><strong>🎯 Call Priority Predictor</strong><br>Real-time US time zones - shows best calling windows.</div>
             <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>11 scripts, edit with undo/redo, press 1-9 to switch.</div>
             <div style="margin:16px 0;"><strong>⚙️ Tools</strong><br>Export CSV, set name, theme toggle, factory reset.</div>
-            <button id="closeHelpFeatureBtn" class="back-btn" style="width:100%; justify-content:center; margin-top:16px;">Got it</button>
         </div>
     `;
-    document.getElementById('closeHelpFeatureBtn')?.addEventListener('click', () => hideFeaturePanel());
 }
 
-function renderResetFeature(container) {
+function renderResetOverlay(container) {
     container.innerHTML = `
         <div class="feature-card">
             <h4><i class="fas fa-exclamation-triangle"></i> Factory Reset</h4>
@@ -423,7 +473,7 @@ function renderResetFeature(container) {
                 <li>All goals and settings</li>
                 <li>Version history</li>
             </ul>
-            <button id="confirmResetBtn" class="back-btn" style="background:var(--danger); color:white; width:100%; justify-content:center;"><i class="fas fa-trash"></i> Reset Everything</button>
+            <button id="confirmResetBtn" class="close-feature-btn" style="background:var(--danger); color:white;"><i class="fas fa-trash"></i> Reset Everything</button>
         </div>
     `;
     document.getElementById('confirmResetBtn')?.addEventListener('click', () => {
@@ -926,12 +976,12 @@ function updateRealTimePriorityDashboard() {
             if (tooltipStatus) tooltipStatus.innerHTML = '🔥 ACTIVE PRIME WINDOW - Best time to call NOW!';
         } else {
             let nextInfo = '';
-            if (hour < 10) nextInfo = 'Next prime window: 10-11:30 AM ET';
-            else if (hour < 14) nextInfo = 'Next prime window: 2-4 PM ET';
+            if (hour < 10) nextInfo = 'Next: 10-11:30 AM ET';
+            else if (hour < 14) nextInfo = 'Next: 2-4 PM ET';
             else if (hour >= 16) nextInfo = 'Tomorrow 10-11:30 AM ET';
-            else nextInfo = 'Check back during 10-11:30 AM or 2-4 PM ET';
+            else nextInfo = 'Check 10-11:30 AM or 2-4 PM ET';
             priorityText.innerHTML = `<i class="fas fa-clock"></i> ${nextInfo}`;
-            if (tooltipStatus) tooltipStatus.innerHTML = `⏳ No active prime window · ${nextInfo}`;
+            if (tooltipStatus) tooltipStatus.innerHTML = `⏳ ${nextInfo}`;
         }
     }
 }
@@ -964,18 +1014,18 @@ document.addEventListener('DOMContentLoaded', () => {
         toolsChevronElem.classList.add('rotated');
     }
     
-    // Setup tool item click handlers (show feature panel)
+    // Setup tool item click handlers (show feature overlay)
     document.querySelectorAll('.tool-item[data-tool]').forEach(item => {
         item.addEventListener('click', () => {
             const tool = item.getAttribute('data-tool');
             const title = item.querySelector('span')?.innerText || item.innerText.replace(/[^\w\s]/g, '').trim();
-            showFeaturePanel(tool, title);
+            showFeatureOverlay(tool, title);
         });
     });
     
-    // Back button handler
-    const backBtn = document.getElementById('backToScriptsBtn');
-    if (backBtn) backBtn.addEventListener('click', hideFeaturePanel);
+    // Close button handler
+    const closeBtn = document.getElementById('closeFeatureBtn');
+    if (closeBtn) closeBtn.addEventListener('click', hideFeatureOverlay);
     
     // Sidebar toggle
     const menuToggle = document.getElementById('menuToggleBtn');
@@ -1031,8 +1081,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Keyboard shortcuts
+    // Keyboard shortcuts - ESC to close overlay
     window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && currentActiveTool) {
+            hideFeatureOverlay();
+            e.preventDefault();
+        }
         if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input') && !currentActiveTool) {
             e.preventDefault();
             const target = getKeyMapping().get(e.key);
@@ -1052,9 +1106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape' && isEditing) {
             cancelEdit();
             showToast('Edit cancelled', 'info');
-        }
-        if (e.key === 'Escape' && currentActiveTool) {
-            hideFeaturePanel();
         }
     });
     
