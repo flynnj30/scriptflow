@@ -1,3 +1,6 @@
+// ==================== SCRIPTFLOW PRO - WITH FEATURE OVERLAY ====================
+// When a tool is selected, an overlay appears over the script content
+
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
 let appointments = {};
@@ -63,7 +66,10 @@ function showFeatureOverlay(toolId, title) {
     const overlayTitle = document.getElementById('featureOverlayTitle');
     const overlayContent = document.getElementById('featureOverlayContent');
     
-    if (!overlay) return;
+    if (!overlay) {
+        console.error('Feature overlay element not found');
+        return;
+    }
     
     currentActiveTool = toolId;
     overlayTitle.textContent = title;
@@ -1003,9 +1009,13 @@ function toggleToolsMenu() {
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('ScriptFlow Pro initializing...');
+    
     // Setup tools dropdown
     const toolsHeaderElem = document.getElementById('toolsHeader');
-    if (toolsHeaderElem) toolsHeaderElem.addEventListener('click', toggleToolsMenu);
+    if (toolsHeaderElem) {
+        toolsHeaderElem.addEventListener('click', toggleToolsMenu);
+    }
     
     const toolsMenuElem = document.getElementById('toolsMenu');
     const toolsChevronElem = document.getElementById('toolsChevron');
@@ -1014,18 +1024,41 @@ document.addEventListener('DOMContentLoaded', () => {
         toolsChevronElem.classList.add('rotated');
     }
     
-    // Setup tool item click handlers (show feature overlay)
-    document.querySelectorAll('.tool-item[data-tool]').forEach(item => {
-        item.addEventListener('click', () => {
-            const tool = item.getAttribute('data-tool');
-            const title = item.querySelector('span')?.innerText || item.innerText.replace(/[^\w\s]/g, '').trim();
-            showFeatureOverlay(tool, title);
+    // Setup tool item click handlers - IMPORTANT: Use class selector .tool-item
+    const toolItems = document.querySelectorAll('.tool-item');
+    console.log(`Found ${toolItems.length} tool items`);
+    
+    toolItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Get the tool type from the icon or text content
+            const icon = item.querySelector('i');
+            const text = item.querySelector('span')?.innerText || item.innerText;
+            
+            let toolType = '';
+            let toolTitle = text;
+            
+            if (text.includes('Insights')) toolType = 'insights';
+            else if (text.includes('Appointment Calendar')) toolType = 'calendar';
+            else if (text.includes('Call Priority')) toolType = 'priority';
+            else if (text.includes('Export')) toolType = 'export';
+            else if (text.includes('Set Your Name')) toolType = 'username';
+            else if (text.includes('Dark/Light')) toolType = 'theme';
+            else if (text.includes('Help')) toolType = 'help';
+            else if (text.includes('Factory Reset')) toolType = 'reset';
+            
+            if (toolType) {
+                console.log(`Opening tool: ${toolType}`);
+                showFeatureOverlay(toolType, toolTitle);
+            }
         });
     });
     
     // Close button handler
     const closeBtn = document.getElementById('closeFeatureBtn');
-    if (closeBtn) closeBtn.addEventListener('click', hideFeatureOverlay);
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideFeatureOverlay);
+    }
     
     // Sidebar toggle
     const menuToggle = document.getElementById('menuToggleBtn');
@@ -1052,27 +1085,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // Theme
     if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
     
-    // Set up event listeners
+    // Set up event listeners for script buttons
     const addBtn = document.getElementById('addScriptBtnSide');
     if (addBtn) addBtn.addEventListener('click', addNewScript);
+    
     const editBtn = document.getElementById('editScriptBtn');
     if (editBtn) editBtn.addEventListener('click', enterEdit);
+    
     const saveBtn = document.getElementById('saveScriptBtn');
     if (saveBtn) saveBtn.addEventListener('click', saveEdit);
+    
     const cancelBtn = document.getElementById('cancelEditBtn');
     if (cancelBtn) cancelBtn.addEventListener('click', cancelEdit);
+    
     const copyBtn = document.getElementById('copyScriptBtn');
     if (copyBtn) copyBtn.addEventListener('click', copyScript);
-    const resetBtn = document.getElementById('resetScriptBtn');
-    if (resetBtn) resetBtn.addEventListener('click', resetScript);
-    const undo = document.getElementById('undoBtn');
-    if (undo) undo.addEventListener('click', () => undoScript(currentScriptId));
-    const redo = document.getElementById('redoBtn');
-    if (redo) redo.addEventListener('click', () => redoScript(currentScriptId));
+    
+    const resetScriptBtn = document.getElementById('resetScriptBtn');
+    if (resetScriptBtn) resetScriptBtn.addEventListener('click', resetScript);
+    
+    const undoBtn = document.getElementById('undoBtn');
+    if (undoBtn) undoBtn.addEventListener('click', () => undoScript(currentScriptId));
+    
+    const redoBtn = document.getElementById('redoBtn');
+    if (redoBtn) redoBtn.addEventListener('click', () => redoScript(currentScriptId));
+    
     const quickReport = document.getElementById('quickReportBtn');
     if (quickReport) quickReport.addEventListener('click', openQuickReport);
-    const history = document.getElementById('historyBtn');
-    if (history) history.addEventListener('click', showVersionHistoryModal);
+    
+    const historyBtn = document.getElementById('historyBtn');
+    if (historyBtn) historyBtn.addEventListener('click', showVersionHistoryModal);
+    
     const scriptSearch = document.getElementById('scriptSearch');
     if (scriptSearch) {
         scriptSearch.addEventListener('input', (e) => {
@@ -1081,7 +1124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Keyboard shortcuts - ESC to close overlay
+    // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && currentActiveTool) {
             hideFeatureOverlay();
@@ -1113,4 +1156,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRealTimePriorityDashboard();
     setInterval(updateRealTimePriorityDashboard, 1000);
     setInterval(() => updateStats(), 5000);
+    
+    console.log('ScriptFlow Pro initialized successfully');
 });
