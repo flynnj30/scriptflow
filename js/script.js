@@ -1,5 +1,5 @@
-// ==================== SCRIPTFLOW PRO - COMPLETE APPLICATION ====================
-// All features fully functional: Appointment Calendar with Edit/Delete/Move, Scripts, Priority Predictor
+// ==================== SCRIPTFLOW PRO - FULLY FUNCTIONAL ====================
+// All features working: Appointment Calendar with Edit/Delete/Move, Scripts, Priority Predictor
 
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
@@ -81,7 +81,7 @@ function updatePriorityIndicator() {
             else if (hour < 14) nextInfo = 'Next prime window: 2-4 PM ET';
             else if (hour >= 16) nextInfo = 'Tomorrow 10-11:30 AM ET';
             else nextInfo = 'Check back during 10-11:30 AM or 2-4 PM ET';
-            priorityText.innerHTML = `<i class="fas fa-clock"></i> ET: ${timeStr} (${nextInfo})`;
+            priorityText.innerHTML = `<i class="fas fa-clock"></i> ET: ${timeStr}`;
             if (tooltipStatus) tooltipStatus.innerHTML = `⏳ Currently NOT prime time · ${nextInfo}`;
         }
     }
@@ -469,6 +469,7 @@ function showVersionHistoryModal() {
         });
     });
     document.getElementById('closeHistBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 // ==================== FULLY FUNCTIONAL CALENDAR MODAL ====================
@@ -476,7 +477,7 @@ function openCalendarModal() {
     if (calendarModal) return;
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card" id="calModalInner"></div>`;
+    modal.innerHTML = `<div class="modal-card" id="calModalInner" style="width:800px; max-width:95%;"></div>`;
     document.body.appendChild(modal);
     calendarModal = modal;
     renderCalendarModal();
@@ -519,22 +520,23 @@ function renderCalendarModal() {
     }
     
     const apptData = appointments[selectedCalDate] || { reports: [], note: '' };
-    let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments</strong><button id="copyAllReportsBtn" style="float:right; background:var(--bg-primary); border:none; padding:4px 12px; border-radius:20px; cursor:pointer;">Copy All</button><div style="clear:both;"></div>';
+    let reportsHtml = '<div style="margin-top:16px;"><strong>📋 Appointments for ' + selectedCalDate + '</strong><button id="copyAllReportsBtn" style="float:right; background:var(--bg-primary); border:none; padding:4px 12px; border-radius:20px; cursor:pointer;">Copy All</button><div style="clear:both;"></div>';
     
-    if (apptData.reports?.length) {
+    if (apptData.reports && apptData.reports.length > 0) {
         apptData.reports.forEach(r => {
-            reportsHtml += `<div class="appointment-card">
+            reportsHtml += `<div class="appointment-card" data-appt-id="${r.id}">
                 <strong>${escapeHtml(r.business)}</strong> - ${escapeHtml(r.contactName)}
-                <div>📞 ${escapeHtml(r.phone)} | ⏰ ${escapeHtml(r.time || 'TBD')}</div>
+                <div>📞 ${escapeHtml(r.phone || 'N/A')} | ⏰ ${escapeHtml(r.time || 'TBD')} | 👤 ${escapeHtml(r.role || 'N/A')}</div>
+                <div>📝 ${escapeHtml(r.notes || 'No notes')}</div>
                 <div class="appointment-actions">
-                    <button class="edit-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}">Edit</button>
-                    <button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}">Delete</button>
-                    <button class="copy-single-btn" data-id="${r.id}" style="background:transparent; border:none; cursor:pointer;">Copy</button>
+                    <button class="edit-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="delete-appt-btn" data-id="${r.id}" data-date="${selectedCalDate}"><i class="fas fa-trash"></i> Delete</button>
+                    <button class="copy-single-btn" data-id="${r.id}" style="background:transparent; border:none; cursor:pointer; padding:4px 12px;"><i class="fas fa-copy"></i> Copy</button>
                 </div>
             </div>`;
         });
     } else {
-        reportsHtml += '<div style="padding:20px; text-align:center;">No appointments for this date</div>';
+        reportsHtml += '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments for this date</div>';
     }
     reportsHtml += '</div>';
     
@@ -542,32 +544,37 @@ function renderCalendarModal() {
         <div class="cal-header">
             <div><strong>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</strong></div>
             <div>
-                <button class="btn-icon" id="calPrevBtn">◀ Prev</button>
-                <button class="btn-icon" id="calNextBtn">Next ▶</button>
-                <button class="btn-icon" id="calTodayBtn">Today</button>
+                <button class="btn-icon" id="calPrevBtn" style="padding:6px 12px;">◀ Prev</button>
+                <button class="btn-icon" id="calNextBtn" style="padding:6px 12px;">Next ▶</button>
+                <button class="btn-icon" id="calTodayBtn" style="padding:6px 12px;">Today</button>
             </div>
         </div>
         <div class="cal-weekdays">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<span>${d}</span>`).join('')}</div>
-        <div class="cal-days">${daysHtml}</div>
-        <div><input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin:12px 0; padding:10px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); width:100%;"></div>
-        <textarea id="apptNoteInput" rows="2" placeholder="General note..." style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-bottom:8px;">${escapeHtml(apptData.note || '')}</textarea>
-        <button id="quickAddForDate" class="btn-icon" style="margin:8px 0; background:var(--secondary); color:white;">+ Add Appointment</button>
-        ${reportsHtml}
-        <div class="goal-input-group">
-            <input type="number" id="goalDailyInput" placeholder="Daily Goal" value="${goals.daily}">
-            <input type="number" id="goalWeeklyInput" placeholder="Weekly" value="${goals.weekly}">
-            <input type="number" id="goalMonthlyInput" placeholder="Monthly" value="${goals.monthly}">
+        <div class="cal-days" id="calendarDaysGrid">${daysHtml}</div>
+        <div style="margin: 16px 0;">
+            <label style="font-size:0.8rem; font-weight:600;">Quick jump:</label>
+            <input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin-left:12px; padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);">
         </div>
-        <div style="display:flex; gap:12px; margin-top:16px; justify-content:flex-end;">
+        <textarea id="apptNoteInput" rows="2" placeholder="Add a general note for this date..." style="width:100%; padding:12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary); margin-bottom:8px;">${escapeHtml(apptData.note || '')}</textarea>
+        <button id="quickAddForDate" class="btn-icon" style="margin:8px 0; background:var(--secondary); color:white; width:100%;"><i class="fas fa-plus"></i> + Add Appointment for ${selectedCalDate}</button>
+        ${reportsHtml}
+        <div class="goal-input-group" style="margin-top:20px; display:flex; gap:12px;">
+            <div style="flex:1;"><label style="font-size:0.7rem;">Daily Goal</label><input type="number" id="goalDailyInput" value="${goals.daily}" style="width:100%; padding:8px; border-radius:16px;"></div>
+            <div style="flex:1;"><label style="font-size:0.7rem;">Weekly Goal</label><input type="number" id="goalWeeklyInput" value="${goals.weekly}" style="width:100%; padding:8px; border-radius:16px;"></div>
+            <div style="flex:1;"><label style="font-size:0.7rem;">Monthly Goal</label><input type="number" id="goalMonthlyInput" value="${goals.monthly}" style="width:100%; padding:8px; border-radius:16px;"></div>
+        </div>
+        <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
             <button id="saveNoteBtn" class="btn-icon">Save Note</button>
             <button id="closeCalBtn" class="btn-icon">Close</button>
         </div>
     `;
     
+    // Attach all calendar event listeners
     attachCalendarEvents();
 }
 
 function attachCalendarEvents() {
+    // Day selection
     document.querySelectorAll('.cal-day[data-date]').forEach(el => {
         el.addEventListener('click', () => {
             selectedCalDate = el.getAttribute('data-date');
@@ -575,6 +582,7 @@ function attachCalendarEvents() {
         });
     });
     
+    // Date picker
     const datePicker = document.getElementById('quickDatePicker');
     if (datePicker) {
         datePicker.addEventListener('change', (e) => {
@@ -583,20 +591,24 @@ function attachCalendarEvents() {
         });
     }
     
+    // Delete buttons
     document.querySelectorAll('.delete-appt-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const id = parseInt(btn.getAttribute('data-id'));
             const date = btn.getAttribute('data-date');
-            if (confirm('Delete this appointment?')) {
+            if (confirm('Delete this appointment? This cannot be undone.')) {
                 deleteAppointment(date, id);
                 renderCalendarModal();
-                showToast('Appointment deleted');
+                showToast('Appointment deleted', 'info');
             }
         });
     });
     
+    // Edit buttons
     document.querySelectorAll('.edit-appt-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const id = parseInt(btn.getAttribute('data-id'));
             const date = btn.getAttribute('data-date');
             const appt = appointments[date]?.reports?.find(r => r.id === id);
@@ -604,8 +616,10 @@ function attachCalendarEvents() {
         });
     });
     
+    // Copy single buttons
     document.querySelectorAll('.copy-single-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
             const id = parseInt(btn.getAttribute('data-id'));
             for (let d in appointments) {
                 const rep = appointments[d]?.reports?.find(r => r.id === id);
@@ -617,6 +631,7 @@ function attachCalendarEvents() {
         });
     });
     
+    // Navigation buttons
     const prevBtn = document.getElementById('calPrevBtn');
     const nextBtn = document.getElementById('calNextBtn');
     const todayBtn = document.getElementById('calTodayBtn');
@@ -624,6 +639,7 @@ function attachCalendarEvents() {
     if (nextBtn) nextBtn.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarModal(); });
     if (todayBtn) todayBtn.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarModal(); });
     
+    // Save note
     const saveNoteBtn = document.getElementById('saveNoteBtn');
     if (saveNoteBtn) {
         saveNoteBtn.addEventListener('click', () => {
@@ -635,6 +651,7 @@ function attachCalendarEvents() {
         });
     }
     
+    // Quick add button
     const quickAddBtn = document.getElementById('quickAddForDate');
     if (quickAddBtn) {
         quickAddBtn.addEventListener('click', () => {
@@ -643,18 +660,24 @@ function attachCalendarEvents() {
         });
     }
     
+    // Close button
     const closeBtn = document.getElementById('closeCalBtn');
     if (closeBtn) closeBtn.addEventListener('click', closeCalendarModal);
     
+    // Copy all button
     const copyAllBtn = document.getElementById('copyAllReportsBtn');
     if (copyAllBtn) {
         copyAllBtn.addEventListener('click', () => {
             const data = appointments[selectedCalDate];
-            if (data?.reports?.length) copyToClipboard(data.reports.map(r => r.fullText).join('\n\n---\n\n'));
-            else showToast('No appointments', 'error');
+            if (data?.reports && data.reports.length > 0) {
+                copyToClipboard(data.reports.map(r => r.fullText).join('\n\n---\n\n'));
+            } else {
+                showToast('No appointments to copy', 'error');
+            }
         });
     }
     
+    // Goal inputs
     ['goalDailyInput', 'goalWeeklyInput', 'goalMonthlyInput'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -662,7 +685,14 @@ function attachCalendarEvents() {
                 const map = { goalDailyInput: 'daily', goalWeeklyInput: 'weekly', goalMonthlyInput: 'monthly' };
                 goals[map[id]] = parseInt(el.value) || (id === 'goalDailyInput' ? 3 : id === 'goalWeeklyInput' ? 15 : 60);
                 saveGoals();
-                renderCalendarModal();
+                // Update display in top bar
+                const goalDailySpan = document.getElementById('goalDaily');
+                const goalWeeklySpan = document.getElementById('goalWeekly');
+                const goalMonthlySpan = document.getElementById('goalMonthly');
+                if (goalDailySpan) goalDailySpan.innerText = goals.daily;
+                if (goalWeeklySpan) goalWeeklySpan.innerText = goals.weekly;
+                if (goalMonthlySpan) goalMonthlySpan.innerText = goals.monthly;
+                showToast('Goals updated');
             });
         }
     });
@@ -671,29 +701,40 @@ function attachCalendarEvents() {
 function openEditAppointmentModal(oldDateStr, appt) {
     const modalDiv = document.createElement('div');
     modalDiv.className = 'modal-overlay';
-    modalDiv.innerHTML = `<div class="modal-card"><h3>✏️ Edit Appointment</h3>
+    modalDiv.innerHTML = `<div class="modal-card" style="width:500px;"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
         <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${oldDateStr}"></div>
-        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
-        <div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
-        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div>
-        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div>
-        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div>
-        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2">${escapeHtml(appt.notes)}</textarea></div>
-        <div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div>
+        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}" placeholder="Business name"></div>
+        <div class="form-group"><label>Contact Name *</label><input id="editName" value="${escapeHtml(appt.contactName)}" placeholder="Contact name"></div>
+        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}" placeholder="Role (Owner/Manager/etc)"></div>
+        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}" placeholder="Phone number"></div>
+        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}" placeholder="e.g., 2pm ET"></div>
+        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="2" placeholder="Additional notes">${escapeHtml(appt.notes)}</textarea></div>
+        <div class="form-group"><label>Assigned To</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}" placeholder="Assigned team member"></div>
         <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
-            <button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save Changes</button>
-            <button id="cancelEditModalBtn" class="btn-icon">Cancel</button>
+            <button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save Changes</button>
+            <button id="cancelEditModalBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
         </div>
     </div>`;
     document.body.appendChild(modalDiv);
     
     document.getElementById('saveEditBtn').addEventListener('click', () => {
         const newDate = document.getElementById('editDate').value;
+        const updatedBusiness = document.getElementById('editBusiness').value;
+        const updatedName = document.getElementById('editName').value;
+        
+        if (!updatedBusiness || !updatedName) {
+            showToast('Business and Contact name are required', 'error');
+            return;
+        }
+        
+        // Delete from old date
         deleteAppointment(oldDateStr, appt.id);
+        
+        // Add to new date with same ID
         addAppointment(
             newDate,
-            document.getElementById('editBusiness').value,
-            document.getElementById('editName').value,
+            updatedBusiness,
+            updatedName,
             document.getElementById('editRole').value,
             document.getElementById('editPhone').value,
             document.getElementById('editTime').value,
@@ -701,11 +742,12 @@ function openEditAppointmentModal(oldDateStr, appt) {
             document.getElementById('editAssigned').value,
             appt.id
         );
+        
         selectedCalDate = newDate;
         modalDiv.remove();
         closeCalendarModal();
         openCalendarModal();
-        showToast('Appointment updated');
+        showToast('Appointment updated and moved to ' + newDate, 'success');
     });
     
     document.getElementById('cancelEditModalBtn').addEventListener('click', () => modalDiv.remove());
@@ -716,16 +758,19 @@ function openEditAppointmentModal(oldDateStr, appt) {
 function openQuickReportWithDate(defaultDate) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card"><h3>➕ Quick Add Appointment</h3>
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-plus-circle"></i> Quick Add Appointment</h3>
         <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
-        <div class="form-group"><label>Business *</label><input id="reportBusiness" placeholder="Company name"></div>
+        <div class="form-group"><label>Business Name *</label><input id="reportBusiness" placeholder="Company name"></div>
         <div class="form-group"><label>Contact Name *</label><input id="reportName" placeholder="Full name"></div>
-        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
-        <div class="form-group"><label>Phone</label><input id="reportPhone" placeholder="Phone number"></div>
-        <div class="form-group"><label>Time</label><input id="reportTime" placeholder="e.g., 2pm ET"></div>
-        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
+        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option><option>Marketing</option><option>Admin</option></select></div>
+        <div class="form-group"><label>Phone Number</label><input id="reportPhone" placeholder="Phone number"></div>
+        <div class="form-group"><label>Time</label><input id="reportTime" placeholder="e.g., Monday 3pm ET"></div>
+        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2" placeholder="Appointment details..."></textarea></div>
         <div class="form-group"><label>Assigned To</label><input id="reportAssigned" value="Daniel"></div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success); color:white;">Save & Copy</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+            <button id="submitReportBtn" class="btn-icon" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save & Copy</button>
+            <button id="closeReportBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
+        </div>
     </div>`;
     document.body.appendChild(modal);
     
@@ -733,7 +778,7 @@ function openQuickReportWithDate(defaultDate) {
         const bus = document.getElementById('reportBusiness').value;
         const name = document.getElementById('reportName').value;
         if (!bus || !name) {
-            showToast('Business and Contact required', 'error');
+            showToast('Business and Contact name are required', 'error');
             return;
         }
         const text = addAppointment(
@@ -747,7 +792,7 @@ function openQuickReportWithDate(defaultDate) {
         copyToClipboard(text);
         modal.remove();
         if (calendarModal) openCalendarModal();
-        showToast('Appointment saved!');
+        showToast('Appointment saved!', 'success');
     });
     document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
@@ -761,20 +806,24 @@ function openPriorityModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     const now = new Date();
-    const timeZones = ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles'];
-    const zoneNames = ['Eastern (ET) ★ PRIORITY', 'Central (CT)', 'Mountain (MT)', 'Pacific (PT)'];
+    const timeZones = [
+        { name: 'Eastern (ET) ★ PRIORITY', zone: 'America/New_York' },
+        { name: 'Central (CT)', zone: 'America/Chicago' },
+        { name: 'Mountain (MT)', zone: 'America/Denver' },
+        { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }
+    ];
     let zonesHtml = '';
-    for (let i = 0; i < timeZones.length; i++) {
-        const tzTime = new Date(now.toLocaleString('en-US', { timeZone: timeZones[i] }));
+    timeZones.forEach(tz => {
+        const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
         const hour = tzTime.getHours();
         const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 16);
         zonesHtml += `<div class="timezone-card ${isPrime ? 'recommended' : ''}">
-            <div class="timezone-name" style="font-weight:700;">${zoneNames[i]}</div>
+            <div class="timezone-name" style="font-weight:700;">${tz.name}</div>
             <div style="font-size:1.3rem; font-weight:700; margin:8px 0; color:var(--primary);">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
             <div class="best-time-badge ${isPrime ? 'best-time-high' : ''}" style="${!isPrime ? 'background:var(--primary); color:white;' : ''}">${isPrime ? '🔥 PRIME TIME' : 'Call during 10-11:30 AM or 2-4 PM'}</div>
         </div>`;
-    }
-    modal.innerHTML = `<div class="modal-card priority-modal" style="width:650px;">
+    });
+    modal.innerHTML = `<div class="modal-card priority-modal" style="width:650px; max-width:95%;">
         <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color:white; padding:20px; border-radius:24px; margin-bottom:20px; text-align:center;">
             <h2><i class="fas fa-chart-line"></i> REAL-TIME CALL PRIORITY</h2>
             <div style="margin-top:8px;">Best times to reach US business owners</div>
@@ -786,7 +835,7 @@ function openPriorityModal() {
         <div style="padding:16px; background:var(--bg-primary); border-radius:20px;">
             <strong>💡 PRO TIPS:</strong><br>• Best days: Tuesday, Wednesday, Thursday<br>• Avoid: Monday mornings & Friday afternoons<br>• Lunch hour (12-1 PM local) has <30% answer rate
         </div>
-        <div style="margin-top:20px;"><button id="closePriorityBtn" class="btn-icon" style="background:var(--primary); width:100%;">Start Calling</button></div>
+        <div style="margin-top:20px;"><button id="closePriorityBtn" class="btn-icon" style="background:var(--primary); width:100%;"><i class="fas fa-phone"></i> Start Calling</button></div>
     </div>`;
     document.body.appendChild(modal);
     document.getElementById('closePriorityBtn').addEventListener('click', () => modal.remove());
@@ -812,32 +861,37 @@ function toggleTheme() {
 function openHelpModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card"><h3>📖 ScriptFlow Pro Guide</h3>
-        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Indicator</strong><br>Hover over the indicator next to Quick Add button - shows Eastern Time priority and prime calling windows</div>
-        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click calendar icon to open full calendar<br>• Edit/Delete appointments<br>• Change date to move appointments<br>• Set daily/weekly/monthly goals</div>
-        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant switching<br>• Edit scripts with undo/redo (Ctrl+Z/Y)<br>• Version history tracks all changes</div>
-        <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
+        <div style="margin:16px 0;"><strong>🎯 Real-Time Priority Indicator</strong><br>Hover over the colored indicator next to Quick Add button - shows Eastern Time and prime calling windows</div>
+        <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>• Click "Appointment Calendar" in Tools menu<br>• Edit appointments to change date/time<br>• Delete appointments with confirmation<br>• Copy appointment details to clipboard<br>• Set daily/weekly/monthly goals</div>
+        <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>• 11 complete call scripts with objection handlers<br>• Press 1-9 keys for instant script switching<br>• Edit scripts with undo/redo (Ctrl+Z / Ctrl+Y)<br>• Version history saves all changes</div>
+        <div style="margin:16px 0;"><strong>⚙️ Tools</strong><br>• Export all appointments to CSV<br>• Set your name to personalize scripts<br>• Dark/Light theme toggle</div>
+        <button id="closeHelp" class="btn-icon" style="margin-top:16px; width:100%;"><i class="fas fa-check"></i> Got it</button></div>`;
     document.body.appendChild(modal);
     document.getElementById('closeHelp').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 function exportToCSV() {
-    let csvRows = [['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Notes', 'Assigned']];
+    let csvRows = [['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Notes', 'Assigned', 'Created']];
     for (let date in appointments) {
         if (appointments[date].reports) {
             appointments[date].reports.forEach(a => {
-                csvRows.push([date, a.business, a.contactName, a.role, a.phone, a.time, a.notes, a.assigned]);
+                csvRows.push([date, a.business, a.contactName, a.role || '', a.phone || '', a.time || '', a.notes || '', a.assigned || '', a.createdAt || '']);
             });
         }
     }
     const csv = csvRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `scriptflow_data_${getTodayStr()}.csv`;
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `scriptflow_appointments_${getTodayStr()}.csv`);
+    document.body.appendChild(link);
     link.click();
-    showToast(`Exported ${csvRows.length - 1} appointments`, 'success');
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`Exported ${csvRows.length - 1} appointments to CSV`, 'success');
 }
 
 function factoryReset() {
