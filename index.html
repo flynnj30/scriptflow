@@ -76,36 +76,36 @@
             </div>
         </div>
         
-        <div class="script-card" id="scriptCard">
-            <div class="script-header-bar">
-                <div class="script-title-area">
-                    <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
-                    <h2 id="currentScriptName">Opening Script</h2>
-                    <span class="version-chip" id="versionIndicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
-                    <span class="version-chip" id="activeShortcutHint"><i class="fas fa-key"></i> Key: —</span>
+        <!-- SCRIPT CONTENT AREA (Replaced when tools are used) -->
+        <div id="rightPanelContainer">
+            <div class="script-card" id="scriptCard">
+                <div class="script-header-bar">
+                    <div class="script-title-area">
+                        <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
+                        <h2 id="currentScriptName">Opening Script</h2>
+                        <span class="version-chip" id="versionIndicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
+                        <span class="version-chip" id="activeShortcutHint"><i class="fas fa-key"></i> Key: —</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-icon" id="editScriptBtn"><i class="fas fa-pen"></i> Edit</button>
+                        <button class="btn-icon" id="saveScriptBtn" style="display:none; background: var(--success);"><i class="fas fa-save"></i> Save</button>
+                        <button class="btn-icon" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
+                        <button class="btn-icon" id="copyScriptBtn"><i class="fas fa-copy"></i> Copy</button>
+                        <button class="btn-icon" id="resetScriptBtn"><i class="fas fa-undo-alt"></i> Reset</button>
+                        <button class="btn-icon" id="undoBtn"><i class="fas fa-undo"></i> Undo</button>
+                        <button class="btn-icon" id="redoBtn"><i class="fas fa-redo"></i> Redo</button>
+                    </div>
                 </div>
-                <div class="action-buttons">
-                    <button class="btn-icon" id="editScriptBtn"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-icon" id="saveScriptBtn" style="display:none; background: var(--success);"><i class="fas fa-save"></i> Save</button>
-                    <button class="btn-icon" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
-                    <button class="btn-icon" id="copyScriptBtn"><i class="fas fa-copy"></i> Copy</button>
-                    <button class="btn-icon" id="resetScriptBtn"><i class="fas fa-undo-alt"></i> Reset</button>
-                    <button class="btn-icon" id="undoBtn"><i class="fas fa-undo"></i> Undo</button>
-                    <button class="btn-icon" id="redoBtn"><i class="fas fa-redo"></i> Redo</button>
-                </div>
+                <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
             </div>
-            <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
         </div>
         
-        <div id="featureOverlay" class="feature-overlay" style="display: none;">
-            <div class="feature-overlay-header">
-                <button id="closeFeatureBtn" class="close-feature-btn"><i class="fas fa-times"></i> Close</button>
-                <h3 id="featureOverlayTitle">Feature</h3>
-            </div>
-            <div id="featureOverlayContent" class="feature-overlay-content"></div>
+        <!-- BACK BUTTON (shows when a feature is active) -->
+        <div id="backToScriptsBtn" class="back-to-scripts-btn" style="display: none;">
+            <button class="btn-icon" id="backToScriptsAction"><i class="fas fa-arrow-left"></i> Back to Scripts</button>
         </div>
         
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool in the sidebar to open its panel · Press ESC to close</div>
+        <div class="footer-note"><i class="fas fa-chart-line"></i> Click any tool to replace the script area · Click "Back to Scripts" to return</div>
     </div>
 </div>
 
