@@ -1,4 +1,4 @@
-// ==================== SCRIPTFLOW PRO - COMPLETE ====================
+// ==================== SCRIPTFLOW PRO - COMPLETE FIXED ====================
 
 // Global State
 let userName = localStorage.getItem('scriptflow_user_name') || 'Flynn';
@@ -27,30 +27,13 @@ let featureChartInstance = null;
 
 // Status options - Updated: Booked -> Warm-Booked
 const STATUS_OPTIONS = ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'];
-const STATUS_COLORS = {
-    'Warm-Booked': 'var(--status-warm-booked)',
-    'Called': 'var(--status-called)',
-    'Canceled': 'var(--status-canceled)',
-    'Rescheduled': 'var(--status-rescheduled)'
-};
 
-// Helper to convert old "Booked" status to "Warm-Booked"
-function migrateStatuses() {
-    let needsSave = false;
-    for (let date in appointments) {
-        if (appointments[date].reports) {
-            appointments[date].reports.forEach(appt => {
-                if (appt.status === 'Booked') {
-                    appt.status = 'Warm-Booked';
-                    needsSave = true;
-                }
-            });
-        }
-    }
-    if (needsSave) {
-        saveAppointments();
-        console.log('Migrated old "Booked" statuses to "Warm-Booked"');
-    }
+// Helper to get status with fallback
+function getStatus(appt) {
+    if (!appt.status) return 'Warm-Booked';
+    // Migrate old "Booked" to "Warm-Booked"
+    if (appt.status === 'Booked') return 'Warm-Booked';
+    return appt.status;
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -84,20 +67,21 @@ function getTodayStr() {
 }
 
 function formatDate(dateStr) {
+    if (!dateStr) return 'No date';
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatDateTime(dateStr, timeStr) {
-    const d = new Date(dateStr);
-    const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    if (timeStr && timeStr !== 'No time') {
+    const formattedDate = formatDate(dateStr);
+    if (timeStr && timeStr !== 'No time' && timeStr !== '') {
         return `${formattedDate} - ${timeStr}`;
     }
     return formattedDate;
 }
 
 function formatDateShort(dateStr) {
+    if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
@@ -206,7 +190,8 @@ function openSmartAddModal() {
         if (!text.trim()) { showToast('Enter details', 'error'); return; }
         currentParsed = parseAppointmentFromText(text, date);
         const preview = document.getElementById('smartPreviewContent');
-        preview.innerHTML = `<div style="margin-top:8px;"><div><strong>📅 Date:</strong> ${currentParsed.finalDate}</div>
+        preview.innerHTML = `<div style="margin-top:8px;">
+            <div><strong>📅 Date:</strong> ${currentParsed.finalDate}</div>
             <div><strong>🏢 Business:</strong> ${escapeHtml(currentParsed.business || '—')}</div>
             <div><strong>👤 Contact:</strong> ${escapeHtml(currentParsed.contactName || '—')}</div>
             <div><strong>💼 Role:</strong> ${escapeHtml(currentParsed.role || '—')}</div>
@@ -214,7 +199,8 @@ function openSmartAddModal() {
             <div><strong>⏰ Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div>
             <div><strong>📌 Status:</strong> ${escapeHtml(currentParsed.status || 'Warm-Booked')}</div>
             <div><strong>👨‍💼 Assigned:</strong> ${escapeHtml(currentParsed.assigned || 'Daniel')}</div>
-            <div><strong>📝 Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div></div>`;
+            <div><strong>📝 Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div>
+        </div>`;
         document.getElementById('smartPreview').style.display = 'block';
         if (!currentParsed.business || !currentParsed.contactName) {
             showToast('Warning: Business or Contact not detected', 'error');
@@ -231,11 +217,7 @@ function openSmartAddModal() {
             currentParsed.assigned, null, currentParsed.status);
         modal.remove();
         showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
-        const fp = document.getElementById('featurePanel');
-        if (fp && fp.style.display === 'block') {
-            if (currentView === 'calendar') renderCalendarPanel(document.getElementById('featurePanelBody'));
-            else renderListView(document.getElementById('featurePanelBody'));
-        }
+        refreshCurrentView();
     });
     document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
@@ -262,6 +244,16 @@ function getDateRange(preset) {
     }
 }
 
+function refreshCurrentView() {
+    const container = document.getElementById('featurePanelBody');
+    if (!container) return;
+    if (currentView === 'calendar') {
+        renderCalendarPanel(container);
+    } else {
+        renderListView(container);
+    }
+}
+
 // ==================== FEATURE PANEL ====================
 function showFeaturePanel(featureType, title) {
     const scriptPanel = document.getElementById('scriptPanel');
@@ -281,8 +273,10 @@ function showFeaturePanel(featureType, title) {
         viewToggle.style.display = 'flex';
         currentView = 'calendar';
         renderCalendarPanel(featureBody);
-        document.getElementById('calendarViewBtn').classList.add('active');
-        document.getElementById('listViewBtn').classList.remove('active');
+        const calBtn = document.getElementById('calendarViewBtn');
+        const listBtn = document.getElementById('listViewBtn');
+        if (calBtn) calBtn.classList.add('active');
+        if (listBtn) listBtn.classList.remove('active');
     }
     
     scriptPanel.style.display = 'none';
@@ -335,6 +329,7 @@ function renderCalendarPanel(container) {
         <div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList">${renderAppointmentsList(selectedCalDate)}</div></div>
     `;
     
+    // Bind calendar events
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => {
         el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarPanel(container); });
     });
@@ -344,6 +339,107 @@ function renderCalendarPanel(container) {
     document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedCalDate = e.target.value; renderCalendarPanel(container); });
     document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
     document.getElementById('smartAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
+    
+    // Bind action buttons in calendar view
+    bindCalendarActions();
+}
+
+function renderAppointmentsList(dateStr) {
+    const apptData = appointments[dateStr]?.reports || [];
+    if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments</div>';
+    return apptData.map(r => {
+        const status = getStatus(r);
+        return `
+        <div style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
+            <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
+                <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
+                <div>
+                    <select class="status-select-calendar" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">
+                        ${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                    <button class="action-btn-sm copy-calendar" data-id="${r.id}"><i class="fas fa-copy"></i> Copy</button>
+                    <button class="action-btn-sm edit-calendar" data-id="${r.id}" data-date="${dateStr}"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="action-btn-sm danger delete-calendar" data-id="${r.id}" data-date="${dateStr}"><i class="fas fa-trash"></i> Delete</button>
+                </div>
+            </div>
+            <div style="margin-top:8px; font-size:0.85rem;">
+                <div><i class="fas fa-user"></i> ${escapeHtml(r.contactName)}</div>
+                <div><i class="fas fa-phone"></i> ${escapeHtml(r.phone || 'No phone')}</div>
+                <div><i class="fas fa-clock"></i> ${escapeHtml(r.time || 'No time')}</div>
+                <div><i class="fas fa-sticky-note"></i> ${escapeHtml(r.notes || 'No notes')}</div>
+                <div><i class="fas fa-user-tie"></i> Assigned: ${escapeHtml(r.assigned || 'Unassigned')}</div>
+            </div>
+        </div>
+    `}).join('');
+}
+
+function bindCalendarActions() {
+    // Status change
+    document.querySelectorAll('.status-select-calendar').forEach(select => {
+        select.removeEventListener('change', handleCalendarStatusChange);
+        select.addEventListener('change', handleCalendarStatusChange);
+    });
+    // Copy buttons
+    document.querySelectorAll('.copy-calendar').forEach(btn => {
+        btn.removeEventListener('click', handleCalendarCopy);
+        btn.addEventListener('click', handleCalendarCopy);
+    });
+    // Edit buttons
+    document.querySelectorAll('.edit-calendar').forEach(btn => {
+        btn.removeEventListener('click', handleCalendarEdit);
+        btn.addEventListener('click', handleCalendarEdit);
+    });
+    // Delete buttons
+    document.querySelectorAll('.delete-calendar').forEach(btn => {
+        btn.removeEventListener('click', handleCalendarDelete);
+        btn.addEventListener('click', handleCalendarDelete);
+    });
+}
+
+function handleCalendarStatusChange(e) {
+    const select = e.target;
+    const id = parseInt(select.getAttribute('data-id'));
+    const date = select.getAttribute('data-date');
+    const newStatus = select.value;
+    const apptIndex = appointments[date]?.reports?.findIndex(r => r.id === id);
+    if (apptIndex !== -1 && appointments[date]) {
+        appointments[date].reports[apptIndex].status = newStatus;
+        saveAppointments();
+        showToast(`Status updated to ${newStatus}`, 'info');
+        refreshCurrentView();
+    }
+}
+
+function handleCalendarCopy(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    for (let d in appointments) {
+        const appt = appointments[d]?.reports?.find(r => r.id === id);
+        if (appt) {
+            copyToClipboard(appt.fullText);
+            showToast('Copied!', 'success');
+            break;
+        }
+    }
+}
+
+function handleCalendarEdit(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    const date = btn.getAttribute('data-date');
+    const appt = appointments[date]?.reports?.find(r => r.id === id);
+    if (appt) openEditAppointmentModal(date, appt);
+}
+
+function handleCalendarDelete(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    const date = btn.getAttribute('data-date');
+    if (confirm('Delete this appointment?')) {
+        deleteAppointment(date, id);
+        showToast('Deleted', 'info');
+        refreshCurrentView();
+    }
 }
 
 // ==================== CRM-STYLE LIST VIEW ====================
@@ -358,7 +454,7 @@ function renderListView(container) {
     }
     allAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    const filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => a.status === currentStatusFilter);
+    const filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => getStatus(a) === currentStatusFilter);
     
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
     
@@ -383,27 +479,34 @@ function renderListView(container) {
     // Bind status filter dropdown
     const filterDropdown = document.getElementById('statusFilterDropdown');
     if (filterDropdown) {
-        filterDropdown.addEventListener('change', (e) => {
-            currentStatusFilter = e.target.value;
-            renderListView(container);
-        });
+        filterDropdown.removeEventListener('change', handleFilterChange);
+        filterDropdown.addEventListener('change', handleFilterChange);
     }
     
     // Bind empty state smart import button
     const emptyStateBtn = document.getElementById('emptyStateSmartImport');
     if (emptyStateBtn) {
-        emptyStateBtn.addEventListener('click', () => {
-            hideFeaturePanel();
-            setTimeout(() => openSmartAddModal(), 100);
-        });
+        emptyStateBtn.removeEventListener('click', handleEmptyStateImport);
+        emptyStateBtn.addEventListener('click', handleEmptyStateImport);
     }
     
     // Bind all action buttons for each card
     bindListActions();
 }
 
+function handleFilterChange(e) {
+    currentStatusFilter = e.target.value;
+    refreshCurrentView();
+}
+
+function handleEmptyStateImport() {
+    hideFeaturePanel();
+    setTimeout(() => openSmartAddModal(), 100);
+}
+
 function renderCRMLeadCard(appointment) {
-    const statusClass = `status-${appointment.status.toLowerCase().replace('-', '')}`;
+    const status = getStatus(appointment);
+    const statusClass = `status-${status.toLowerCase().replace('-', '')}`;
     const formattedDateTime = formatDateTime(appointment.date, appointment.time);
     
     return `
@@ -414,7 +517,7 @@ function renderCRMLeadCard(appointment) {
                     ${escapeHtml(appointment.business)}
                 </div>
                 <div class="crm-status-badge ${statusClass}">
-                    ${escapeHtml(appointment.status)}
+                    ${escapeHtml(status)}
                 </div>
             </div>
             <div class="crm-card-body">
@@ -452,12 +555,12 @@ function renderCRMLeadCard(appointment) {
                 ` : ''}
             </div>
             <div class="crm-card-footer">
-                <select class="status-select-dropdown" data-id="${appointment.id}" data-date="${appointment.date}" style="padding: 6px 12px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--bg-primary); font-size: 0.7rem;">
-                    ${STATUS_OPTIONS.map(s => `<option value="${s}" ${appointment.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                <select class="status-select-list" data-id="${appointment.id}" data-date="${appointment.date}" style="padding: 6px 12px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--bg-primary); font-size: 0.7rem;">
+                    ${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}
                 </select>
-                <button class="crm-action-btn copy-appt" data-id="${appointment.id}"><i class="fas fa-copy"></i> Copy</button>
-                <button class="crm-action-btn edit-appt" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-edit"></i> Edit</button>
-                <button class="crm-action-btn danger delete-appt" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-trash"></i> Delete</button>
+                <button class="crm-action-btn copy-list" data-id="${appointment.id}"><i class="fas fa-copy"></i> Copy</button>
+                <button class="crm-action-btn edit-list" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-edit"></i> Edit</button>
+                <button class="crm-action-btn danger delete-list" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-trash"></i> Delete</button>
             </div>
         </div>
     `;
@@ -465,100 +568,74 @@ function renderCRMLeadCard(appointment) {
 
 function bindListActions() {
     // Status dropdown changes
-    document.querySelectorAll('.status-select-dropdown').forEach(select => {
-        select.addEventListener('change', (e) => {
-            e.stopPropagation();
-            const id = parseInt(select.getAttribute('data-id'));
-            const date = select.getAttribute('data-date');
-            const newStatus = select.value;
-            const apptIndex = appointments[date]?.reports?.findIndex(r => r.id === id);
-            if (apptIndex !== -1 && appointments[date]) {
-                appointments[date].reports[apptIndex].status = newStatus;
-                saveAppointments();
-                showToast(`Status updated to ${newStatus}`, 'info');
-                // Refresh the list view
-                const container = document.getElementById('featurePanelBody');
-                if (container && currentView === 'list') {
-                    renderListView(container);
-                }
-                if (currentView === 'calendar') {
-                    renderCalendarPanel(document.getElementById('featurePanelBody'));
-                }
-            }
-        });
+    document.querySelectorAll('.status-select-list').forEach(select => {
+        select.removeEventListener('change', handleListStatusChange);
+        select.addEventListener('change', handleListStatusChange);
     });
     
     // Copy buttons
-    document.querySelectorAll('.copy-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { 
-            e.stopPropagation(); 
-            const id = parseInt(btn.getAttribute('data-id'));
-            for (let d in appointments) { 
-                const appt = appointments[d]?.reports?.find(r => r.id === id);
-                if (appt) { 
-                    copyToClipboard(appt.fullText); 
-                    showToast('Copied!', 'success'); 
-                    break; 
-                }
-            }
-        });
+    document.querySelectorAll('.copy-list').forEach(btn => {
+        btn.removeEventListener('click', handleListCopy);
+        btn.addEventListener('click', handleListCopy);
     });
     
     // Edit buttons
-    document.querySelectorAll('.edit-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { 
-            e.stopPropagation(); 
-            const id = parseInt(btn.getAttribute('data-id')); 
-            const date = btn.getAttribute('data-date');
-            const appt = appointments[date]?.reports?.find(r => r.id === id);
-            if (appt) openEditAppointmentModal(date, appt);
-        });
+    document.querySelectorAll('.edit-list').forEach(btn => {
+        btn.removeEventListener('click', handleListEdit);
+        btn.addEventListener('click', handleListEdit);
     });
     
     // Delete buttons
-    document.querySelectorAll('.delete-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { 
-            e.stopPropagation(); 
-            const id = parseInt(btn.getAttribute('data-id')); 
-            const date = btn.getAttribute('data-date');
-            if (confirm('Delete this appointment?')) { 
-                deleteAppointment(date, id); 
-                showToast('Deleted', 'info');
-                const container = document.getElementById('featurePanelBody');
-                if (container && currentView === 'list') {
-                    renderListView(container);
-                }
-                if (currentView === 'calendar') {
-                    renderCalendarPanel(document.getElementById('featurePanelBody'));
-                }
-            }
-        });
+    document.querySelectorAll('.delete-list').forEach(btn => {
+        btn.removeEventListener('click', handleListDelete);
+        btn.addEventListener('click', handleListDelete);
     });
 }
 
-function renderAppointmentsList(dateStr) {
-    const apptData = appointments[dateStr]?.reports || [];
-    if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments</div>';
-    return apptData.map(r => `
-        <div style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
-            <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
-                <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
-                <div>
-                    <select class="status-select-quick" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">
-                        ${STATUS_OPTIONS.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                    </select>
-                    <button class="action-btn-sm copy-appt-quick" data-id="${r.id}">Copy</button>
-                    <button class="action-btn-sm edit-appt-quick" data-id="${r.id}" data-date="${dateStr}">Edit</button>
-                    <button class="action-btn-sm danger delete-appt-quick" data-id="${r.id}" data-date="${dateStr}">Delete</button>
-                </div>
-            </div>
-            <div style="margin-top:8px; font-size:0.85rem;"><div><i class="fas fa-user"></i> ${escapeHtml(r.contactName)}</div>
-            <div><i class="fas fa-phone"></i> ${escapeHtml(r.phone || 'No phone')}</div>
-            <div><i class="fas fa-clock"></i> ${escapeHtml(r.time || 'No time')}</div>
-            <div><i class="fas fa-sticky-note"></i> ${escapeHtml(r.notes || 'No notes')}</div>
-            <div><i class="fas fa-user-tie"></i> Assigned: ${escapeHtml(r.assigned || 'Unassigned')}</div></div>
-        </div>
-    `).join('');
+function handleListStatusChange(e) {
+    const select = e.target;
+    const id = parseInt(select.getAttribute('data-id'));
+    const date = select.getAttribute('data-date');
+    const newStatus = select.value;
+    const apptIndex = appointments[date]?.reports?.findIndex(r => r.id === id);
+    if (apptIndex !== -1 && appointments[date]) {
+        appointments[date].reports[apptIndex].status = newStatus;
+        saveAppointments();
+        showToast(`Status updated to ${newStatus}`, 'info');
+        refreshCurrentView();
+    }
+}
+
+function handleListCopy(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    for (let d in appointments) {
+        const appt = appointments[d]?.reports?.find(r => r.id === id);
+        if (appt) {
+            copyToClipboard(appt.fullText);
+            showToast('Copied!', 'success');
+            break;
+        }
+    }
+}
+
+function handleListEdit(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    const date = btn.getAttribute('data-date');
+    const appt = appointments[date]?.reports?.find(r => r.id === id);
+    if (appt) openEditAppointmentModal(date, appt);
+}
+
+function handleListDelete(e) {
+    const btn = e.currentTarget;
+    const id = parseInt(btn.getAttribute('data-id'));
+    const date = btn.getAttribute('data-date');
+    if (confirm('Delete this appointment?')) {
+        deleteAppointment(date, id);
+        showToast('Deleted', 'info');
+        refreshCurrentView();
+    }
 }
 
 // ==================== APPOINTMENT CRUD ====================
@@ -574,38 +651,42 @@ function deleteAppointment(dateStr, id) {
 }
 
 function openEditAppointmentModal(dateStr, appt) {
+    const currentStatus = getStatus(appt);
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
         <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div>
         <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
         <div class="form-group"><label>Contact *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
-        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role)}"></div>
-        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone)}"></div>
-        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time)}"></div>
-        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${appt.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes)}</textarea></div>
-        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned)}"></div>
+        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role || '')}"></div>
+        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone || '')}"></div>
+        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time || '')}"></div>
+        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button>
         <button id="cancelEditBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
+    
     document.getElementById('saveEditBtn').addEventListener('click', () => {
         const newDate = document.getElementById('editDate').value;
         if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) {
             showToast('Business and Contact required', 'error'); return;
         }
         deleteAppointment(dateStr, appt.id);
-        addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value,
-            document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value,
-            document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id,
+        addAppointment(newDate, 
+            document.getElementById('editBusiness').value, 
+            document.getElementById('editName').value,
+            document.getElementById('editRole').value, 
+            document.getElementById('editPhone').value, 
+            document.getElementById('editTime').value,
+            document.getElementById('editNotes').value, 
+            document.getElementById('editAssigned').value, 
+            appt.id,
             document.getElementById('editStatus').value);
         modal.remove();
         showToast(`Updated`, 'success');
-        const fp = document.getElementById('featurePanel');
-        if (fp && fp.style.display === 'block') {
-            if (currentView === 'calendar') renderCalendarPanel(document.getElementById('featurePanelBody'));
-            else renderListView(document.getElementById('featurePanelBody'));
-        }
+        refreshCurrentView();
     });
     document.getElementById('cancelEditBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
@@ -617,36 +698,73 @@ function loadAppointmentData() {
     if (saved) appointments = JSON.parse(saved);
     const savedGoals = localStorage.getItem('scriptflow_goals_main');
     if (savedGoals) goals = JSON.parse(savedGoals);
-    migrateStatuses(); // Convert old "Booked" to "Warm-Booked"
+    // Migrate old appointments to have status field
+    let needsSave = false;
+    for (let date in appointments) {
+        if (appointments[date].reports) {
+            appointments[date].reports.forEach(appt => {
+                if (!appt.status) {
+                    appt.status = 'Warm-Booked';
+                    needsSave = true;
+                } else if (appt.status === 'Booked') {
+                    appt.status = 'Warm-Booked';
+                    needsSave = true;
+                }
+            });
+        }
+    }
+    if (needsSave) saveAppointments();
     updateStats();
 }
 
-function saveAppointments() { localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); updateStats(); }
-function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
+function saveAppointments() { 
+    localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); 
+    updateStats(); 
+}
+
+function saveGoals() { 
+    localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); 
+    updateStats(); 
+}
+
 function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
 
 function getWeekCount() {
-    const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay());
+    const now = new Date(); 
+    const start = new Date(now); 
+    start.setDate(now.getDate() - now.getDay());
     let total = 0;
-    for (let d in appointments) { const date = new Date(d);
-        if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) total += appointments[d].reports.length;
-    } return total;
+    for (let d in appointments) { 
+        const date = new Date(d);
+        if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) 
+            total += appointments[d].reports.length;
+    } 
+    return total;
 }
 
 function getMonthCount() {
-    const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const now = new Date(); 
+    const start = new Date(now.getFullYear(), now.getMonth(), 1); 
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     let total = 0;
-    for (let d in appointments) { const date = new Date(d);
-        if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length;
-    } return total;
+    for (let d in appointments) { 
+        const date = new Date(d);
+        if (date >= start && date <= end && appointments[d].reports) 
+            total += appointments[d].reports.length;
+    } 
+    return total;
 }
 
 function updateStats() {
-    const todayEl = document.getElementById('statToday'); const weekEl = document.getElementById('statWeek'); const monthEl = document.getElementById('statMonth');
+    const todayEl = document.getElementById('statToday'); 
+    const weekEl = document.getElementById('statWeek'); 
+    const monthEl = document.getElementById('statMonth');
     if (todayEl) todayEl.innerText = getTodayCount();
     if (weekEl) weekEl.innerText = getWeekCount();
     if (monthEl) monthEl.innerText = getMonthCount();
-    const goalDaily = document.getElementById('goalDaily'); const goalWeekly = document.getElementById('goalWeekly'); const goalMonthly = document.getElementById('goalMonthly');
+    const goalDaily = document.getElementById('goalDaily'); 
+    const goalWeekly = document.getElementById('goalWeekly'); 
+    const goalMonthly = document.getElementById('goalMonthly');
     if (goalDaily) goalDaily.innerText = goals.daily;
     if (goalWeekly) goalWeekly.innerText = goals.weekly;
     if (goalMonthly) goalMonthly.innerText = goals.monthly;
@@ -654,13 +772,20 @@ function updateStats() {
 
 function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm-Booked') {
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
-    const newAppt = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, status,
+    const newAppt = { 
+        id: editId || Date.now(), 
+        business, contactName, role, phone, time, notes, assigned, 
+        status: status || 'Warm-Booked',
         createdAt: new Date().toISOString(),
-        fullText: `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nStatus: ${status}\nNotes: ${notes}\nAssigned: ${assigned}\nDate: ${dateStr}` };
-    if (editId) { const idx = appointments[dateStr].reports.findIndex(r => r.id === editId);
+        fullText: `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nStatus: ${status || 'Warm-Booked'}\nNotes: ${notes}\nAssigned: ${assigned}\nDate: ${dateStr}` 
+    };
+    if (editId) { 
+        const idx = appointments[dateStr].reports.findIndex(r => r.id === editId);
         if (idx !== -1) appointments[dateStr].reports[idx] = newAppt;
         else appointments[dateStr].reports.unshift(newAppt);
-    } else { appointments[dateStr].reports.unshift(newAppt); }
+    } else { 
+        appointments[dateStr].reports.unshift(newAppt); 
+    }
     appointments[dateStr].count = appointments[dateStr].reports.length;
     saveAppointments();
     return newAppt.fullText;
@@ -680,11 +805,13 @@ function renderInsightsPanel(container) {
     const unique = new Set(appointmentsInRange.map(a => a.business)).size;
     const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
-    const startDate = new Date(dashboardDateRange.start); const endDate = new Date(dashboardDateRange.end);
+    const startDate = new Date(dashboardDateRange.start); 
+    const endDate = new Date(dashboardDateRange.end);
     const daysDiff = Math.ceil((endDate - startDate) / (1000*60*60*24)) + 1;
     const chartLabels = [], chartData = [];
     for (let i = 0; i < daysDiff; i++) {
-        const d = new Date(startDate); d.setDate(startDate.getDate() + i);
+        const d = new Date(startDate); 
+        d.setDate(startDate.getDate() + i);
         const dateStr = d.toISOString().split('T')[0];
         chartLabels.push(formatDateShort(dateStr));
         chartData.push(appointments[dateStr]?.reports?.length || 0);
@@ -694,7 +821,7 @@ function renderInsightsPanel(container) {
     const roleStats = {};
     appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
     const statusStats = {};
-    appointmentsInRange.forEach(a => { statusStats[a.status] = (statusStats[a.status] || 0) + 1; });
+    appointmentsInRange.forEach(a => { const s = getStatus(a); statusStats[s] = (statusStats[s] || 0) + 1; });
     
     container.innerHTML = `
         <div class="insights-header"><div class="date-range-selector">
@@ -846,103 +973,213 @@ function showVersionHistoryModal(){ if(!versionHistory[currentScriptId]){ showTo
 }
 
 // ==================== MODAL FUNCTIONS ====================
-function openQuickReportWithDate(defaultDate){ const modal=document.createElement('div'); modal.className='modal-overlay';
-    modal.innerHTML=`<div class="modal-card"><h3>Quick Add</h3><div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
-        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div><div class="form-group"><label>Contact *</label><input id="reportName"></div>
+function openQuickReportWithDate(defaultDate){ 
+    const modal=document.createElement('div'); 
+    modal.className='modal-overlay';
+    modal.innerHTML=`<div class="modal-card"><h3>Quick Add</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
+        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div>
+        <div class="form-group"><label>Contact *</label><input id="reportName"></div>
         <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
-        <div class="form-group"><label>Phone</label><input id="reportPhone"></div><div class="form-group"><label>Time</label><input id="reportTime"></div>
+        <div class="form-group"><label>Phone</label><input id="reportPhone"></div>
+        <div class="form-group"><label>Time</label><input id="reportTime"></div>
         <div class="form-group"><label>Status</label><select id="reportStatus">${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div><div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
+        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
         <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
-    document.getElementById('submitReportBtn').addEventListener('click',()=>{ const bus=document.getElementById('reportBusiness').value, name=document.getElementById('reportName').value;
+    document.getElementById('submitReportBtn').addEventListener('click',()=>{ 
+        const bus=document.getElementById('reportBusiness').value; 
+        const name=document.getElementById('reportName').value;
         if(!bus||!name){ showToast('Required fields','error'); return; }
-        addAppointment(document.getElementById('reportDate').value,bus,name,document.getElementById('reportRole').value,document.getElementById('reportPhone').value,
-            document.getElementById('reportTime').value,document.getElementById('reportNotes').value,document.getElementById('reportAssigned').value,null,
+        addAppointment(document.getElementById('reportDate').value,bus,name,
+            document.getElementById('reportRole').value,
+            document.getElementById('reportPhone').value,
+            document.getElementById('reportTime').value,
+            document.getElementById('reportNotes').value,
+            document.getElementById('reportAssigned').value,
+            null,
             document.getElementById('reportStatus').value);
-        modal.remove(); showToast('Saved!','success');
-        const fp=document.getElementById('featurePanel'); if(fp&&fp.style.display==='block'){ if(currentView==='calendar') renderCalendarPanel(document.getElementById('featurePanelBody')); else renderListView(document.getElementById('featurePanelBody')); }
+        modal.remove(); 
+        showToast('Saved!','success');
+        refreshCurrentView();
     });
-    document.getElementById('closeReportBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
+    document.getElementById('closeReportBtn').addEventListener('click',()=>modal.remove()); 
+    modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
 }
 
 function toggleTheme(){ document.body.classList.toggle('dark'); localStorage.setItem('scriptflow_theme_main',document.body.classList.contains('dark')?'dark':'light'); showToast(`${document.body.classList.contains('dark')?'Dark':'Light'} mode`,'info'); }
 function exportToCSV(){ let rows=[['Date','Business','Contact','Role','Phone','Time','Status','Notes','Assigned']];
-    for(let date in appointments){ if(appointments[date].reports){ appointments[date].reports.forEach(a=>{ rows.push([date,a.business,a.contactName,a.role,a.phone,a.time,a.status,a.notes,a.assigned]); }); } }
+    for(let date in appointments){ if(appointments[date].reports){ appointments[date].reports.forEach(a=>{ rows.push([date,a.business,a.contactName,a.role,a.phone,a.time,getStatus(a),a.notes,a.assigned]); }); } }
     const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'});
     const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`appointments_${getTodayStr()}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('Exported','success');
 }
 
 // ==================== PRIORITY & HELP ====================
-function openPriorityModal(){ const now=new Date(); const zones=[{name:'Eastern (ET) ★',zone:'America/New_York'},{name:'Central (CT)',zone:'America/Chicago'},{name:'Mountain (MT)',zone:'America/Denver'},{name:'Pacific (PT)',zone:'America/Los_Angeles'}];
+function openPriorityModal(){ 
+    const now=new Date(); 
+    const zones=[
+        {name:'Eastern (ET) ★',zone:'America/New_York'},
+        {name:'Central (CT)',zone:'America/Chicago'},
+        {name:'Mountain (MT)',zone:'America/Denver'},
+        {name:'Pacific (PT)',zone:'America/Los_Angeles'}
+    ];
     let zHtml='', active=[];
-    for(let tz of zones){ const tzTime=new Date(now.toLocaleString('en-US',{timeZone:tz.zone})); const hour=tzTime.getHours(); const min=tzTime.getMinutes();
-        const isPrime=(hour>=10&&hour<=11)||(hour>=14&&hour<=15)||(hour===16&&min===0); if(isPrime) active.push(tz.name);
+    for(let tz of zones){ 
+        const tzTime=new Date(now.toLocaleString('en-US',{timeZone:tz.zone})); 
+        const hour=tzTime.getHours(); 
+        const min=tzTime.getMinutes();
+        const isPrime=(hour>=10&&hour<=11)||(hour>=14&&hour<=15)||(hour===16&&min===0); 
+        if(isPrime) active.push(tz.name);
         zHtml+=`<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime?'var(--success)':'var(--primary)'}">
             <div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div>
             <div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime?'var(--success)':'var(--warning)'}; color:${isPrime?'white':'#1e293b'};">${isPrime?'🔥 PRIME TIME':'Awaiting Prime'}</span></div>
             <div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`;
     }
-    const modal=document.createElement('div'); modal.className='modal-overlay';
-    modal.innerHTML=`<div class="modal-card" style="width:550px;"><div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:20px; border-radius:24px; text-align:center;"><h2><i class="fas fa-chart-line"></i> Call Priority</h2></div>
+    const modal=document.createElement('div'); 
+    modal.className='modal-overlay';
+    modal.innerHTML=`<div class="modal-card" style="width:550px;">
+        <div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:20px; border-radius:24px; text-align:center;">
+            <h2><i class="fas fa-chart-line"></i> Call Priority</h2>
+        </div>
         ${active.length?`<div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin:16px 0; text-align:center;"><strong>ACTIVE:</strong> ${active.join(', ')}</div>`:
         `<div style="background:var(--warning); padding:12px; border-radius:16px; margin:16px 0; text-align:center;">No active prime windows</div>`}
-        ${zHtml}<div style="padding:16px; background:var(--bg-primary); border-radius:16px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div>
-        <button id="closePrioBtn" class="btn-icon" style="margin-top:20px; width:100%;">Got it</button></div>`;
-    document.body.appendChild(modal); document.getElementById('closePrioBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
+        ${zHtml}
+        <div style="padding:16px; background:var(--bg-primary); border-radius:16px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div>
+        <button id="closePrioBtn" class="btn-icon" style="margin-top:20px; width:100%;">Got it</button>
+    </div>`;
+    document.body.appendChild(modal); 
+    document.getElementById('closePrioBtn').addEventListener('click',()=>modal.remove()); 
+    modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
 }
-function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay';
-    modal.innerHTML=`<div class="modal-card"><h3><i class="fas fa-question-circle"></i> Guide</h3>
-        <div><strong>📊 Insights</strong><br>Analytics and trends</div><div><strong>📅 Calendar</strong><br>View appointments by date</div>
-        <div><strong>📋 CRM List View</strong><br>All leads in professional card format</div><div><strong>✨ Smart Import</strong><br>Paste any text format</div>
-        <div><strong>🎯 Priority Predictor</strong><br>Best calling times</div><div><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
-        <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
-    document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
+
+function showHelpModal(){ 
+    const modal=document.createElement('div'); 
+    modal.className='modal-overlay';
+    modal.innerHTML=`<div class="modal-card">
+        <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
+        <div style="margin:16px 0;"><strong>📊 Insights</strong><br>Analytics and trends</div>
+        <div style="margin:16px 0;"><strong>📅 Calendar View</strong><br>View appointments by date with full CRUD operations</div>
+        <div style="margin:16px 0;"><strong>📋 CRM List View</strong><br>All leads in professional card format with status filtering</div>
+        <div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>Paste any text format - auto-extracts all fields</div>
+        <div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div>
+        <div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
+        <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button>
+    </div>`;
+    document.body.appendChild(modal); 
+    document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); 
+    modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
 }
 
 // ==================== REAL-TIME PRIORITY ====================
-function updateRealTimePriorityDashboard(){ const now=new Date(); const et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'})); const h=et.getHours(), m=et.getMinutes();
+function updateRealTimePriorityDashboard(){ 
+    const now=new Date(); 
+    const et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'})); 
+    const h=et.getHours(), m=et.getMinutes();
     const isPrime=((h===10)||(h===11&&m<=30)||(h>=14&&h<=15)||(h===16&&m===0))&&et.getDay()>=1&&et.getDay()<=5;
-    const txt=document.getElementById('priorityTimeText'); const tt=document.getElementById('tooltipPrimeStatus');
-    if(txt){ if(isPrime){ txt.innerHTML=`<i class="fas fa-fire"></i> PRIME TIME (${et.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} ET)`; if(tt) tt.innerHTML='🔥 ACTIVE PRIME WINDOW'; }
-    else{ let next=''; if(h<10) next='Next: 10-11:30 AM ET'; else if(h<14) next='Next: 2-4 PM ET'; else next='Tomorrow 10-11:30 AM ET';
-        txt.innerHTML=`<i class="fas fa-clock"></i> ${next}`; if(tt) tt.innerHTML=`⏳ ${next}`; }
+    const txt=document.getElementById('priorityTimeText'); 
+    const tt=document.getElementById('tooltipPrimeStatus');
+    if(txt){ 
+        if(isPrime){ 
+            txt.innerHTML=`<i class="fas fa-fire"></i> PRIME TIME (${et.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} ET)`; 
+            if(tt) tt.innerHTML='🔥 ACTIVE PRIME WINDOW'; 
+        } else { 
+            let next=''; 
+            if(h<10) next='Next: 10-11:30 AM ET'; 
+            else if(h<14) next='Next: 2-4 PM ET'; 
+            else next='Tomorrow 10-11:30 AM ET';
+            txt.innerHTML=`<i class="fas fa-clock"></i> ${next}`; 
+            if(tt) tt.innerHTML=`⏳ ${next}`; 
+        }
     }
 }
 
 // ==================== TOGGLE ====================
-function toggleToolsMenu(){ toolsOpen=!toolsOpen; const m=document.getElementById('toolsMenu'); const c=document.getElementById('toolsChevron');
-    if(toolsOpen){ if(m) m.classList.add('open'); if(c) c.classList.add('rotated'); } else { if(m) m.classList.remove('open'); if(c) c.classList.remove('rotated'); }
+function toggleToolsMenu(){ 
+    toolsOpen=!toolsOpen; 
+    const m=document.getElementById('toolsMenu'); 
+    const c=document.getElementById('toolsChevron');
+    if(toolsOpen){ 
+        if(m) m.classList.add('open'); 
+        if(c) c.classList.add('rotated'); 
+    } else { 
+        if(m) m.classList.remove('open'); 
+        if(c) c.classList.remove('rotated'); 
+    }
     localStorage.setItem('toolsMenuOpen',toolsOpen);
 }
 
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('toolsHeader')?.addEventListener('click',toggleToolsMenu);
-    if(toolsOpen){ document.getElementById('toolsMenu')?.classList.add('open'); document.getElementById('toolsChevron')?.classList.add('rotated'); }
+    if(toolsOpen){ 
+        document.getElementById('toolsMenu')?.classList.add('open'); 
+        document.getElementById('toolsChevron')?.classList.add('rotated'); 
+    }
     
-    document.querySelectorAll('.tool-item').forEach(item=>{ item.addEventListener('click',(e)=>{ e.stopPropagation(); const text=item.querySelector('span')?.innerText||item.innerText;
-        if(text.includes('Insights')) showFeaturePanel('insights','Insights Dashboard');
-        else if(text.includes('Appointment Calendar')) showFeaturePanel('calendar','Appointment Calendar');
-        else if(text.includes('Call Priority')) openPriorityModal();
-        else if(text.includes('Export')) exportToCSV();
-        else if(text.includes('Set Your Name')){ const n=prompt('Enter your name:',userName); if(n?.trim()){ userName=n.trim(); localStorage.setItem('scriptflow_user_name',userName); showToast(`Name: ${userName}`,'success'); if(!isEditing) loadScript(currentScriptId); } }
-        else if(text.includes('Dark/Light')) toggleTheme();
-        else if(text.includes('Help')) showHelpModal();
-        else if(text.includes('Factory Reset')){ if(confirm('ERASE ALL DATA?')){ localStorage.clear(); location.reload(); } }
-    }); });
+    document.querySelectorAll('.tool-item').forEach(item=>{ 
+        item.addEventListener('click',(e)=>{ 
+            e.stopPropagation(); 
+            const text=item.querySelector('span')?.innerText||item.innerText;
+            if(text.includes('Insights')) showFeaturePanel('insights','Insights Dashboard');
+            else if(text.includes('Appointment Calendar')) showFeaturePanel('calendar','Appointment Calendar');
+            else if(text.includes('Call Priority')) openPriorityModal();
+            else if(text.includes('Export')) exportToCSV();
+            else if(text.includes('Set Your Name')){ 
+                const n=prompt('Enter your name:',userName); 
+                if(n?.trim()){ 
+                    userName=n.trim(); 
+                    localStorage.setItem('scriptflow_user_name',userName); 
+                    showToast(`Name: ${userName}`,'success'); 
+                    if(!isEditing) loadScript(currentScriptId); 
+                } 
+            }
+            else if(text.includes('Dark/Light')) toggleTheme();
+            else if(text.includes('Help')) showHelpModal();
+            else if(text.includes('Factory Reset')){ 
+                if(confirm('ERASE ALL DATA?')){ 
+                    localStorage.clear(); 
+                    location.reload(); 
+                } 
+            }
+        }); 
+    });
     
     document.getElementById('closeFeaturePanelBtn')?.addEventListener('click',hideFeaturePanel);
-    document.getElementById('calendarViewBtn')?.addEventListener('click',()=>{ currentView='calendar'; renderCalendarPanel(document.getElementById('featurePanelBody')); 
-        document.getElementById('calendarViewBtn').classList.add('active'); document.getElementById('listViewBtn').classList.remove('active'); });
-    document.getElementById('listViewBtn')?.addEventListener('click',()=>{ currentView='list'; renderListView(document.getElementById('featurePanelBody'));
-        document.getElementById('listViewBtn').classList.add('active'); document.getElementById('calendarViewBtn').classList.remove('active'); });
+    document.getElementById('calendarViewBtn')?.addEventListener('click',()=>{ 
+        currentView='calendar'; 
+        refreshCurrentView();
+        const calBtn = document.getElementById('calendarViewBtn');
+        const listBtn = document.getElementById('listViewBtn');
+        if (calBtn) calBtn.classList.add('active');
+        if (listBtn) listBtn.classList.remove('active');
+    });
+    document.getElementById('listViewBtn')?.addEventListener('click',()=>{ 
+        currentView='list'; 
+        refreshCurrentView();
+        const listBtn = document.getElementById('listViewBtn');
+        const calBtn = document.getElementById('calendarViewBtn');
+        if (listBtn) listBtn.classList.add('active');
+        if (calBtn) calBtn.classList.remove('active');
+    });
     
-    const menuToggle=document.getElementById('menuToggleBtn'); const sidebar=document.getElementById('mainSidebar'); const main=document.getElementById('mainContent');
-    if(menuToggle) menuToggle.addEventListener('click',()=>{ sidebar.classList.toggle('closed'); main.classList.toggle('expanded'); localStorage.setItem('sidebarClosed',sidebar.classList.contains('closed')); });
-    if(sidebar&&localStorage.getItem('sidebarClosed')==='true'){ sidebar.classList.add('closed'); main.classList.add('expanded'); }
+    const menuToggle=document.getElementById('menuToggleBtn'); 
+    const sidebar=document.getElementById('mainSidebar'); 
+    const main=document.getElementById('mainContent');
+    if(menuToggle) menuToggle.addEventListener('click',()=>{ 
+        sidebar.classList.toggle('closed'); 
+        main.classList.toggle('expanded'); 
+        localStorage.setItem('sidebarClosed',sidebar.classList.contains('closed')); 
+    });
+    if(sidebar&&localStorage.getItem('sidebarClosed')==='true'){ 
+        sidebar.classList.add('closed'); 
+        main.classList.add('expanded'); 
+    }
     
-    loadAppointmentData(); loadScripts(); renderSidebar(); loadScript('opening');
+    loadAppointmentData(); 
+    loadScripts(); 
+    renderSidebar(); 
+    loadScript('opening');
     if(localStorage.getItem('scriptflow_theme_main')==='dark') document.body.classList.add('dark');
     document.getElementById('addScriptBtnSide')?.addEventListener('click',addNewScript);
     document.getElementById('editScriptBtn')?.addEventListener('click',enterEdit);
@@ -954,15 +1191,44 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('redoBtn')?.addEventListener('click',()=>redoScript(currentScriptId));
     document.getElementById('quickReportBtn')?.addEventListener('click',openSmartAddModal);
     document.getElementById('historyBtn')?.addEventListener('click',showVersionHistoryModal);
-    document.getElementById('scriptSearch')?.addEventListener('input',(e)=>{ searchTerm=e.target.value.toLowerCase(); renderSidebar(); });
-    
-    window.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ const fp=document.getElementById('featurePanel'); if(fp&&fp.style.display==='block'){ hideFeaturePanel(); e.preventDefault(); } }
-        if(e.key>='1'&&e.key<='9'&&!isEditing&&!e.target.matches('textarea,input')){ const fp=document.getElementById('featurePanel'); if(fp&&fp.style.display==='block') return;
-            e.preventDefault(); const t=getKeyMapping().get(e.key); if(t&&scripts[t]){ loadScript(t); showToast(`Switched to: ${scripts[t].name}`,'info'); } }
-        if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!isEditing){ e.preventDefault(); undoScript(currentScriptId); }
-        if((e.ctrlKey||e.metaKey)&&e.key==='y'&&!isEditing){ e.preventDefault(); redoScript(currentScriptId); }
-        if(e.key==='Escape'&&isEditing){ cancelEdit(); showToast('Edit cancelled','info'); }
+    document.getElementById('scriptSearch')?.addEventListener('input',(e)=>{ 
+        searchTerm=e.target.value.toLowerCase(); 
+        renderSidebar(); 
     });
     
-    updateRealTimePriorityDashboard(); setInterval(updateRealTimePriorityDashboard,1000); setInterval(()=>updateStats(),5000);
+    window.addEventListener('keydown',(e)=>{ 
+        if(e.key==='Escape'){ 
+            const fp=document.getElementById('featurePanel'); 
+            if(fp&&fp.style.display==='block'){ 
+                hideFeaturePanel(); 
+                e.preventDefault(); 
+            } 
+        }
+        if(e.key>='1'&&e.key<='9'&&!isEditing&&!e.target.matches('textarea,input')){ 
+            const fp=document.getElementById('featurePanel'); 
+            if(fp&&fp.style.display==='block') return;
+            e.preventDefault(); 
+            const t=getKeyMapping().get(e.key); 
+            if(t&&scripts[t]){ 
+                loadScript(t); 
+                showToast(`Switched to: ${scripts[t].name}`,'info'); 
+            } 
+        }
+        if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!isEditing){ 
+            e.preventDefault(); 
+            undoScript(currentScriptId); 
+        }
+        if((e.ctrlKey||e.metaKey)&&e.key==='y'&&!isEditing){ 
+            e.preventDefault(); 
+            redoScript(currentScriptId); 
+        }
+        if(e.key==='Escape'&&isEditing){ 
+            cancelEdit(); 
+            showToast('Edit cancelled','info'); 
+        }
+    });
+    
+    updateRealTimePriorityDashboard(); 
+    setInterval(updateRealTimePriorityDashboard,1000); 
+    setInterval(()=>updateStats(),5000);
 });
