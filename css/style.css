@@ -625,11 +625,13 @@ body {
     gap: 10px;
 }
 
+/* Status Badge Styles - FIXED */
 .crm-status-badge {
     padding: 4px 12px;
     border-radius: 30px;
     font-size: 0.7rem;
     font-weight: 600;
+    display: inline-block;
 }
 
 .status-warm-booked { background: var(--status-warm-booked); color: white; }
