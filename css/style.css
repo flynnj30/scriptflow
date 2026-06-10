@@ -70,7 +70,7 @@ body {
     position: relative;
 }
 
-/* ==================== SIDEBAR ==================== */
+/* Sidebar */
 .sidebar {
     width: 320px;
     background: var(--bg-sidebar);
@@ -472,8 +472,6 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
     background: var(--bg-card);
 }
 
@@ -489,15 +487,6 @@ body {
     padding: 28px;
     max-height: 600px;
     overflow-y: auto;
-}
-
-.back-to-scripts-btn {
-    margin-top: 16px;
-    text-align: center;
-}
-.back-to-scripts-btn button {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
 }
 
 @keyframes fadeIn {
@@ -611,21 +600,6 @@ body {
 .calendar-day:hover { background: var(--primary); color: white; transform: scale(1.02); }
 .calendar-day.selected { background: var(--primary); color: white; }
 .calendar-day .appt-badge { font-size: 0.6rem; background: var(--success); color: white; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
-
-/* Priority Timezone Cards */
-.priority-timezone {
-    background: var(--bg-primary);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 16px;
-    border-left: 4px solid var(--primary);
-}
-.priority-timezone.prime { border-left-color: var(--success); background: linear-gradient(135deg, var(--bg-primary), rgba(16,185,129,0.05)); }
-.priority-timezone-name { font-weight: 700; font-size: 1rem; }
-.priority-timezone-time { font-size: 1.5rem; font-weight: 800; color: var(--primary); margin: 8px 0; }
-.priority-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
-.priority-badge.prime { background: var(--success); color: white; }
-.priority-badge.waiting { background: var(--warning); color: #1e293b; }
 
 /* Modal */
 .modal-overlay {
