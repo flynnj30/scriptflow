@@ -28,10 +28,10 @@ let featureChartInstance = null;
 // Status options
 const STATUS_OPTIONS = ['Booked', 'Called', 'Canceled', 'Rescheduled'];
 const STATUS_COLORS = {
-    'Booked': '#3b82f6',
-    'Called': '#8b5cf6',
-    'Canceled': '#ef4444',
-    'Rescheduled': '#f59e0b'
+    'Booked': 'var(--status-booked)',
+    'Called': 'var(--status-called)',
+    'Canceled': 'var(--status-canceled)',
+    'Rescheduled': 'var(--status-rescheduled)'
 };
 
 // ==================== HELPER FUNCTIONS ====================
@@ -351,7 +351,7 @@ function renderListView(container) {
                         <div><i class="fas fa-phone"></i> ${escapeHtml(a.phone || 'No phone')}</div>
                         <div><i class="fas fa-clock"></i> ${escapeHtml(a.time || 'No time')}</div>
                         <div><i class="fas fa-user-tie"></i> ${escapeHtml(a.assigned || 'Unassigned')}</div>
-                        <div><select class="status-select" data-id="${a.id}" data-date="${a.date}" style="background:${STATUS_COLORS[a.status]}20; color:${STATUS_COLORS[a.status]}; border-color:${STATUS_COLORS[a.status]}40;">
+                        <div><select class="status-select" data-id="${a.id}" data-date="${a.date}">
                             ${STATUS_OPTIONS.map(s => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}
                         </select></div>
                     </div>
@@ -419,12 +419,12 @@ function renderAppointmentsList(dateStr) {
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
                 <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
                 <div>
-                    <select class="status-select-sm" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px; background:${STATUS_COLORS[r.status]}20; color:${STATUS_COLORS[r.status]}; border:1px solid ${STATUS_COLORS[r.status]}40;">
+                    <select class="status-select" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">
                         ${STATUS_OPTIONS.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>
-                    <button class="copy-appt-btn action-btn-sm" data-id="${r.id}">Copy</button>
-                    <button class="edit-appt-btn action-btn-sm" data-id="${r.id}" data-date="${dateStr}">Edit</button>
-                    <button class="delete-appt-btn action-btn-sm danger" data-id="${r.id}" data-date="${dateStr}">Delete</button>
+                    <button class="action-btn-sm copy-appt" data-id="${r.id}">Copy</button>
+                    <button class="action-btn-sm edit-appt" data-id="${r.id}" data-date="${dateStr}">Edit</button>
+                    <button class="action-btn-sm danger delete-appt" data-id="${r.id}" data-date="${dateStr}">Delete</button>
                 </div>
             </div>
             <div style="margin-top:8px; font-size:0.85rem;"><div><i class="fas fa-user"></i> ${escapeHtml(r.contactName)}</div>
@@ -583,7 +583,7 @@ function renderInsightsPanel(container) {
             </select>
             <div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;">
                 <input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span>
-                <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input">
+                <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input>
             </div>
             <button id="applyDateRange" class="btn-icon">Apply</button>
             <div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
