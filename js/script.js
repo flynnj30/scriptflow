@@ -28,6 +28,18 @@ let featureChartInstance = null;
 // Status options
 const STATUS_OPTIONS = ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'];
 
+// Helper to get status class name
+function getStatusClassName(status) {
+    if (!status) return 'status-warm-booked';
+    switch(status) {
+        case 'Warm-Booked': return 'status-warm-booked';
+        case 'Called': return 'status-called';
+        case 'Canceled': return 'status-canceled';
+        case 'Rescheduled': return 'status-rescheduled';
+        default: return 'status-warm-booked';
+    }
+}
+
 function getStatus(appt) {
     if (!appt || !appt.status) return 'Warm-Booked';
     if (appt.status === 'Booked') return 'Warm-Booked';
@@ -345,6 +357,7 @@ function renderAppointmentsList(dateStr) {
     if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments</div>';
     return apptData.map(r => {
         const status = getStatus(r);
+        const statusClass = getStatusClassName(status);
         return `
         <div style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
@@ -495,7 +508,7 @@ function handleEmptyStateImport() {
 
 function renderCRMLeadCard(appointment) {
     const status = getStatus(appointment);
-    const statusClass = `status-${status.toLowerCase().replace('-', '')}`;
+    const statusClass = getStatusClassName(status);
     const formattedDateTime = formatDateTime(appointment.date, appointment.time);
     
     return `
