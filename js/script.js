@@ -25,14 +25,33 @@ let currentStatusFilter = 'all';
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
 
-// Status options
-const STATUS_OPTIONS = ['Booked', 'Called', 'Canceled', 'Rescheduled'];
+// Status options - Updated: Booked -> Warm-Booked
+const STATUS_OPTIONS = ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'];
 const STATUS_COLORS = {
-    'Booked': 'var(--status-booked)',
+    'Warm-Booked': 'var(--status-warm-booked)',
     'Called': 'var(--status-called)',
     'Canceled': 'var(--status-canceled)',
     'Rescheduled': 'var(--status-rescheduled)'
 };
+
+// Helper to convert old "Booked" status to "Warm-Booked"
+function migrateStatuses() {
+    let needsSave = false;
+    for (let date in appointments) {
+        if (appointments[date].reports) {
+            appointments[date].reports.forEach(appt => {
+                if (appt.status === 'Booked') {
+                    appt.status = 'Warm-Booked';
+                    needsSave = true;
+                }
+            });
+        }
+    }
+    if (needsSave) {
+        saveAppointments();
+        console.log('Migrated old "Booked" statuses to "Warm-Booked"');
+    }
+}
 
 // ==================== HELPER FUNCTIONS ====================
 function showToast(msg, type = 'success') {
@@ -69,6 +88,15 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatDateTime(dateStr, timeStr) {
+    const d = new Date(dateStr);
+    const formattedDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    if (timeStr && timeStr !== 'No time') {
+        return `${formattedDate} - ${timeStr}`;
+    }
+    return formattedDate;
+}
+
 function formatDateShort(dateStr) {
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -88,7 +116,7 @@ function parseAppointmentFromText(text, defaultDate) {
         time: '',
         notes: '',
         assigned: 'Daniel',
-        status: 'Booked',
+        status: 'Warm-Booked',
         parsedDate: null
     };
     
@@ -138,8 +166,12 @@ function parseAppointmentFromText(text, defaultDate) {
     const assignedMatch = text.match(/@(\w+)/);
     if (assignedMatch) result.assigned = assignedMatch[1];
     
-    const statusMatch = text.match(/(?:Status)[:\s]+(Booked|Called|Canceled|Rescheduled)/i);
-    if (statusMatch) result.status = statusMatch[1];
+    const statusMatch = text.match(/(?:Status)[:\s]+(Warm-Booked|Called|Canceled|Rescheduled|Booked)/i);
+    if (statusMatch) {
+        let status = statusMatch[1];
+        if (status === 'Booked') status = 'Warm-Booked';
+        result.status = status;
+    }
     
     const finalDate = result.parsedDate || defaultDate;
     return { ...result, finalDate };
@@ -153,7 +185,7 @@ function openSmartAddModal() {
             <h3><i class="fas fa-magic"></i> Smart Appointment Import</h3>
             <p style="margin: 12px 0; font-size: 0.8rem; color: var(--text-muted);">Paste appointment details. The system extracts business, contact, phone, time, and notes.</p>
             <div class="form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
-            <div class="form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nStatus: Booked\nNote: No website yet.\n@Daniel"></textarea></div>
+            <div class="form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nStatus: Warm-Booked\nNote: No website yet.\n@Daniel"></textarea></div>
             <div id="smartPreview" style="background: var(--bg-primary); border-radius: 16px; padding: 16px; margin: 16px 0; display: none;">
                 <strong><i class="fas fa-eye"></i> Preview:</strong><div id="smartPreviewContent"></div>
             </div>
@@ -180,7 +212,7 @@ function openSmartAddModal() {
             <div><strong>💼 Role:</strong> ${escapeHtml(currentParsed.role || '—')}</div>
             <div><strong>📞 Phone:</strong> ${escapeHtml(currentParsed.phone || '—')}</div>
             <div><strong>⏰ Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div>
-            <div><strong>📌 Status:</strong> ${escapeHtml(currentParsed.status || 'Booked')}</div>
+            <div><strong>📌 Status:</strong> ${escapeHtml(currentParsed.status || 'Warm-Booked')}</div>
             <div><strong>👨‍💼 Assigned:</strong> ${escapeHtml(currentParsed.assigned || 'Daniel')}</div>
             <div><strong>📝 Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div></div>`;
         document.getElementById('smartPreview').style.display = 'block';
@@ -314,67 +346,128 @@ function renderCalendarPanel(container) {
     document.getElementById('smartAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
 }
 
-// ==================== LIST VIEW ====================
+// ==================== CRM-STYLE LIST VIEW ====================
 function renderListView(container) {
     let allAppointments = [];
     for (let date in appointments) {
         if (appointments[date].reports) {
-            appointments[date].reports.forEach(a => { allAppointments.push({ ...a, date }); });
+            appointments[date].reports.forEach(a => { 
+                allAppointments.push({ ...a, date }); 
+            });
         }
     }
     allAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
     
     const filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => a.status === currentStatusFilter);
     
-    if (filtered.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fas fa-calendar-alt"></i> No appointments found.<br>Click "Smart Import" to add your first appointment.</div>`;
-        return;
-    }
+    const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
     
     container.innerHTML = `
-        <div class="status-filter-bar">
-            <button class="filter-chip ${currentStatusFilter === 'all' ? 'active' : ''}" data-filter="all">All</button>
-            ${STATUS_OPTIONS.map(s => `<button class="filter-chip ${currentStatusFilter === s ? 'active' : ''}" data-filter="${s}">${s}</button>`).join('')}
+        <div class="status-filter-container">
+            <select id="statusFilterDropdown" class="status-filter-dropdown">
+                <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
+                ${statusOptionsHtml}
+            </select>
         </div>
-        <div class="appointments-list-view">
-            <div class="list-view-header">
-                <span style="flex:2;">Business / Contact</span><span style="flex:1;">Date</span><span style="flex:1;">Time</span><span style="flex:1;">Assigned</span><span style="flex:1;">Status</span><span style="flex:0.5;">Actions</span>
-            </div>
-            ${filtered.map(a => `
-                <div class="appointment-list-item" data-id="${a.id}" data-date="${a.date}">
-                    <div class="appointment-list-header">
-                        <div class="appointment-business">${escapeHtml(a.business)}</div>
-                        <div class="appointment-date-badge"><i class="fas fa-calendar-day"></i> ${formatDate(a.date)}</div>
-                    </div>
-                    <div class="appointment-details">
-                        <div><i class="fas fa-user"></i> ${escapeHtml(a.contactName)} ${a.role ? `(${escapeHtml(a.role)})` : ''}</div>
-                        <div><i class="fas fa-phone"></i> ${escapeHtml(a.phone || 'No phone')}</div>
-                        <div><i class="fas fa-clock"></i> ${escapeHtml(a.time || 'No time')}</div>
-                        <div><i class="fas fa-user-tie"></i> ${escapeHtml(a.assigned || 'Unassigned')}</div>
-                        <div><select class="status-select" data-id="${a.id}" data-date="${a.date}">
-                            ${STATUS_OPTIONS.map(s => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select></div>
-                    </div>
-                    <div class="appointment-notes" style="font-size:0.75rem; color:var(--text-muted); margin-bottom:8px;"><i class="fas fa-sticky-note"></i> ${escapeHtml(a.notes || 'No notes')}</div>
-                    <div class="appointment-actions">
-                        <button class="action-btn-sm copy-appt" data-id="${a.id}"><i class="fas fa-copy"></i> Copy</button>
-                        <button class="action-btn-sm edit-appt" data-id="${a.id}" data-date="${a.date}"><i class="fas fa-edit"></i> Edit</button>
-                        <button class="action-btn-sm danger delete-appt" data-id="${a.id}" data-date="${a.date}"><i class="fas fa-trash"></i> Delete</button>
-                    </div>
+        <div class="appointments-list-view" id="appointmentsListView">
+            ${filtered.length === 0 ? `
+                <div class="empty-state">
+                    <i class="fas fa-calendar-alt"></i>
+                    <p>No appointments found</p>
+                    <button class="btn-icon" id="emptyStateSmartImport" style="margin-top: 12px;"><i class="fas fa-magic"></i> Smart Import</button>
                 </div>
-            `).join('')}
+            ` : filtered.map(a => renderCRMLeadCard(a)).join('')}
         </div>
     `;
     
-    document.querySelectorAll('.filter-chip').forEach(btn => {
-        btn.addEventListener('click', () => {
-            currentStatusFilter = btn.getAttribute('data-filter');
+    // Bind status filter dropdown
+    const filterDropdown = document.getElementById('statusFilterDropdown');
+    if (filterDropdown) {
+        filterDropdown.addEventListener('change', (e) => {
+            currentStatusFilter = e.target.value;
             renderListView(container);
         });
-    });
+    }
     
-    document.querySelectorAll('.status-select').forEach(select => {
+    // Bind empty state smart import button
+    const emptyStateBtn = document.getElementById('emptyStateSmartImport');
+    if (emptyStateBtn) {
+        emptyStateBtn.addEventListener('click', () => {
+            hideFeaturePanel();
+            setTimeout(() => openSmartAddModal(), 100);
+        });
+    }
+    
+    // Bind all action buttons for each card
+    bindListActions();
+}
+
+function renderCRMLeadCard(appointment) {
+    const statusClass = `status-${appointment.status.toLowerCase().replace('-', '')}`;
+    const formattedDateTime = formatDateTime(appointment.date, appointment.time);
+    
+    return `
+        <div class="crm-card" data-id="${appointment.id}" data-date="${appointment.date}">
+            <div class="crm-card-header">
+                <div class="crm-business-name">
+                    <i class="fas fa-building"></i>
+                    ${escapeHtml(appointment.business)}
+                </div>
+                <div class="crm-status-badge ${statusClass}">
+                    ${escapeHtml(appointment.status)}
+                </div>
+            </div>
+            <div class="crm-card-body">
+                <div class="crm-info-row">
+                    <i class="fas fa-user"></i>
+                    <span class="crm-info-label">Name:</span>
+                    <span class="crm-info-value">${escapeHtml(appointment.contactName)}</span>
+                </div>
+                <div class="crm-info-row">
+                    <i class="fas fa-briefcase"></i>
+                    <span class="crm-info-label">Role:</span>
+                    <span class="crm-info-value">${escapeHtml(appointment.role || 'Owner')}</span>
+                </div>
+                <div class="crm-info-row">
+                    <i class="fas fa-phone"></i>
+                    <span class="crm-info-label">Phone:</span>
+                    <span class="crm-info-value">${escapeHtml(appointment.phone || 'No phone')}</span>
+                </div>
+                <div class="crm-info-row">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span class="crm-info-label">Time:</span>
+                    <span class="crm-info-value">${escapeHtml(formattedDateTime)}</span>
+                </div>
+                <div class="crm-info-row">
+                    <i class="fas fa-user-tie"></i>
+                    <span class="crm-info-label">Assigned:</span>
+                    <span class="crm-info-value">${escapeHtml(appointment.assigned || 'Unassigned')}</span>
+                </div>
+                ${appointment.notes ? `
+                <div class="crm-info-row" style="grid-column: 1 / -1;">
+                    <i class="fas fa-sticky-note"></i>
+                    <span class="crm-info-label">Notes:</span>
+                    <span class="crm-info-value" style="font-style: italic;">${escapeHtml(appointment.notes.substring(0, 100))}${appointment.notes.length > 100 ? '...' : ''}</span>
+                </div>
+                ` : ''}
+            </div>
+            <div class="crm-card-footer">
+                <select class="status-select-dropdown" data-id="${appointment.id}" data-date="${appointment.date}" style="padding: 6px 12px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--bg-primary); font-size: 0.7rem;">
+                    ${STATUS_OPTIONS.map(s => `<option value="${s}" ${appointment.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                </select>
+                <button class="crm-action-btn copy-appt" data-id="${appointment.id}"><i class="fas fa-copy"></i> Copy</button>
+                <button class="crm-action-btn edit-appt" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-edit"></i> Edit</button>
+                <button class="crm-action-btn danger delete-appt" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+function bindListActions() {
+    // Status dropdown changes
+    document.querySelectorAll('.status-select-dropdown').forEach(select => {
         select.addEventListener('change', (e) => {
+            e.stopPropagation();
             const id = parseInt(select.getAttribute('data-id'));
             const date = select.getAttribute('data-date');
             const newStatus = select.value;
@@ -383,29 +476,61 @@ function renderListView(container) {
                 appointments[date].reports[apptIndex].status = newStatus;
                 saveAppointments();
                 showToast(`Status updated to ${newStatus}`, 'info');
-                renderListView(container);
-                if (currentView === 'calendar') renderCalendarPanel(document.getElementById('featurePanelBody'));
+                // Refresh the list view
+                const container = document.getElementById('featurePanelBody');
+                if (container && currentView === 'list') {
+                    renderListView(container);
+                }
+                if (currentView === 'calendar') {
+                    renderCalendarPanel(document.getElementById('featurePanelBody'));
+                }
             }
         });
     });
     
+    // Copy buttons
     document.querySelectorAll('.copy-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id'));
-            for (let d in appointments) { const appt = appointments[d]?.reports?.find(r => r.id === id);
-                if (appt) { copyToClipboard(appt.fullText); showToast('Copied!', 'success'); break; } }
+        btn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            const id = parseInt(btn.getAttribute('data-id'));
+            for (let d in appointments) { 
+                const appt = appointments[d]?.reports?.find(r => r.id === id);
+                if (appt) { 
+                    copyToClipboard(appt.fullText); 
+                    showToast('Copied!', 'success'); 
+                    break; 
+                }
+            }
         });
     });
+    
+    // Edit buttons
     document.querySelectorAll('.edit-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date');
+        btn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            const id = parseInt(btn.getAttribute('data-id')); 
+            const date = btn.getAttribute('data-date');
             const appt = appointments[date]?.reports?.find(r => r.id === id);
             if (appt) openEditAppointmentModal(date, appt);
         });
     });
+    
+    // Delete buttons
     document.querySelectorAll('.delete-appt').forEach(btn => {
-        btn.addEventListener('click', (e) => { e.stopPropagation(); const id = parseInt(btn.getAttribute('data-id')); const date = btn.getAttribute('data-date');
-            if (confirm('Delete this appointment?')) { deleteAppointment(date, id); showToast('Deleted', 'info');
-                renderListView(container);
-                if (currentView === 'calendar') renderCalendarPanel(document.getElementById('featurePanelBody'));
+        btn.addEventListener('click', (e) => { 
+            e.stopPropagation(); 
+            const id = parseInt(btn.getAttribute('data-id')); 
+            const date = btn.getAttribute('data-date');
+            if (confirm('Delete this appointment?')) { 
+                deleteAppointment(date, id); 
+                showToast('Deleted', 'info');
+                const container = document.getElementById('featurePanelBody');
+                if (container && currentView === 'list') {
+                    renderListView(container);
+                }
+                if (currentView === 'calendar') {
+                    renderCalendarPanel(document.getElementById('featurePanelBody'));
+                }
             }
         });
     });
@@ -419,12 +544,12 @@ function renderAppointmentsList(dateStr) {
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
                 <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
                 <div>
-                    <select class="status-select" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">
+                    <select class="status-select-quick" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">
                         ${STATUS_OPTIONS.map(s => `<option value="${s}" ${r.status === s ? 'selected' : ''}>${s}</option>`).join('')}
                     </select>
-                    <button class="action-btn-sm copy-appt" data-id="${r.id}">Copy</button>
-                    <button class="action-btn-sm edit-appt" data-id="${r.id}" data-date="${dateStr}">Edit</button>
-                    <button class="action-btn-sm danger delete-appt" data-id="${r.id}" data-date="${dateStr}">Delete</button>
+                    <button class="action-btn-sm copy-appt-quick" data-id="${r.id}">Copy</button>
+                    <button class="action-btn-sm edit-appt-quick" data-id="${r.id}" data-date="${dateStr}">Edit</button>
+                    <button class="action-btn-sm danger delete-appt-quick" data-id="${r.id}" data-date="${dateStr}">Delete</button>
                 </div>
             </div>
             <div style="margin-top:8px; font-size:0.85rem;"><div><i class="fas fa-user"></i> ${escapeHtml(r.contactName)}</div>
@@ -492,6 +617,7 @@ function loadAppointmentData() {
     if (saved) appointments = JSON.parse(saved);
     const savedGoals = localStorage.getItem('scriptflow_goals_main');
     if (savedGoals) goals = JSON.parse(savedGoals);
+    migrateStatuses(); // Convert old "Booked" to "Warm-Booked"
     updateStats();
 }
 
@@ -526,7 +652,7 @@ function updateStats() {
     if (goalMonthly) goalMonthly.innerText = goals.monthly;
 }
 
-function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Booked') {
+function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm-Booked') {
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
     const newAppt = { id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, status,
         createdAt: new Date().toISOString(),
@@ -583,7 +709,7 @@ function renderInsightsPanel(container) {
             </select>
             <div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;">
                 <input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span>
-                <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input>
+                <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input">
             </div>
             <button id="applyDateRange" class="btn-icon">Apply</button>
             <div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
@@ -767,9 +893,9 @@ function openPriorityModal(){ const now=new Date(); const zones=[{name:'Eastern 
 }
 function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay';
     modal.innerHTML=`<div class="modal-card"><h3><i class="fas fa-question-circle"></i> Guide</h3>
-        <div><strong>📊 Insights</strong><br>Analytics and trends</div><div><strong>📅 Calendar</strong><br>View/Copy/Edit/Delete appointments</div>
-        <div><strong>📋 List View</strong><br>All appointments with status filters</div><div><strong>✨ Smart Import</strong><br>Paste any text format</div>
-        <div><strong>🎯 Priority Predictor</strong><br>Best calling times</div><div><strong>📌 Status Tracking</strong><br>Booked, Called, Canceled, Rescheduled</div>
+        <div><strong>📊 Insights</strong><br>Analytics and trends</div><div><strong>📅 Calendar</strong><br>View appointments by date</div>
+        <div><strong>📋 CRM List View</strong><br>All leads in professional card format</div><div><strong>✨ Smart Import</strong><br>Paste any text format</div>
+        <div><strong>🎯 Priority Predictor</strong><br>Best calling times</div><div><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
         <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
     document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();});
 }
