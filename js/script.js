@@ -28,15 +28,23 @@ let featureChartInstance = null;
 // Status options
 const STATUS_OPTIONS = ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'];
 
-// Helper to get status class name
-function getStatusClassName(status) {
-    if (!status) return 'status-warm-booked';
+function getStatusClass(status) {
     switch(status) {
         case 'Warm-Booked': return 'status-warm-booked';
         case 'Called': return 'status-called';
         case 'Canceled': return 'status-canceled';
         case 'Rescheduled': return 'status-rescheduled';
         default: return 'status-warm-booked';
+    }
+}
+
+function getStatusClassSmall(status) {
+    switch(status) {
+        case 'Warm-Booked': return 'status-warm-booked-sm';
+        case 'Called': return 'status-called-sm';
+        case 'Canceled': return 'status-canceled-sm';
+        case 'Rescheduled': return 'status-rescheduled-sm';
+        default: return 'status-warm-booked-sm';
     }
 }
 
@@ -357,7 +365,6 @@ function renderAppointmentsList(dateStr) {
     if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments</div>';
     return apptData.map(r => {
         const status = getStatus(r);
-        const statusClass = getStatusClassName(status);
         return `
         <div style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
@@ -447,7 +454,7 @@ function handleCalendarDelete(e) {
     }
 }
 
-// ==================== CRM-STYLE LIST VIEW ====================
+// ==================== CLEAN LIST VIEW WITH HOVER TOOLTIP ====================
 function renderListView(container) {
     let allAppointments = [];
     for (let date in appointments) {
@@ -477,7 +484,7 @@ function renderListView(container) {
                     <p>No appointments found</p>
                     <button class="btn-icon" id="emptyStateSmartImport" style="margin-top: 12px;"><i class="fas fa-magic"></i> Smart Import</button>
                 </div>
-            ` : filtered.map(a => renderCRMLeadCard(a)).join('')}
+            ` : filtered.map(a => renderListItem(a)).join('')}
         </div>
     `;
     
@@ -496,6 +503,92 @@ function renderListView(container) {
     bindListActions();
 }
 
+function renderListItem(appointment) {
+    const status = getStatus(appointment);
+    const statusClassSmall = getStatusClassSmall(status);
+    const formattedDateTime = formatDateTime(appointment.date, appointment.time);
+    
+    // Create hover tooltip content
+    const tooltipHtml = `
+        <div class="hover-tooltip">
+            <div class="hover-tooltip-row">
+                <i class="fas fa-building"></i>
+                <span class="label">Business:</span>
+                <span class="value">${escapeHtml(appointment.business)}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-user"></i>
+                <span class="label">Contact:</span>
+                <span class="value">${escapeHtml(appointment.contactName)}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-briefcase"></i>
+                <span class="label">Role:</span>
+                <span class="value">${escapeHtml(appointment.role || 'Owner')}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-phone"></i>
+                <span class="label">Phone:</span>
+                <span class="value">${escapeHtml(appointment.phone || 'No phone')}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-calendar-alt"></i>
+                <span class="label">Date:</span>
+                <span class="value">${escapeHtml(appointment.date)}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-clock"></i>
+                <span class="label">Time:</span>
+                <span class="value">${escapeHtml(appointment.time || 'No time')}</span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-tag"></i>
+                <span class="label">Status:</span>
+                <span class="value"><span class="hover-tooltip-status ${getStatusClass(status)}" style="background:${status === 'Warm-Booked' ? '#3b82f6' : (status === 'Called' ? '#8b5cf6' : (status === 'Canceled' ? '#ef4444' : '#f59e0b'))};">${escapeHtml(status)}</span></span>
+            </div>
+            <div class="hover-tooltip-row">
+                <i class="fas fa-user-tie"></i>
+                <span class="label">Assigned:</span>
+                <span class="value">${escapeHtml(appointment.assigned || 'Unassigned')}</span>
+            </div>
+            ${appointment.notes ? `
+            <div class="hover-tooltip-row">
+                <i class="fas fa-sticky-note"></i>
+                <span class="label">Notes:</span>
+                <span class="value" style="font-style: italic;">${escapeHtml(appointment.notes.substring(0, 150))}${appointment.notes.length > 150 ? '...' : ''}</span>
+            </div>
+            ` : ''}
+        </div>
+    `;
+    
+    return `
+        <div class="list-item" data-id="${appointment.id}" data-date="${appointment.date}">
+            ${tooltipHtml}
+            <div class="list-item-content">
+                <div class="list-item-left">
+                    <div class="company-name">
+                        <i class="fas fa-building"></i>${escapeHtml(appointment.business)}
+                    </div>
+                    <div class="contact-info">
+                        <i class="fas fa-user"></i>${escapeHtml(appointment.contactName)}
+                    </div>
+                </div>
+                <div class="list-item-right">
+                    <span class="status-badge-sm ${statusClassSmall}">${escapeHtml(status)}</span>
+                    <select class="status-select-list" data-id="${appointment.id}" data-date="${appointment.date}" style="padding:4px 8px; border-radius:20px; font-size:0.7rem;">
+                        ${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                    <div class="action-buttons-list">
+                        <button class="action-icon-btn copy-list" data-id="${appointment.id}" title="Copy"><i class="fas fa-copy"></i></button>
+                        <button class="action-icon-btn edit-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="action-icon-btn danger delete-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function handleFilterChange(e) {
     currentStatusFilter = e.target.value;
     refreshCurrentView();
@@ -504,68 +597,6 @@ function handleFilterChange(e) {
 function handleEmptyStateImport() {
     hideFeaturePanel();
     setTimeout(() => openSmartAddModal(), 100);
-}
-
-function renderCRMLeadCard(appointment) {
-    const status = getStatus(appointment);
-    const statusClass = getStatusClassName(status);
-    const formattedDateTime = formatDateTime(appointment.date, appointment.time);
-    
-    return `
-        <div class="crm-card" data-id="${appointment.id}" data-date="${appointment.date}">
-            <div class="crm-card-header">
-                <div class="crm-business-name">
-                    <i class="fas fa-building"></i>
-                    ${escapeHtml(appointment.business)}
-                </div>
-                <div class="crm-status-badge ${statusClass}">
-                    ${escapeHtml(status)}
-                </div>
-            </div>
-            <div class="crm-card-body">
-                <div class="crm-info-row">
-                    <i class="fas fa-user"></i>
-                    <span class="crm-info-label">Name:</span>
-                    <span class="crm-info-value">${escapeHtml(appointment.contactName)}</span>
-                </div>
-                <div class="crm-info-row">
-                    <i class="fas fa-briefcase"></i>
-                    <span class="crm-info-label">Role:</span>
-                    <span class="crm-info-value">${escapeHtml(appointment.role || 'Owner')}</span>
-                </div>
-                <div class="crm-info-row">
-                    <i class="fas fa-phone"></i>
-                    <span class="crm-info-label">Phone:</span>
-                    <span class="crm-info-value">${escapeHtml(appointment.phone || 'No phone')}</span>
-                </div>
-                <div class="crm-info-row">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span class="crm-info-label">Time:</span>
-                    <span class="crm-info-value">${escapeHtml(formattedDateTime)}</span>
-                </div>
-                <div class="crm-info-row">
-                    <i class="fas fa-user-tie"></i>
-                    <span class="crm-info-label">Assigned:</span>
-                    <span class="crm-info-value">${escapeHtml(appointment.assigned || 'Unassigned')}</span>
-                </div>
-                ${appointment.notes ? `
-                <div class="crm-info-row" style="grid-column: 1 / -1;">
-                    <i class="fas fa-sticky-note"></i>
-                    <span class="crm-info-label">Notes:</span>
-                    <span class="crm-info-value" style="font-style: italic;">${escapeHtml(appointment.notes.substring(0, 100))}${appointment.notes.length > 100 ? '...' : ''}</span>
-                </div>
-                ` : ''}
-            </div>
-            <div class="crm-card-footer">
-                <select class="status-select-list" data-id="${appointment.id}" data-date="${appointment.date}" style="padding: 6px 12px; border-radius: 30px; border: 1px solid var(--border-color); background: var(--bg-primary); font-size: 0.7rem;">
-                    ${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}
-                </select>
-                <button class="crm-action-btn copy-list" data-id="${appointment.id}"><i class="fas fa-copy"></i> Copy</button>
-                <button class="crm-action-btn edit-list" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-edit"></i> Edit</button>
-                <button class="crm-action-btn danger delete-list" data-id="${appointment.id}" data-date="${appointment.date}"><i class="fas fa-trash"></i> Delete</button>
-            </div>
-        </div>
-    `;
 }
 
 function bindListActions() {
@@ -588,6 +619,7 @@ function bindListActions() {
 }
 
 function handleListStatusChange(e) {
+    e.stopPropagation();
     const select = e.target;
     const id = parseInt(select.getAttribute('data-id'));
     const date = select.getAttribute('data-date');
@@ -602,6 +634,7 @@ function handleListStatusChange(e) {
 }
 
 function handleListCopy(e) {
+    e.stopPropagation();
     const btn = e.currentTarget;
     const id = parseInt(btn.getAttribute('data-id'));
     for (let d in appointments) {
@@ -615,6 +648,7 @@ function handleListCopy(e) {
 }
 
 function handleListEdit(e) {
+    e.stopPropagation();
     const btn = e.currentTarget;
     const id = parseInt(btn.getAttribute('data-id'));
     const date = btn.getAttribute('data-date');
@@ -623,6 +657,7 @@ function handleListEdit(e) {
 }
 
 function handleListDelete(e) {
+    e.stopPropagation();
     const btn = e.currentTarget;
     const id = parseInt(btn.getAttribute('data-id'));
     const date = btn.getAttribute('data-date');
@@ -1068,7 +1103,7 @@ function showHelpModal(){
         <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
         <div style="margin:16px 0;"><strong>📊 Insights</strong><br>Analytics and trends</div>
         <div style="margin:16px 0;"><strong>📅 Calendar View</strong><br>View appointments by date with full CRUD operations</div>
-        <div style="margin:16px 0;"><strong>📋 CRM List View</strong><br>All leads in professional card format with status filtering</div>
+        <div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Company names first, hover for full details</div>
         <div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>Paste any text format - auto-extracts all fields</div>
         <div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div>
         <div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
