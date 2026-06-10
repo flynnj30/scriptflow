@@ -34,13 +34,11 @@
     --scrollbar-track: #1e293b;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #1e293b;
+    --status-booked: #3b82f6;
+    --status-called: #8b5cf6;
+    --status-canceled: #ef4444;
+    --status-rescheduled: #f59e0b;
 }
-
-/* Status Colors */
-.status-booked { background: #3b82f6; color: white; }
-.status-called { background: #8b5cf6; color: white; }
-.status-canceled { background: #ef4444; color: white; }
-.status-rescheduled { background: #f59e0b; color: #1e293b; }
 
 body.dark {
     --bg-primary: #0f172a;
@@ -61,6 +59,10 @@ body.dark {
     --scrollbar-track: #0f172a;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #334155;
+    --status-booked: #60a5fa;
+    --status-called: #a78bfa;
+    --status-canceled: #f87171;
+    --status-rescheduled: #fbbf24;
 }
 
 body {
@@ -518,7 +520,7 @@ body {
 }
 
 .view-btn:hover:not(.active) {
-    background: var(--bg-hover);
+    background: var(--border-color);
     color: var(--text-primary);
 }
 
@@ -547,15 +549,16 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: var(--bg-primary);
+    background: var(--cal-day-bg);
     border-radius: 16px;
     cursor: pointer;
     font-size: 0.85rem;
     border: 1px solid var(--border-color);
     transition: all 0.2s;
+    color: var(--text-primary);
 }
 
-.calendar-day:hover { background: var(--primary); color: white; transform: scale(1.02); }
+.calendar-day:hover { background: var(--cal-day-hover); color: var(--text-primary); transform: scale(1.02); }
 .calendar-day.selected { background: var(--primary); color: white; }
 .calendar-day .appt-badge { font-size: 0.6rem; background: var(--success); color: white; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
 
@@ -625,6 +628,7 @@ body {
     background: var(--bg-primary);
     font-size: 0.7rem;
     cursor: pointer;
+    font-weight: 500;
 }
 
 .appointment-actions {
@@ -644,10 +648,35 @@ body {
     cursor: pointer;
     font-size: 0.7rem;
     transition: all 0.2s;
+    color: var(--text-primary);
 }
 
 .action-btn-sm:hover { background: var(--primary); color: white; border-color: var(--primary); }
 .action-btn-sm.danger:hover { background: var(--danger); border-color: var(--danger); }
+
+/* Status Filter */
+.status-filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 40px;
+}
+
+.filter-chip {
+    padding: 6px 16px;
+    border-radius: 30px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+    color: var(--text-primary);
+}
+.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+.filter-chip:hover:not(.active) { background: var(--border-color); }
 
 /* Insights Dashboard */
 .insights-header { margin-bottom: 24px; }
@@ -754,6 +783,7 @@ body {
     padding: 28px;
     width: 650px;
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
 }
 .form-group { margin-bottom: 20px; }
 .form-group label { font-weight: 600; font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary); }
@@ -798,29 +828,6 @@ body {
     color: var(--text-muted);
     border-top: 1px solid var(--border-color);
 }
-
-/* Status Filter */
-.status-filter-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    padding: 12px;
-    background: var(--bg-primary);
-    border-radius: 40px;
-}
-
-.filter-chip {
-    padding: 6px 16px;
-    border-radius: 30px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    font-size: 0.75rem;
-    transition: all 0.2s;
-}
-.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-.filter-chip:hover:not(.active) { background: var(--sidebar-hover); }
 
 /* Responsive */
 @media (max-width: 1024px) {
