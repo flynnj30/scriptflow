@@ -20,12 +20,8 @@ let selectedCalDate = new Date().toISOString().split('T')[0];
 let dashboardDatePreset = 'today';
 let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
 
-// Feature state
-let isFeatureActive = false;
-let currentFeatureType = null;
-let featureChartInstance = null;
-
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
+let featureChartInstance = null;
 
 // ==================== HELPER FUNCTIONS ====================
 function showToast(msg, type = 'success') {
@@ -103,149 +99,43 @@ function getDateRange(preset) {
     }
 }
 
-// ==================== SHOW/HIDE FEATURE (REPLACE RIGHT PANEL) ====================
+// ==================== FEATURE PANEL (Replaces Script Area) ====================
 function showFeaturePanel(featureType, title) {
-    // Simple actions - just show toast, no panel replacement
-    if (featureType === 'username') {
-        const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
-        if (newName?.trim()) {
-            userName = newName.trim();
-            localStorage.setItem('scriptflow_user_name', userName);
-            showToast(`Name set to: ${userName}`, 'success');
-            if (!isEditing) loadScript(currentScriptId);
-        }
-        return;
+    const scriptPanel = document.getElementById('scriptPanel');
+    const featurePanel = document.getElementById('featurePanel');
+    const featureTitle = document.getElementById('featurePanelTitle');
+    const featureBody = document.getElementById('featurePanelBody');
+    
+    if (!scriptPanel || !featurePanel) return;
+    
+    featureTitle.innerHTML = `<i class="fas ${featureType === 'insights' ? 'fa-chart-pie' : 'fa-calendar-alt'}"></i> ${title}`;
+    
+    if (featureType === 'insights') {
+        renderInsightsPanel(featureBody);
+    } else if (featureType === 'calendar') {
+        renderCalendarPanel(featureBody);
     }
     
-    if (featureType === 'theme') {
-        toggleTheme();
-        return;
-    }
-    
-    if (featureType === 'help') {
-        showHelpModal();
-        return;
-    }
-    
-    if (featureType === 'export') {
-        exportToCSV();
-        return;
-    }
-    
-    if (featureType === 'reset') {
-        if (confirm('⚠️ FACTORY RESET: This will erase ALL scripts, appointments, and settings. Cannot be undone.')) {
-            localStorage.clear();
-            location.reload();
-        }
-        return;
-    }
-    
-    // Complex features - replace the right panel
-    const container = document.getElementById('rightPanelContainer');
-    const backBtn = document.getElementById('backToScriptsBtn');
-    
-    if (!container) return;
-    
-    currentFeatureType = featureType;
-    isFeatureActive = true;
-    
-    let panelHtml = '';
-    
-    switch(featureType) {
-        case 'insights':
-            panelHtml = renderInsightsPanel();
-            break;
-        case 'calendar':
-            panelHtml = renderCalendarPanel();
-            break;
-        case 'priority':
-            panelHtml = renderPriorityPanel();
-            break;
-        default:
-            panelHtml = '<div class="feature-panel"><div class="feature-panel-body"><p>Feature coming soon...</p></div></div>';
-    }
-    
-    container.innerHTML = panelHtml;
-    backBtn.style.display = 'block';
-    
-    // Bind feature-specific events after rendering
-    if (featureType === 'insights') bindInsightsEvents();
-    if (featureType === 'calendar') bindCalendarEvents();
+    scriptPanel.style.display = 'none';
+    featurePanel.style.display = 'block';
 }
 
 function hideFeaturePanel() {
-    const container = document.getElementById('rightPanelContainer');
-    const backBtn = document.getElementById('backToScriptsBtn');
+    const scriptPanel = document.getElementById('scriptPanel');
+    const featurePanel = document.getElementById('featurePanel');
     
-    if (!container) return;
-    
-    // Restore original script content
-    container.innerHTML = `
-        <div class="script-card" id="scriptCard">
-            <div class="script-header-bar">
-                <div class="script-title-area">
-                    <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
-                    <h2 id="currentScriptName">Opening Script</h2>
-                    <span class="version-chip" id="versionIndicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
-                    <span class="version-chip" id="activeShortcutHint"><i class="fas fa-key"></i> Key: —</span>
-                </div>
-                <div class="action-buttons">
-                    <button class="btn-icon" id="editScriptBtn"><i class="fas fa-pen"></i> Edit</button>
-                    <button class="btn-icon" id="saveScriptBtn" style="display:none; background: var(--success);"><i class="fas fa-save"></i> Save</button>
-                    <button class="btn-icon" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
-                    <button class="btn-icon" id="copyScriptBtn"><i class="fas fa-copy"></i> Copy</button>
-                    <button class="btn-icon" id="resetScriptBtn"><i class="fas fa-undo-alt"></i> Reset</button>
-                    <button class="btn-icon" id="undoBtn"><i class="fas fa-undo"></i> Undo</button>
-                    <button class="btn-icon" id="redoBtn"><i class="fas fa-redo"></i> Redo</button>
-                </div>
-            </div>
-            <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
-        </div>
-    `;
-    
-    backBtn.style.display = 'none';
-    isFeatureActive = false;
-    currentFeatureType = null;
-    
-    // Re-initialize script functionality
-    if (featureChartInstance) {
-        featureChartInstance.destroy();
-        featureChartInstance = null;
+    if (scriptPanel && featurePanel) {
+        featurePanel.style.display = 'none';
+        scriptPanel.style.display = 'block';
+        if (featureChartInstance) {
+            featureChartInstance.destroy();
+            featureChartInstance = null;
+        }
     }
-    
-    // Re-attach script event listeners
-    document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit);
-    document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit);
-    document.getElementById('cancelEditBtn')?.addEventListener('click', cancelEdit);
-    document.getElementById('copyScriptBtn')?.addEventListener('click', copyScript);
-    document.getElementById('resetScriptBtn')?.addEventListener('click', resetScript);
-    document.getElementById('undoBtn')?.addEventListener('click', () => undoScript(currentScriptId));
-    document.getElementById('redoBtn')?.addEventListener('click', () => redoScript(currentScriptId));
-    
-    // Reload current script
-    loadScript(currentScriptId);
-}
-
-function showHelpModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-        <div class="modal-card">
-            <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
-            <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics, trends, and goal progress</div>
-            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage all your appointments</div>
-            <div style="margin:16px 0;"><strong>🎯 Call Priority Predictor</strong><br>Real-time US time zone recommendations</div>
-            <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>11 scripts, edit with undo/redo, press 1-9 to switch</div>
-            <button id="closeHelpModal" class="btn-icon" style="margin-top:16px; width:100%;">Got it</button>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    document.getElementById('closeHelpModal').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 // ==================== INSIGHTS PANEL ====================
-function renderInsightsPanel() {
+function renderInsightsPanel(container) {
     const range = getDateRange(dashboardDatePreset);
     dashboardDateRange = range;
     
@@ -293,135 +183,111 @@ function renderInsightsPanel() {
         roleStats[role] = (roleStats[role] || 0) + 1;
     });
     
-    return `
-        <div class="feature-panel">
-            <div class="feature-panel-header">
-                <h2><i class="fas fa-chart-pie"></i> Insights Dashboard</h2>
+    container.innerHTML = `
+        <div class="insights-header">
+            <div class="date-range-selector">
+                <span style="font-size:0.8rem;">Range</span>
+                <select id="datePresetSelect" class="date-preset">
+                    <option value="today" ${dashboardDatePreset === 'today' ? 'selected' : ''}>Today</option>
+                    <option value="yesterday" ${dashboardDatePreset === 'yesterday' ? 'selected' : ''}>Yesterday</option>
+                    <option value="this_week" ${dashboardDatePreset === 'this_week' ? 'selected' : ''}>This Week</option>
+                    <option value="last_week" ${dashboardDatePreset === 'last_week' ? 'selected' : ''}>Last Week</option>
+                    <option value="this_month" ${dashboardDatePreset === 'this_month' ? 'selected' : ''}>This Month</option>
+                    <option value="last_month" ${dashboardDatePreset === 'last_month' ? 'selected' : ''}>Last Month</option>
+                    <option value="custom" ${dashboardDatePreset === 'custom' ? 'selected' : ''}>Custom</option>
+                </select>
+                <div id="customDateRange" style="display: ${dashboardDatePreset === 'custom' ? 'flex' : 'none'}; gap: 8px; align-items: center;">
+                    <input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input">
+                    <span>to</span>
+                    <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input">
+                </div>
+                <button id="applyDateRange" class="btn-icon" style="padding:6px 16px;">Apply</button>
+                <div class="timezone-display">
+                    <i class="fas fa-globe"></i>
+                    <span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+                </div>
             </div>
-            <div class="feature-panel-body">
-                <div class="insights-header">
-                    <div class="date-range-selector">
-                        <span style="font-size:0.8rem;">Range</span>
-                        <select id="datePresetSelect" class="date-preset">
-                            <option value="today" ${dashboardDatePreset === 'today' ? 'selected' : ''}>Today</option>
-                            <option value="yesterday" ${dashboardDatePreset === 'yesterday' ? 'selected' : ''}>Yesterday</option>
-                            <option value="this_week" ${dashboardDatePreset === 'this_week' ? 'selected' : ''}>This Week</option>
-                            <option value="last_week" ${dashboardDatePreset === 'last_week' ? 'selected' : ''}>Last Week</option>
-                            <option value="this_month" ${dashboardDatePreset === 'this_month' ? 'selected' : ''}>This Month</option>
-                            <option value="last_month" ${dashboardDatePreset === 'last_month' ? 'selected' : ''}>Last Month</option>
-                            <option value="custom" ${dashboardDatePreset === 'custom' ? 'selected' : ''}>Custom</option>
-                        </select>
-                        <div id="customDateRange" style="display: ${dashboardDatePreset === 'custom' ? 'flex' : 'none'}; gap: 8px; align-items: center;">
-                            <input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input">
-                            <span>to</span>
-                            <input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input">
+        </div>
+        
+        <div class="insights-summary">
+            <div class="insight-stat">
+                <div class="insight-stat-value">${totalAppointments}</div>
+                <div class="insight-stat-label">Total Appointments</div>
+            </div>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${uniqueBusinesses}</div>
+                <div class="insight-stat-label">Unique Businesses</div>
+            </div>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
+                <div class="insight-stat-label">Today's Progress</div>
+                <div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div>
+            </div>
+            <div class="insight-stat">
+                <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, daysDiff))}</div>
+                <div class="insight-stat-label">Avg per Day</div>
+            </div>
+        </div>
+        
+        <div class="feature-card">
+            <h4><i class="fas fa-chart-line"></i> Appointment Trend</h4>
+            <canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas>
+        </div>
+        
+        <div class="feature-card">
+            <h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Daily Goal</span><span>${getTodayCount()} / ${goals.daily}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div>
+            </div>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Weekly Goal</span><span>${getWeekCount()} / ${goals.weekly}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div>
+            </div>
+            <div class="goal-progress-item">
+                <div class="goal-progress-label"><span>Monthly Goal</span><span>${getMonthCount()} / ${goals.monthly}</span></div>
+                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div>
+            </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+            <div class="feature-card">
+                <h4><i class="fas fa-users"></i> Assignment Distribution</h4>
+                <div class="distribution-list">
+                    ${Object.entries(assignedStats).map(([name, count]) => `
+                        <div class="distribution-item">
+                            <span class="distribution-name"><i class="fas fa-user"></i> ${escapeHtml(name)}</span>
+                            <span class="distribution-count">${count}</span>
                         </div>
-                        <button id="applyDateRange" class="btn-icon" style="padding:6px 16px;">Apply</button>
-                        <div class="timezone-display">
-                            <i class="fas fa-globe"></i>
-                            <span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
+                    `).join('') || '<div>No data</div>'}
+                </div>
+            </div>
+            <div class="feature-card">
+                <h4><i class="fas fa-briefcase"></i> Role Distribution</h4>
+                <div class="distribution-list">
+                    ${Object.entries(roleStats).map(([role, count]) => `
+                        <div class="distribution-item">
+                            <span class="distribution-name"><i class="fas fa-tag"></i> ${escapeHtml(role)}</span>
+                            <span class="distribution-count">${count}</span>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="insights-summary">
-                    <div class="insight-stat">
-                        <div class="insight-stat-value">${totalAppointments}</div>
-                        <div class="insight-stat-label">Total Appointments</div>
-                    </div>
-                    <div class="insight-stat">
-                        <div class="insight-stat-value">${uniqueBusinesses}</div>
-                        <div class="insight-stat-label">Unique Businesses</div>
-                    </div>
-                    <div class="insight-stat">
-                        <div class="insight-stat-value">${todayCount}/${goals.daily}</div>
-                        <div class="insight-stat-label">Today's Progress</div>
-                        <div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div>
-                    </div>
-                    <div class="insight-stat">
-                        <div class="insight-stat-value">${Math.round(totalAppointments / Math.max(1, daysDiff))}</div>
-                        <div class="insight-stat-label">Avg per Day</div>
-                    </div>
-                </div>
-                
-                <div class="feature-card">
-                    <h4><i class="fas fa-chart-line"></i> Appointment Trend</h4>
-                    <canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas>
-                </div>
-                
-                <div class="feature-card">
-                    <h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
-                    <div class="goal-progress-item">
-                        <div class="goal-progress-label"><span>Daily Goal</span><span>${getTodayCount()} / ${goals.daily}</span></div>
-                        <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div>
-                    </div>
-                    <div class="goal-progress-item">
-                        <div class="goal-progress-label"><span>Weekly Goal</span><span>${getWeekCount()} / ${goals.weekly}</span></div>
-                        <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div>
-                    </div>
-                    <div class="goal-progress-item">
-                        <div class="goal-progress-label"><span>Monthly Goal</span><span>${getMonthCount()} / ${goals.monthly}</span></div>
-                        <div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100, (getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div>
-                    </div>
-                </div>
-                
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
-                    <div class="feature-card">
-                        <h4><i class="fas fa-users"></i> Assignment Distribution</h4>
-                        <div class="distribution-list">
-                            ${Object.entries(assignedStats).map(([name, count]) => `
-                                <div class="distribution-item">
-                                    <span class="distribution-name"><i class="fas fa-user"></i> ${escapeHtml(name)}</span>
-                                    <span class="distribution-count">${count}</span>
-                                </div>
-                            `).join('') || '<div>No data</div>'}
-                        </div>
-                    </div>
-                    <div class="feature-card">
-                        <h4><i class="fas fa-briefcase"></i> Role Distribution</h4>
-                        <div class="distribution-list">
-                            ${Object.entries(roleStats).map(([role, count]) => `
-                                <div class="distribution-item">
-                                    <span class="distribution-name"><i class="fas fa-tag"></i> ${escapeHtml(role)}</span>
-                                    <span class="distribution-count">${count}</span>
-                                </div>
-                            `).join('') || '<div>No data</div>'}
-                        </div>
-                    </div>
+                    `).join('') || '<div>No data</div>'}
                 </div>
             </div>
         </div>
     `;
-}
-
-function bindInsightsEvents() {
+    
+    // Create chart
     const ctx = document.getElementById('insightsChartCanvas');
     if (ctx) {
-        // Chart will be created after this function
-        setTimeout(() => {
-            const labels = [];
-            const data = [];
-            const startDate = new Date(dashboardDateRange.start);
-            const endDate = new Date(dashboardDateRange.end);
-            const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-            
-            for (let i = 0; i < daysDiff; i++) {
-                const d = new Date(startDate);
-                d.setDate(startDate.getDate() + i);
-                const dateStr = d.toISOString().split('T')[0];
-                labels.push(formatDate(dateStr));
-                data.push(appointments[dateStr]?.reports?.length || 0);
-            }
-            
-            if (featureChartInstance) featureChartInstance.destroy();
-            featureChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: labels, datasets: [{ label: 'Appointments', data: data, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] },
-                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
-            });
-        }, 50);
+        if (featureChartInstance) featureChartInstance.destroy();
+        featureChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+        });
     }
     
+    // Bind events
     const presetSelect = document.getElementById('datePresetSelect');
     const customRangeDiv = document.getElementById('customDateRange');
     const applyBtn = document.getElementById('applyDateRange');
@@ -434,7 +300,7 @@ function bindInsightsEvents() {
             } else {
                 customRangeDiv.style.display = 'none';
                 dashboardDateRange = getDateRange(dashboardDatePreset);
-                showFeaturePanel('insights', 'Insights Dashboard');
+                renderInsightsPanel(container);
             }
         });
     }
@@ -446,18 +312,18 @@ function bindInsightsEvents() {
                 const end = document.getElementById('customEndDate')?.value;
                 if (start && end) {
                     dashboardDateRange = { start, end };
-                    showFeaturePanel('insights', 'Insights Dashboard');
+                    renderInsightsPanel(container);
                 }
             } else {
                 dashboardDateRange = getDateRange(dashboardDatePreset);
-                showFeaturePanel('insights', 'Insights Dashboard');
+                renderInsightsPanel(container);
             }
         });
     }
 }
 
 // ==================== CALENDAR PANEL ====================
-function renderCalendarPanel() {
+function renderCalendarPanel(container) {
     const year = currentCalDate.getFullYear();
     const month = currentCalDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
@@ -476,63 +342,55 @@ function renderCalendarPanel() {
         `;
     }
     
-    return `
-        <div class="feature-panel">
-            <div class="feature-panel-header">
-                <h2><i class="fas fa-calendar-alt"></i> Appointment Calendar</h2>
+    container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+            <h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4>
+            <div style="display:flex; gap:8px;">
+                <button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button>
+                <button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button>
+                <button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button>
             </div>
-            <div class="feature-panel-body">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-                    <h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4>
-                    <div style="display:flex; gap:8px;">
-                        <button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button>
-                        <button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button>
-                        <button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button>
-                    </div>
-                </div>
-                <div class="calendar-grid" id="calendarGrid">${daysHtml}</div>
-                
-                <div style="margin-top:20px;">
-                    <label><strong>Quick Jump:</strong></label>
-                    <input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin-left:12px; padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);">
-                    <button id="quickAddFromCalendar" class="btn-icon" style="margin-left:12px;"><i class="fas fa-plus"></i> Add Appointment</button>
-                </div>
-                
-                <div style="margin-top:24px;">
-                    <h4>Appointments for ${selectedCalDate}</h4>
-                    <div id="appointmentsList">
-                        ${renderAppointmentsList(selectedCalDate)}
-                    </div>
-                </div>
+        </div>
+        <div class="calendar-grid" id="calendarGrid">${daysHtml}</div>
+        
+        <div style="margin-top:20px;">
+            <label><strong>Quick Jump:</strong></label>
+            <input type="date" id="quickDatePicker" value="${selectedCalDate}" style="margin-left:12px; padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);">
+            <button id="quickAddFromCalendar" class="btn-icon" style="margin-left:12px;"><i class="fas fa-plus"></i> Add Appointment</button>
+        </div>
+        
+        <div style="margin-top:24px;">
+            <h4>Appointments for ${selectedCalDate}</h4>
+            <div id="appointmentsList">
+                ${renderAppointmentsList(selectedCalDate)}
             </div>
         </div>
     `;
-}
-
-function bindCalendarEvents() {
+    
+    // Bind calendar events
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => {
         el.addEventListener('click', () => {
             selectedCalDate = el.getAttribute('data-date');
-            showFeaturePanel('calendar', 'Appointment Calendar');
+            renderCalendarPanel(container);
         });
     });
     
     document.getElementById('calPrevBtn')?.addEventListener('click', () => {
         currentCalDate.setMonth(currentCalDate.getMonth() - 1);
-        showFeaturePanel('calendar', 'Appointment Calendar');
+        renderCalendarPanel(container);
     });
     document.getElementById('calNextBtn')?.addEventListener('click', () => {
         currentCalDate.setMonth(currentCalDate.getMonth() + 1);
-        showFeaturePanel('calendar', 'Appointment Calendar');
+        renderCalendarPanel(container);
     });
     document.getElementById('calTodayBtn')?.addEventListener('click', () => {
         currentCalDate = new Date();
         selectedCalDate = getTodayStr();
-        showFeaturePanel('calendar', 'Appointment Calendar');
+        renderCalendarPanel(container);
     });
     document.getElementById('quickDatePicker')?.addEventListener('change', (e) => {
         selectedCalDate = e.target.value;
-        showFeaturePanel('calendar', 'Appointment Calendar');
+        renderCalendarPanel(container);
     });
     document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => {
         hideFeaturePanel();
@@ -553,8 +411,10 @@ function renderAppointmentsList(dateStr) {
     `).join('');
 }
 
-// ==================== PRIORITY PANEL ====================
-function renderPriorityPanel() {
+// ==================== POP-UP MODAL FUNCTIONS ====================
+function openPriorityModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
     const now = new Date();
     const timeZones = [
         { name: 'Eastern (ET) ★ PRIORITY', zone: 'America/New_York' },
@@ -579,42 +439,65 @@ function renderPriorityPanel() {
         if (isPrimeTime) activePrimeZones.push(tz.name);
         
         zonesHtml += `
-            <div class="priority-timezone ${isPrimeTime ? 'prime' : ''}">
-                <div class="priority-timezone-name">${tz.name}</div>
-                <div class="priority-timezone-time">${timeStr}</div>
-                <div class="priority-badge ${isPrimeTime ? 'prime' : 'waiting'}">
-                    ${isPrimeTime ? '🔥 PRIME TIME - CALL NOW' : 'Awaiting Prime Window'}
+            <div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrimeTime ? 'var(--success)' : 'var(--primary)'};">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>${tz.name}</strong>
+                    <span style="font-size:1.3rem; font-weight:700; color:var(--primary);">${timeStr}</span>
                 </div>
-                <div style="font-size:0.75rem; margin-top:8px;">Best hours: 10-11:30 AM or 2-4 PM local</div>
+                <div style="margin-top:8px;">
+                    <span style="display:inline-block; padding:4px 12px; border-radius:20px; font-size:0.7rem; font-weight:600; background:${isPrimeTime ? 'var(--success)' : 'var(--warning)'}; color:${isPrimeTime ? 'white' : '#1e293b'};">${isPrimeTime ? '🔥 PRIME TIME - CALL NOW' : 'Awaiting Prime Window'}</span>
+                </div>
+                <div style="font-size:0.7rem; margin-top:6px; color:var(--text-muted);">Best hours: 10-11:30 AM or 2-4 PM local</div>
             </div>
         `;
     }
     
-    return `
-        <div class="feature-panel">
-            <div class="feature-panel-header">
-                <h2><i class="fas fa-chart-line"></i> Call Priority Predictor</h2>
+    modal.innerHTML = `
+        <div class="modal-card" style="width:550px;">
+            <div style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color:white; padding:20px; border-radius:24px; margin-bottom:20px; text-align:center;">
+                <h2><i class="fas fa-chart-line"></i> Real-Time Call Priority</h2>
+                <div style="margin-top:8px;">Best times to reach US business owners</div>
             </div>
-            <div class="feature-panel-body">
-                ${activePrimeZones.length > 0 ? `
-                    <div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
-                        <strong><i class="fas fa-bell"></i> ACTIVE PRIME WINDOWS:</strong> ${activePrimeZones.join(', ')}
-                    </div>
-                ` : `
-                    <div style="background:var(--warning); color:#1e293b; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
-                        <strong><i class="fas fa-clock"></i> No Active Prime Windows</strong><br>Next: 10-11:30 AM or 2-4 PM local time
-                    </div>
-                `}
-                ${zonesHtml}
-                <div style="margin-top:20px; padding:16px; background:var(--bg-primary); border-radius:16px;">
-                    <strong>💡 Pro Tips:</strong><br>
-                    • Best days: Tuesday, Wednesday, Thursday<br>
-                    • Avoid: Monday mornings & Friday afternoons<br>
-                    • Lunch hour (12-1 PM) has <30% answer rate
+            ${activePrimeZones.length > 0 ? `
+                <div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
+                    <strong><i class="fas fa-bell"></i> ACTIVE PRIME WINDOWS:</strong> ${activePrimeZones.join(', ')}
                 </div>
+            ` : `
+                <div style="background:var(--warning); color:#1e293b; padding:12px; border-radius:16px; margin-bottom:20px; text-align:center;">
+                    <strong><i class="fas fa-clock"></i> No Active Prime Windows</strong><br>Next: 10-11:30 AM or 2-4 PM local time
+                </div>
+            `}
+            ${zonesHtml}
+            <div style="margin-top:20px; padding:16px; background:var(--bg-primary); border-radius:16px;">
+                <strong>💡 Pro Tips:</strong><br>
+                • Best days: Tuesday, Wednesday, Thursday<br>
+                • Avoid: Monday mornings & Friday afternoons<br>
+                • Lunch hour (12-1 PM) has <30% answer rate
             </div>
+            <button id="closePriorityBtn" class="btn-icon" style="margin-top:20px; width:100%;"><i class="fas fa-check"></i> Got it</button>
         </div>
     `;
+    document.body.appendChild(modal);
+    document.getElementById('closePriorityBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function showHelpModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+        <div class="modal-card">
+            <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
+            <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>View analytics, trends, and goal progress</div>
+            <div style="margin:16px 0;"><strong>📅 Appointment Calendar</strong><br>Manage all your appointments</div>
+            <div style="margin:16px 0;"><strong>🎯 Call Priority Predictor</strong><br>Real-time US time zone recommendations</div>
+            <div style="margin:16px 0;"><strong>📝 Script Management</strong><br>11 scripts, edit with undo/redo, press 1-9 to switch</div>
+            <button id="closeHelpModal" class="btn-icon" style="margin-top:16px; width:100%;">Got it</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('closeHelpModal').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 // ==================== APPOINTMENT SYSTEM ====================
@@ -878,7 +761,7 @@ function attachScriptEvents() {
 }
 
 function loadScript(id) {
-    if (!scripts[id] || isEditing || isFeatureActive) return;
+    if (!scripts[id] || isEditing) return;
     currentScriptId = id;
     const nameEl = document.getElementById('currentScriptName');
     if (nameEl) nameEl.innerHTML = scripts[id].name;
@@ -889,7 +772,6 @@ function loadScript(id) {
 }
 
 function enterEdit() {
-    if (isFeatureActive) return;
     isEditing = true;
     const editBtn = document.getElementById('editScriptBtn');
     const saveBtn = document.getElementById('saveScriptBtn');
@@ -929,12 +811,10 @@ function cancelEdit() {
 }
 
 function copyScript() {
-    if (isFeatureActive) return;
     copyToClipboard(replaceNameInScript(scripts[currentScriptId].content));
 }
 
 function resetScript() {
-    if (isFeatureActive) return;
     if (defaultScripts[currentScriptId]) {
         if (confirm('Reset to original content?')) {
             scripts[currentScriptId] = { ...defaultScripts[currentScriptId] };
@@ -951,10 +831,6 @@ function addNewScript() {
         showToast('Finish editing first', 'error');
         return;
     }
-    if (isFeatureActive) {
-        showToast('Close the feature panel first', 'error');
-        return;
-    }
     const name = prompt('Enter script name:');
     if (!name) return;
     const id = 'custom_' + Date.now();
@@ -968,7 +844,6 @@ function addNewScript() {
 }
 
 function showVersionHistoryModal() {
-    if (isFeatureActive) return;
     if (!versionHistory[currentScriptId]) {
         showToast('No history available', 'error');
         return;
@@ -1144,20 +1019,42 @@ document.addEventListener('DOMContentLoaded', () => {
             let toolType = '';
             if (text.includes('Insights')) toolType = 'insights';
             else if (text.includes('Appointment Calendar')) toolType = 'calendar';
-            else if (text.includes('Call Priority')) toolType = 'priority';
-            else if (text.includes('Export')) toolType = 'export';
-            else if (text.includes('Set Your Name')) toolType = 'username';
-            else if (text.includes('Dark/Light')) toolType = 'theme';
-            else if (text.includes('Help')) toolType = 'help';
-            else if (text.includes('Factory Reset')) toolType = 'reset';
+            else if (text.includes('Call Priority')) {
+                openPriorityModal();
+                return;
+            } else if (text.includes('Export')) {
+                exportToCSV();
+                return;
+            } else if (text.includes('Set Your Name')) {
+                const newName = prompt('Enter your name (replaces [Your Name] in scripts):', userName);
+                if (newName?.trim()) {
+                    userName = newName.trim();
+                    localStorage.setItem('scriptflow_user_name', userName);
+                    showToast(`Name set to: ${userName}`, 'success');
+                    if (!isEditing) loadScript(currentScriptId);
+                }
+                return;
+            } else if (text.includes('Dark/Light')) {
+                toggleTheme();
+                return;
+            } else if (text.includes('Help')) {
+                showHelpModal();
+                return;
+            } else if (text.includes('Factory Reset')) {
+                if (confirm('⚠️ FACTORY RESET: This will erase ALL scripts, appointments, and settings. Cannot be undone.')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+                return;
+            }
             
             if (toolType) showFeaturePanel(toolType, text);
         });
     });
     
-    // Back to scripts button
-    const backBtn = document.getElementById('backToScriptsAction');
-    if (backBtn) backBtn.addEventListener('click', hideFeaturePanel);
+    // Close feature panel button
+    const closeFeatureBtn = document.getElementById('closeFeaturePanelBtn');
+    if (closeFeatureBtn) closeFeatureBtn.addEventListener('click', hideFeaturePanel);
     
     // Sidebar toggle
     const menuToggle = document.getElementById('menuToggleBtn');
@@ -1202,11 +1099,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isFeatureActive) {
-            hideFeaturePanel();
-            e.preventDefault();
+        if (e.key === 'Escape') {
+            const featurePanel = document.getElementById('featurePanel');
+            if (featurePanel && featurePanel.style.display === 'block') {
+                hideFeaturePanel();
+                e.preventDefault();
+            }
         }
-        if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input') && !isFeatureActive) {
+        if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input')) {
+            const featurePanel = document.getElementById('featurePanel');
+            if (featurePanel && featurePanel.style.display === 'block') return;
             e.preventDefault();
             const target = getKeyMapping().get(e.key);
             if (target && scripts[target]) {
@@ -1214,11 +1116,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Switched to: ${scripts[target].name}`, 'info');
             }
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing && !isFeatureActive) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) {
             e.preventDefault();
             undoScript(currentScriptId);
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing && !isFeatureActive) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) {
             e.preventDefault();
             redoScript(currentScriptId);
         }
