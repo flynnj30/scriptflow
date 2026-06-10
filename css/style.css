@@ -34,7 +34,7 @@
     --scrollbar-track: #1e293b;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #1e293b;
-    --status-booked: #3b82f6;
+    --status-warm-booked: #3b82f6;
     --status-called: #8b5cf6;
     --status-canceled: #ef4444;
     --status-rescheduled: #f59e0b;
@@ -59,7 +59,7 @@ body.dark {
     --scrollbar-track: #0f172a;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #334155;
-    --status-booked: #60a5fa;
+    --status-warm-booked: #60a5fa;
     --status-called: #a78bfa;
     --status-canceled: #f87171;
     --status-rescheduled: #fbbf24;
@@ -562,121 +562,162 @@ body {
 .calendar-day.selected { background: var(--primary); color: white; }
 .calendar-day .appt-badge { font-size: 0.6rem; background: var(--success); color: white; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
 
-/* List View */
+/* CRM-Style List View */
 .appointments-list-view {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     max-height: 500px;
     overflow-y: auto;
+    padding-right: 8px;
 }
 
-.list-view-header {
+/* Status Filter Dropdown */
+.status-filter-container {
+    margin-bottom: 24px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 16px;
-    background: var(--bg-primary);
-    border-radius: 16px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    position: sticky;
-    top: 0;
+    justify-content: flex-end;
 }
 
-.list-view-header span { flex: 1; }
-
-.appointment-list-item {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 16px;
+.status-filter-dropdown {
+    padding: 10px 20px;
+    border-radius: 40px;
     border: 1px solid var(--border-color);
-    transition: all 0.2s;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 500;
+    min-width: 160px;
 }
 
-.appointment-list-item:hover {
-    transform: translateX(4px);
+/* CRM Card */
+.crm-card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.crm-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
     border-color: var(--primary);
 }
 
-.appointment-list-header {
+.crm-card-header {
+    padding: 18px 20px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
-    align-items: start;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 12px;
 }
 
-.appointment-business { font-weight: 700; font-size: 1rem; }
-.appointment-date-badge { font-size: 0.7rem; background: var(--bg-primary); padding: 4px 10px; border-radius: 20px; color: var(--text-muted); }
-
-.appointment-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-}
-
-.status-select {
-    padding: 4px 8px;
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    font-size: 0.7rem;
-    cursor: pointer;
-    font-weight: 500;
-}
-
-.appointment-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    border-top: 1px solid var(--border-color);
-    padding-top: 12px;
-    margin-top: 4px;
-}
-
-.action-btn-sm {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    padding: 4px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 0.7rem;
-    transition: all 0.2s;
+.crm-business-name {
+    font-size: 1.1rem;
+    font-weight: 700;
     color: var(--text-primary);
-}
-
-.action-btn-sm:hover { background: var(--primary); color: white; border-color: var(--primary); }
-.action-btn-sm.danger:hover { background: var(--danger); border-color: var(--danger); }
-
-/* Status Filter */
-.status-filter-bar {
     display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    padding: 12px;
-    background: var(--bg-primary);
-    border-radius: 40px;
+    align-items: center;
+    gap: 10px;
 }
 
-.filter-chip {
-    padding: 6px 16px;
+.crm-status-badge {
+    padding: 4px 12px;
     border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.status-warm-booked { background: var(--status-warm-booked); color: white; }
+.status-called { background: var(--status-called); color: white; }
+.status-canceled { background: var(--status-canceled); color: white; }
+.status-rescheduled { background: var(--status-rescheduled); color: #1e293b; }
+
+.crm-card-body {
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+.crm-info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.crm-info-row i {
+    width: 20px;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.crm-info-label {
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 45px;
+}
+
+.crm-info-value {
+    color: var(--text-primary);
+    word-break: break-word;
+}
+
+.crm-card-footer {
+    padding: 14px 20px;
+    background: var(--bg-primary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.crm-action-btn {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
+    padding: 6px 14px;
+    border-radius: 30px;
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 500;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--text-primary);
 }
-.filter-chip.active { background: var(--primary); color: white; border-color: var(--primary); }
-.filter-chip:hover:not(.active) { background: var(--border-color); }
+
+.crm-action-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.crm-action-btn.danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
 
 /* Insights Dashboard */
 .insights-header { margin-bottom: 24px; }
@@ -842,4 +883,6 @@ body {
     .insights-summary { grid-template-columns: 1fr; }
     .calendar-grid { gap: 4px; }
     .calendar-day { font-size: 0.7rem; }
+    .crm-card-body { grid-template-columns: 1fr; }
+    .crm-card-header { flex-direction: column; align-items: flex-start; }
 }
