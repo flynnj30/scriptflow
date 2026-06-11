@@ -21,6 +21,7 @@ let dashboardDatePreset = 'today';
 let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
 let currentView = 'calendar';
 let currentStatusFilter = 'all';
+let currentListSearchTerm = '';
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
@@ -52,6 +53,17 @@ function getStatus(appt) {
     if (!appt || !appt.status) return 'Warm-Booked';
     if (appt.status === 'Booked') return 'Warm-Booked';
     return appt.status;
+}
+
+// Helper to check if appointment matches search term
+function appointmentMatchesSearch(appointment, searchTerm) {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (appointment.business && appointment.business.toLowerCase().includes(term)) ||
+           (appointment.contactName && appointment.contactName.toLowerCase().includes(term)) ||
+           (appointment.phone && appointment.phone.toLowerCase().includes(term)) ||
+           (appointment.notes && appointment.notes.toLowerCase().includes(term)) ||
+           (appointment.role && appointment.role.toLowerCase().includes(term));
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -295,6 +307,7 @@ function showFeaturePanel(featureType, title) {
         const listBtn = document.getElementById('listViewBtn');
         if (calBtn) calBtn.classList.add('active');
         if (listBtn) listBtn.classList.remove('active');
+        currentListSearchTerm = ''; // Reset search when switching to calendar
     }
     
     scriptPanel.style.display = 'none';
@@ -308,6 +321,7 @@ function hideFeaturePanel() {
         featurePanel.style.display = 'none';
         scriptPanel.style.display = 'block';
         if (featureChartInstance) { featureChartInstance.destroy(); featureChartInstance = null; }
+        currentListSearchTerm = ''; // Reset search when closing
     }
 }
 
@@ -454,7 +468,7 @@ function handleCalendarDelete(e) {
     }
 }
 
-// ==================== CLEAN LIST VIEW WITH HOVER TOOLTIP ====================
+// ==================== CLEAN LIST VIEW WITH SEARCH ====================
 function renderListView(container) {
     let allAppointments = [];
     for (let date in appointments) {
@@ -466,11 +480,24 @@ function renderListView(container) {
     }
     allAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    const filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => getStatus(a) === currentStatusFilter);
+    // Apply status filter first
+    let filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => getStatus(a) === currentStatusFilter);
+    
+    // Then apply search filter
+    const hasSearchTerm = currentListSearchTerm.trim().length > 0;
+    if (hasSearchTerm) {
+        filtered = filtered.filter(a => appointmentMatchesSearch(a, currentListSearchTerm));
+    }
     
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
+    const searchTermDisplay = currentListSearchTerm;
     
     container.innerHTML = `
+        <div class="list-search-container">
+            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(searchTermDisplay)}">
+            <button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>
+            ${hasSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}
+        </div>
         <div class="status-filter-container">
             <select id="statusFilterDropdown" class="status-filter-dropdown">
                 <option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>
@@ -482,18 +509,39 @@ function renderListView(container) {
                 <div class="empty-state">
                     <i class="fas fa-calendar-alt"></i>
                     <p>No appointments found</p>
+                    ${hasSearchTerm ? `<p style="margin-top: 8px; font-size: 0.8rem;">Try a different search term or clear the search.</p>` : ''}
                     <button class="btn-icon" id="emptyStateSmartImport" style="margin-top: 12px;"><i class="fas fa-magic"></i> Smart Import</button>
                 </div>
             ` : filtered.map(a => renderListItem(a)).join('')}
         </div>
     `;
     
+    // Bind search input
+    const searchInput = document.getElementById('listSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            currentListSearchTerm = e.target.value;
+            renderListView(container);
+        });
+    }
+    
+    // Bind clear search button
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            currentListSearchTerm = '';
+            renderListView(container);
+        });
+    }
+    
+    // Bind status filter dropdown
     const filterDropdown = document.getElementById('statusFilterDropdown');
     if (filterDropdown) {
         filterDropdown.removeEventListener('change', handleFilterChange);
         filterDropdown.addEventListener('change', handleFilterChange);
     }
     
+    // Bind empty state smart import button
     const emptyStateBtn = document.getElementById('emptyStateSmartImport');
     if (emptyStateBtn) {
         emptyStateBtn.removeEventListener('click', handleEmptyStateImport);
@@ -591,6 +639,7 @@ function renderListItem(appointment) {
 
 function handleFilterChange(e) {
     currentStatusFilter = e.target.value;
+    // Keep search term when changing filter
     refreshCurrentView();
 }
 
@@ -1103,7 +1152,8 @@ function showHelpModal(){
         <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
         <div style="margin:16px 0;"><strong>📊 Insights</strong><br>Analytics and trends</div>
         <div style="margin:16px 0;"><strong>📅 Calendar View</strong><br>View appointments by date with full CRUD operations</div>
-        <div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Company names first, hover for full details</div>
+        <div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Company names first, hover for full details, search functionality</div>
+        <div style="margin:16px 0;"><strong>🔍 Search Appointments</strong><br>Search by business name, contact name, phone, or notes</div>
         <div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>Paste any text format - auto-extracts all fields</div>
         <div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div>
         <div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
@@ -1196,6 +1246,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         const listBtn = document.getElementById('listViewBtn');
         if (calBtn) calBtn.classList.add('active');
         if (listBtn) listBtn.classList.remove('active');
+        currentListSearchTerm = ''; // Reset search when switching to calendar
     });
     document.getElementById('listViewBtn')?.addEventListener('click',()=>{ 
         currentView='list'; 
