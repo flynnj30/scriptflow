@@ -277,7 +277,7 @@ body {
     transition: max-height 0.3s ease;
     max-height: 0;
 }
-.tools-menu.open { max-height: 400px; }
+.tools-menu.open { max-height: 500px; }
 
 .tool-item {
     display: flex;
@@ -535,7 +535,7 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Calendar Grid */
+/* Calendar Grid with Drag & Drop */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -556,11 +556,34 @@ body {
     border: 1px solid var(--border-color);
     transition: all 0.2s;
     color: var(--text-primary);
+    position: relative;
+}
+
+.calendar-day.drag-over {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.02);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary);
 }
 
 .calendar-day:hover { background: var(--cal-day-hover); color: var(--text-primary); transform: scale(1.02); }
 .calendar-day.selected { background: var(--primary); color: white; }
 .calendar-day .appt-badge { font-size: 0.6rem; background: var(--success); color: white; padding: 2px 6px; border-radius: 20px; margin-top: 4px; }
+
+/* Draggable Appointment Items */
+.appointment-item-draggable {
+    cursor: grab;
+    transition: all 0.2s ease;
+}
+
+.appointment-item-draggable:active {
+    cursor: grabbing;
+}
+
+.appointment-item-draggable.dragging {
+    opacity: 0.5;
+}
 
 /* Clean List View with Search */
 .appointments-list-view {
@@ -832,6 +855,111 @@ body {
     opacity: 0.5;
 }
 
+/* Advanced Reports Styles */
+.reports-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.report-section {
+    background: var(--bg-card);
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.report-header {
+    padding: 16px 20px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.report-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.report-content {
+    padding: 20px;
+}
+
+.report-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: var(--bg-primary);
+    border-radius: 16px;
+    padding: 16px;
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.metric-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.report-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Conversion Funnel */
+.conversion-funnel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 20px 0;
+}
+
+.funnel-step {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: 12px;
+}
+
+.funnel-step .count {
+    font-size: 1.5rem;
+    font-weight: 800;
+}
+
+.funnel-step .label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.funnel-arrow {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+}
+
 /* Insights Dashboard */
 .insights-header { margin-bottom: 24px; }
 .date-range-selector {
@@ -986,6 +1114,7 @@ body {
 /* Responsive */
 @media (max-width: 1024px) {
     .insights-summary { grid-template-columns: repeat(2, 1fr); }
+    .report-metrics { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
     .sidebar { width: 280px; }
@@ -1003,4 +1132,7 @@ body {
     .list-search-container { flex-direction: column; }
     .list-search-input { width: 100%; }
     .search-clear-btn { width: 100%; justify-content: center; }
+    .conversion-funnel { flex-direction: column; }
+    .funnel-arrow { transform: rotate(90deg); }
+    .report-metrics { grid-template-columns: 1fr; }
 }
