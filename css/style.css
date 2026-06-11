@@ -798,23 +798,25 @@ body {
     background: var(--primary);
     color: white;
     border: none;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 20px;
     cursor: pointer;
     font-size: 0.7rem;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    text-decoration: none;
 }
 
 .crm-link-btn:hover {
     background: var(--primary-dark);
     transform: scale(1.02);
+    color: white;
 }
 
 .crm-link-btn i {
-    font-size: 0.65rem;
+    font-size: 0.7rem;
 }
 
 .status-filter-container {
