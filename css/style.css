@@ -662,7 +662,7 @@ body {
     left: calc(100% + 12px);
     top: 50%;
     transform: translateY(-50%);
-    width: 320px;
+    width: 360px;
     background: var(--tooltip-bg);
     backdrop-filter: blur(12px);
     border-radius: 16px;
@@ -791,6 +791,30 @@ body {
 .action-icon-btn.danger:hover {
     background: var(--danger);
     border-color: var(--danger);
+}
+
+/* CRM Link Button */
+.crm-link-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.crm-link-btn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.02);
+}
+
+.crm-link-btn i {
+    font-size: 0.65rem;
 }
 
 .status-filter-container {
