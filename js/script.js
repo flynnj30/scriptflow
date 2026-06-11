@@ -25,6 +25,7 @@ let currentListSearchTerm = '';
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
+let sortableInstance = null;
 
 // Status options
 const STATUS_OPTIONS = ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'];
@@ -55,7 +56,6 @@ function getStatus(appt) {
     return appt.status;
 }
 
-// Helper to check if appointment matches search term
 function appointmentMatchesSearch(appointment, searchTerm) {
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
@@ -118,6 +118,134 @@ function formatDateShort(dateStr) {
 
 function replaceNameInScript(content) {
     return content.replace(/\[Your Name\]/gi, userName);
+}
+
+// ==================== ADVANCED REPORTING ====================
+function generateReportData(startDate, endDate) {
+    const appointmentsInRange = [];
+    for (let date in appointments) {
+        if (date >= startDate && date <= endDate && appointments[date].reports) {
+            appointments[date].reports.forEach(a => {
+                appointmentsInRange.push({ ...a, date });
+            });
+        }
+    }
+    
+    const total = appointmentsInRange.length;
+    const warmBooked = appointmentsInRange.filter(a => getStatus(a) === 'Warm-Booked').length;
+    const called = appointmentsInRange.filter(a => getStatus(a) === 'Called').length;
+    const canceled = appointmentsInRange.filter(a => getStatus(a) === 'Canceled').length;
+    const rescheduled = appointmentsInRange.filter(a => getStatus(a) === 'Rescheduled').length;
+    const conversionRate = warmBooked > 0 ? Math.round((called / warmBooked) * 100) : 0;
+    const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
+    
+    return { total, warmBooked, called, canceled, rescheduled, conversionRate, uniqueBusinesses, appointmentsInRange };
+}
+
+function renderAdvancedReports(container) {
+    const endDate = getTodayStr();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    
+    const data = generateReportData(startDateStr, endDate);
+    
+    container.innerHTML = `
+        <div class="reports-container">
+            <div class="report-section">
+                <div class="report-header">
+                    <h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3>
+                    <button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                </div>
+                <div class="report-content" id="reportContent">
+                    <div class="report-metrics">
+                        <div class="metric-card">
+                            <div class="metric-value">${data.total}</div>
+                            <div class="metric-label">Total Appointments</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${data.uniqueBusinesses}</div>
+                            <div class="metric-label">Unique Businesses</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${data.conversionRate}%</div>
+                            <div class="metric-label">Conversion Rate (Warm→Called)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">${Math.round(data.total / 30)}</div>
+                            <div class="metric-label">Avg Appointments/Day</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 12px 0;"><i class="fas fa-funnel-dollar"></i> Status Distribution</h4>
+                    <div class="conversion-funnel">
+                        <div class="funnel-step">
+                            <div class="count">${data.warmBooked}</div>
+                            <div class="label">Warm-Booked</div>
+                        </div>
+                        <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="funnel-step">
+                            <div class="count">${data.called}</div>
+                            <div class="label">Called</div>
+                        </div>
+                        <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="funnel-step">
+                            <div class="count">${data.canceled}</div>
+                            <div class="label">Canceled</div>
+                        </div>
+                        <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="funnel-step">
+                            <div class="count">${data.rescheduled}</div>
+                            <div class="label">Rescheduled</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 12px 0;"><i class="fas fa-chart-simple"></i> Appointment Trend</h4>
+                    <canvas id="reportTrendChart" style="width:100%; height:250px;"></canvas>
+                    
+                    <h4 style="margin: 20px 0 12px 0;"><i class="fas fa-chart-pie"></i> Status Breakdown</h4>
+                    <canvas id="reportStatusChart" style="width:100%; height:250px;"></canvas>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Create trend chart
+    const last7Days = [];
+    const trendData = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        last7Days.push(formatDateShort(dateStr));
+        trendData.push(appointments[dateStr]?.reports?.length || 0);
+    }
+    
+    const trendCtx = document.getElementById('reportTrendChart');
+    if (trendCtx) {
+        new Chart(trendCtx, {
+            type: 'line',
+            data: { labels: last7Days, datasets: [{ label: 'Appointments', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+        });
+    }
+    
+    // Create pie chart
+    const pieCtx = document.getElementById('reportStatusChart');
+    if (pieCtx) {
+        new Chart(pieCtx, {
+            type: 'pie',
+            data: { labels: ['Warm-Booked', 'Called', 'Canceled', 'Rescheduled'], datasets: [{ data: [data.warmBooked, data.called, data.canceled, data.rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+    
+    document.getElementById('exportPDFBtn')?.addEventListener('click', () => {
+        const element = document.getElementById('reportContent');
+        const opt = { margin: [0.5, 0.5, 0.5, 0.5], filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+        html2pdf().set(opt).from(element).save();
+        showToast('Report exported as PDF', 'success');
+    });
 }
 
 // ==================== SMART APPOINTMENT PARSER ====================
@@ -294,11 +422,14 @@ function showFeaturePanel(featureType, title) {
     
     if (!scriptPanel || !featurePanel) return;
     
-    featureTitle.innerHTML = `<i class="fas ${featureType === 'insights' ? 'fa-chart-pie' : 'fa-calendar-alt'}"></i> ${title}`;
+    featureTitle.innerHTML = `<i class="fas ${featureType === 'insights' ? 'fa-chart-pie' : (featureType === 'calendar' ? 'fa-calendar-alt' : 'fa-chart-line')}"></i> ${title}`;
     
     if (featureType === 'insights') {
         viewToggle.style.display = 'none';
         renderInsightsPanel(featureBody);
+    } else if (featureType === 'advanced-report') {
+        viewToggle.style.display = 'none';
+        renderAdvancedReports(featureBody);
     } else if (featureType === 'calendar') {
         viewToggle.style.display = 'flex';
         currentView = 'calendar';
@@ -307,7 +438,7 @@ function showFeaturePanel(featureType, title) {
         const listBtn = document.getElementById('listViewBtn');
         if (calBtn) calBtn.classList.add('active');
         if (listBtn) listBtn.classList.remove('active');
-        currentListSearchTerm = ''; // Reset search when switching to calendar
+        currentListSearchTerm = '';
     }
     
     scriptPanel.style.display = 'none';
@@ -321,11 +452,12 @@ function hideFeaturePanel() {
         featurePanel.style.display = 'none';
         scriptPanel.style.display = 'block';
         if (featureChartInstance) { featureChartInstance.destroy(); featureChartInstance = null; }
-        currentListSearchTerm = ''; // Reset search when closing
+        if (sortableInstance) { sortableInstance.destroy(); sortableInstance = null; }
+        currentListSearchTerm = '';
     }
 }
 
-// ==================== CALENDAR VIEW ====================
+// ==================== CALENDAR VIEW WITH DRAG & DROP ====================
 function renderCalendarPanel(container) {
     const year = currentCalDate.getFullYear();
     const month = currentCalDate.getMonth();
@@ -358,7 +490,7 @@ function renderCalendarPanel(container) {
             <button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button>
             <button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button>
         </div>
-        <div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList">${renderAppointmentsList(selectedCalDate)}</div></div>
+        <div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>
     `;
     
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => {
@@ -371,6 +503,9 @@ function renderCalendarPanel(container) {
     document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
     document.getElementById('smartAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
     
+    // Setup drag and drop
+    setupDragAndDrop();
+    
     bindCalendarActions();
 }
 
@@ -380,7 +515,7 @@ function renderAppointmentsList(dateStr) {
     return apptData.map(r => {
         const status = getStatus(r);
         return `
-        <div style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
+        <div class="appointment-item-draggable" draggable="true" data-id="${r.id}" data-date="${dateStr}" style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
                 <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
                 <div>
@@ -401,6 +536,80 @@ function renderAppointmentsList(dateStr) {
             </div>
         </div>
     `}).join('');
+}
+
+function setupDragAndDrop() {
+    const draggables = document.querySelectorAll('.appointment-item-draggable');
+    const dropZones = document.querySelectorAll('.calendar-day');
+    
+    draggables.forEach(draggable => {
+        draggable.addEventListener('dragstart', handleDragStart);
+        draggable.addEventListener('dragend', handleDragEnd);
+    });
+    
+    dropZones.forEach(zone => {
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('dragleave', handleDragLeave);
+        zone.addEventListener('drop', handleDrop);
+    });
+}
+
+let draggedItem = null;
+
+function handleDragStart(e) {
+    draggedItem = this;
+    this.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+        id: this.getAttribute('data-id'),
+        oldDate: this.getAttribute('data-date')
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    draggedItem = null;
+    document.querySelectorAll('.calendar-day').forEach(zone => {
+        zone.classList.remove('drag-over');
+    });
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    
+    const newDate = this.getAttribute('data-date');
+    if (!newDate) return;
+    
+    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    const apptId = parseInt(data.id);
+    const oldDate = data.oldDate;
+    
+    if (oldDate === newDate) return;
+    
+    // Find and move the appointment
+    const appt = appointments[oldDate]?.reports?.find(r => r.id === apptId);
+    if (appt) {
+        deleteAppointment(oldDate, apptId);
+        addAppointment(newDate, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appt.id, appt.status);
+        showToast(`Moved "${appt.business}" to ${newDate}`, 'success');
+        
+        // Refresh view
+        const container = document.getElementById('featurePanelBody');
+        if (container && currentView === 'calendar') {
+            renderCalendarPanel(container);
+        }
+    }
 }
 
 function bindCalendarActions() {
@@ -480,21 +689,17 @@ function renderListView(container) {
     }
     allAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    // Apply status filter first
     let filtered = currentStatusFilter === 'all' ? allAppointments : allAppointments.filter(a => getStatus(a) === currentStatusFilter);
-    
-    // Then apply search filter
     const hasSearchTerm = currentListSearchTerm.trim().length > 0;
     if (hasSearchTerm) {
         filtered = filtered.filter(a => appointmentMatchesSearch(a, currentListSearchTerm));
     }
     
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
-    const searchTermDisplay = currentListSearchTerm;
     
     container.innerHTML = `
         <div class="list-search-container">
-            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(searchTermDisplay)}">
+            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
             <button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>
             ${hasSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}
         </div>
@@ -504,7 +709,7 @@ function renderListView(container) {
                 ${statusOptionsHtml}
             </select>
         </div>
-        <div class="appointments-list-view" id="appointmentsListView">
+        <div class="appointments-list-view">
             ${filtered.length === 0 ? `
                 <div class="empty-state">
                     <i class="fas fa-calendar-alt"></i>
@@ -516,7 +721,6 @@ function renderListView(container) {
         </div>
     `;
     
-    // Bind search input
     const searchInput = document.getElementById('listSearchInput');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -525,7 +729,6 @@ function renderListView(container) {
         });
     }
     
-    // Bind clear search button
     const clearBtn = document.getElementById('clearSearchBtn');
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
@@ -534,14 +737,12 @@ function renderListView(container) {
         });
     }
     
-    // Bind status filter dropdown
     const filterDropdown = document.getElementById('statusFilterDropdown');
     if (filterDropdown) {
         filterDropdown.removeEventListener('change', handleFilterChange);
         filterDropdown.addEventListener('change', handleFilterChange);
     }
     
-    // Bind empty state smart import button
     const emptyStateBtn = document.getElementById('emptyStateSmartImport');
     if (emptyStateBtn) {
         emptyStateBtn.removeEventListener('click', handleEmptyStateImport);
@@ -556,56 +757,17 @@ function renderListItem(appointment) {
     const statusClassSmall = getStatusClassSmall(status);
     const formattedDateTime = formatDateTime(appointment.date, appointment.time);
     
-    // Create hover tooltip content
     const tooltipHtml = `
         <div class="hover-tooltip">
-            <div class="hover-tooltip-row">
-                <i class="fas fa-building"></i>
-                <span class="label">Business:</span>
-                <span class="value">${escapeHtml(appointment.business)}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-user"></i>
-                <span class="label">Contact:</span>
-                <span class="value">${escapeHtml(appointment.contactName)}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-briefcase"></i>
-                <span class="label">Role:</span>
-                <span class="value">${escapeHtml(appointment.role || 'Owner')}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-phone"></i>
-                <span class="label">Phone:</span>
-                <span class="value">${escapeHtml(appointment.phone || 'No phone')}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-calendar-alt"></i>
-                <span class="label">Date:</span>
-                <span class="value">${escapeHtml(appointment.date)}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-clock"></i>
-                <span class="label">Time:</span>
-                <span class="value">${escapeHtml(appointment.time || 'No time')}</span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-tag"></i>
-                <span class="label">Status:</span>
-                <span class="value"><span class="hover-tooltip-status ${getStatusClass(status)}" style="background:${status === 'Warm-Booked' ? '#3b82f6' : (status === 'Called' ? '#8b5cf6' : (status === 'Canceled' ? '#ef4444' : '#f59e0b'))};">${escapeHtml(status)}</span></span>
-            </div>
-            <div class="hover-tooltip-row">
-                <i class="fas fa-user-tie"></i>
-                <span class="label">Assigned:</span>
-                <span class="value">${escapeHtml(appointment.assigned || 'Unassigned')}</span>
-            </div>
-            ${appointment.notes ? `
-            <div class="hover-tooltip-row">
-                <i class="fas fa-sticky-note"></i>
-                <span class="label">Notes:</span>
-                <span class="value" style="font-style: italic;">${escapeHtml(appointment.notes.substring(0, 150))}${appointment.notes.length > 150 ? '...' : ''}</span>
-            </div>
-            ` : ''}
+            <div class="hover-tooltip-row"><i class="fas fa-building"></i><span class="label">Business:</span><span class="value">${escapeHtml(appointment.business)}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-user"></i><span class="label">Contact:</span><span class="value">${escapeHtml(appointment.contactName)}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-briefcase"></i><span class="label">Role:</span><span class="value">${escapeHtml(appointment.role || 'Owner')}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-phone"></i><span class="label">Phone:</span><span class="value">${escapeHtml(appointment.phone || 'No phone')}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-calendar-alt"></i><span class="label">Date:</span><span class="value">${escapeHtml(appointment.date)}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-clock"></i><span class="label">Time:</span><span class="value">${escapeHtml(appointment.time || 'No time')}</span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-tag"></i><span class="label">Status:</span><span class="value"><span class="hover-tooltip-status ${getStatusClass(status)}">${escapeHtml(status)}</span></span></div>
+            <div class="hover-tooltip-row"><i class="fas fa-user-tie"></i><span class="label">Assigned:</span><span class="value">${escapeHtml(appointment.assigned || 'Unassigned')}</span></div>
+            ${appointment.notes ? `<div class="hover-tooltip-row"><i class="fas fa-sticky-note"></i><span class="label">Notes:</span><span class="value">${escapeHtml(appointment.notes.substring(0, 150))}${appointment.notes.length > 150 ? '...' : ''}</span></div>` : ''}
         </div>
     `;
     
@@ -614,12 +776,8 @@ function renderListItem(appointment) {
             ${tooltipHtml}
             <div class="list-item-content">
                 <div class="list-item-left">
-                    <div class="company-name">
-                        <i class="fas fa-building"></i>${escapeHtml(appointment.business)}
-                    </div>
-                    <div class="contact-info">
-                        <i class="fas fa-user"></i>${escapeHtml(appointment.contactName)}
-                    </div>
+                    <div class="company-name"><i class="fas fa-building"></i>${escapeHtml(appointment.business)}</div>
+                    <div class="contact-info"><i class="fas fa-user"></i>${escapeHtml(appointment.contactName)}</div>
                 </div>
                 <div class="list-item-right">
                     <span class="status-badge-sm ${statusClassSmall}">${escapeHtml(status)}</span>
@@ -639,7 +797,6 @@ function renderListItem(appointment) {
 
 function handleFilterChange(e) {
     currentStatusFilter = e.target.value;
-    // Keep search term when changing filter
     refreshCurrentView();
 }
 
@@ -1150,13 +1307,12 @@ function showHelpModal(){
     modal.className='modal-overlay';
     modal.innerHTML=`<div class="modal-card">
         <h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3>
-        <div style="margin:16px 0;"><strong>📊 Insights</strong><br>Analytics and trends</div>
-        <div style="margin:16px 0;"><strong>📅 Calendar View</strong><br>View appointments by date with full CRUD operations</div>
-        <div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Company names first, hover for full details, search functionality</div>
-        <div style="margin:16px 0;"><strong>🔍 Search Appointments</strong><br>Search by business name, contact name, phone, or notes</div>
+        <div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div>
+        <div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div>
+        <div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div>
+        <div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter, hover tooltips</div>
         <div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>Paste any text format - auto-extracts all fields</div>
         <div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div>
-        <div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm-Booked, Called, Canceled, Rescheduled</div>
         <button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button>
     </div>`;
     document.body.appendChild(modal); 
@@ -1215,6 +1371,7 @@ document.addEventListener('DOMContentLoaded',()=>{
             e.stopPropagation(); 
             const text=item.querySelector('span')?.innerText||item.innerText;
             if(text.includes('Insights')) showFeaturePanel('insights','Insights Dashboard');
+            else if(text.includes('Advanced Reports')) showFeaturePanel('advanced-report','Advanced Reports');
             else if(text.includes('Appointment Calendar')) showFeaturePanel('calendar','Appointment Calendar');
             else if(text.includes('Call Priority')) openPriorityModal();
             else if(text.includes('Export')) exportToCSV();
@@ -1246,7 +1403,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         const listBtn = document.getElementById('listViewBtn');
         if (calBtn) calBtn.classList.add('active');
         if (listBtn) listBtn.classList.remove('active');
-        currentListSearchTerm = ''; // Reset search when switching to calendar
+        currentListSearchTerm = '';
     });
     document.getElementById('listViewBtn')?.addEventListener('click',()=>{ 
         currentView='list'; 
