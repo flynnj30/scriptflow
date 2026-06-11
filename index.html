@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 </head>
 <body>
 <div class="app-wrapper">
@@ -38,6 +40,7 @@
             <div class="tools-menu" id="toolsMenu">
                 <div class="tool-item" data-tool="insights"><i class="fas fa-chart-pie"></i> <span>Insights Dashboard</span></div>
                 <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> <span>Appointment Calendar</span></div>
+                <div class="tool-item" data-tool="advanced-report"><i class="fas fa-chart-line"></i> <span>Advanced Reports</span></div>
                 <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> <span>Call Priority Predictor</span></div>
                 <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> <span>Export to CSV</span></div>
                 <div class="tool-item" data-tool="username"><i class="fas fa-user-circle"></i> <span>Set Your Name</span></div>
@@ -113,7 +116,7 @@
             </div>
         </div>
         
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Click Insights or Calendar to replace script area · Smart Import parses natural text</div>
+        <div class="footer-note"><i class="fas fa-chart-line"></i> Click Insights or Calendar to replace script area · Drag appointments to reschedule</div>
     </div>
 </div>
 
