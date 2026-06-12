@@ -51,6 +51,9 @@ function getStatusClassSmall(status) {
 
 function getStatus(appt) {
     if (!appt || !appt.status) return 'Warm Call Booked';
+    if (appt.status === 'Booked') return 'Warm Call Booked';
+    if (appt.status === 'Warm-Booked') return 'Warm Call Booked';
+    if (appt.status === 'Called') return 'Meeting Booked';
     return appt.status;
 }
 
@@ -122,6 +125,7 @@ function deleteAppointment(dateStr, id) {
 
 function saveAppointments() { localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); updateStats(); }
 function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
+
 function loadAppointmentData() { 
     const saved = localStorage.getItem('scriptflow_appointments_main'); 
     if (saved) appointments = JSON.parse(saved); 
@@ -132,6 +136,9 @@ function loadAppointmentData() {
         if (appointments[date].reports) { 
             appointments[date].reports.forEach(appt => { 
                 if (!appt.status) { appt.status = 'Warm Call Booked'; needsSave = true; } 
+                else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Called') { appt.status = 'Meeting Booked'; needsSave = true; }
                 if (!appt.crmLink) appt.crmLink = '';
                 if (!appt.tags) appt.tags = [];
             }); 
@@ -140,6 +147,7 @@ function loadAppointmentData() {
     if (needsSave) saveAppointments(); 
     updateStats(); 
 }
+
 function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
 function getWeekCount() { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) total += appointments[d].reports.length; } return total; }
 function getMonthCount() { const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length; } return total; }
@@ -152,7 +160,7 @@ function openAppointmentModal(defaultDate = null, existingAppt = null) {
     
     const tagOptionsHtml = TAG_OPTIONS.map(tag => `
         <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="${existingAppt ? 'edit-tag-checkbox' : 'modal-tag-checkbox'}" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
+            <input type="checkbox" value="${tag.id}" class="modal-tag-checkbox" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
             <span class="tag-color-indicator" style="background: ${tag.color};"></span>
             <span>${tag.name}</span>
         </label>
@@ -193,31 +201,26 @@ function openAppointmentModal(defaultDate = null, existingAppt = null) {
         const business = document.getElementById('modalBusiness').value.trim();
         const contact = document.getElementById('modalContact').value.trim();
         if (!business || !contact) { showToast('Business and Contact are required', 'error'); return; }
-        const selectedTags = Array.from(document.querySelectorAll('.modal-tag-checkbox:checked, .edit-tag-checkbox:checked')).map(cb => cb.value);
-        const appointmentData = {
-            date: document.getElementById('modalDate').value,
-            business: business,
-            contactName: contact,
-            role: document.getElementById('modalRole').value,
-            phone: document.getElementById('modalPhone').value,
-            time: document.getElementById('modalTime').value,
-            notes: document.getElementById('modalNotes').value,
-            assigned: document.getElementById('modalAssigned').value,
-            crmLink: document.getElementById('modalCrmLink').value,
-            status: document.getElementById('modalStatus').value,
-            tags: selectedTags
-        };
+        const selectedTags = Array.from(document.querySelectorAll('.modal-tag-checkbox:checked')).map(cb => cb.value);
         
         if (existingAppt) {
             deleteAppointment(existingAppt.date, existingAppt.id);
-            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
-                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
-                appointmentData.assigned, existingAppt.id, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
+            addAppointment(
+                document.getElementById('modalDate').value, business, contact,
+                document.getElementById('modalRole').value, document.getElementById('modalPhone').value,
+                document.getElementById('modalTime').value, document.getElementById('modalNotes').value,
+                document.getElementById('modalAssigned').value, existingAppt.id,
+                document.getElementById('modalStatus').value, document.getElementById('modalCrmLink').value, selectedTags
+            );
             showToast('Appointment updated', 'success');
         } else {
-            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
-                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
-                appointmentData.assigned, null, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
+            addAppointment(
+                document.getElementById('modalDate').value, business, contact,
+                document.getElementById('modalRole').value, document.getElementById('modalPhone').value,
+                document.getElementById('modalTime').value, document.getElementById('modalNotes').value,
+                document.getElementById('modalAssigned').value, null,
+                document.getElementById('modalStatus').value, document.getElementById('modalCrmLink').value, selectedTags
+            );
             showToast('Appointment saved', 'success');
         }
         modal.remove();
