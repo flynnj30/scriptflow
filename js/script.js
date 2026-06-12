@@ -66,6 +66,22 @@ function getTagDisplay(tags) {
     }).join('');
 }
 
+function appointmentMatchesFilters(appointment, statusFilter, tagFilter, searchTerm) {
+    if (statusFilter !== 'all' && getStatus(appointment) !== statusFilter) return false;
+    if (tagFilter !== 'all') {
+        const tags = appointment.tags || [];
+        if (!tags.includes(tagFilter)) return false;
+    }
+    if (searchTerm) {
+        const t = searchTerm.toLowerCase();
+        return (appointment.business && appointment.business.toLowerCase().includes(t)) ||
+               (appointment.contactName && appointment.contactName.toLowerCase().includes(t)) ||
+               (appointment.phone && appointment.phone.toLowerCase().includes(t)) ||
+               (appointment.notes && appointment.notes.toLowerCase().includes(t));
+    }
+    return true;
+}
+
 function showToast(msg, type = 'success') {
     const t = document.createElement('div');
     t.className = `toast ${type === 'error' ? 'error' : (type === 'info' ? 'info' : '')}`;
@@ -96,6 +112,88 @@ function formatDate(dateStr) { if (!dateStr) return 'No date'; const d = new Dat
 function formatDateShort(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 function replaceNameInScript(content) { return content; }
 
+// ==================== COMPACT APPOINTMENT MODAL ====================
+function openAppointmentModal(defaultDate = null, existingAppt = null) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="${existingAppt ? 'edit-tag-checkbox' : 'modal-tag-checkbox'}" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    const dateValue = existingAppt ? existingAppt.date : (defaultDate || getTodayStr());
+    const statusValue = existingAppt ? getStatus(existingAppt) : 'Warm Call Booked';
+    
+    modal.innerHTML = `
+        <div class="compact-modal-card">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem;"><i class="fas fa-calendar-plus"></i> ${existingAppt ? 'Edit Appointment' : 'New Appointment'}</h3>
+            <div class="compact-form-row">
+                <div class="compact-form-group"><label>📅 Date</label><input type="date" id="modalDate" value="${dateValue}"></div>
+                <div class="compact-form-group"><label>📌 Status</label><select id="modalStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${statusValue === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+            </div>
+            <div class="compact-form-group"><label>🏢 Business *</label><input id="modalBusiness" value="${existingAppt ? escapeHtml(existingAppt.business) : ''}" placeholder="Company name"></div>
+            <div class="compact-form-group"><label>👤 Contact *</label><input id="modalContact" value="${existingAppt ? escapeHtml(existingAppt.contactName) : ''}" placeholder="Full name"></div>
+            <div class="compact-form-row">
+                <div class="compact-form-group"><label>💼 Role</label><input id="modalRole" value="${existingAppt ? escapeHtml(existingAppt.role || '') : ''}" placeholder="Owner/Manager"></div>
+                <div class="compact-form-group"><label>📞 Phone</label><input id="modalPhone" value="${existingAppt ? escapeHtml(existingAppt.phone || '') : ''}" placeholder="Phone number"></div>
+            </div>
+            <div class="compact-form-row">
+                <div class="compact-form-group"><label>⏰ Time</label><input id="modalTime" value="${existingAppt ? escapeHtml(existingAppt.time || '') : ''}" placeholder="e.g., Tomorrow 2pm ET"></div>
+                <div class="compact-form-group"><label>👨‍💼 Assigned</label><input id="modalAssigned" value="${existingAppt ? escapeHtml(existingAppt.assigned || 'Daniel') : 'Daniel'}"></div>
+            </div>
+            <div class="compact-form-group"><label>🔗 CRM Link</label><input id="modalCrmLink" value="${existingAppt ? escapeHtml(existingAppt.crmLink || '') : ''}" placeholder="https://..."></div>
+            <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="modalTagSelector">${tagOptionsHtml}</div></div>
+            <div class="compact-form-group"><label>📝 Notes</label><textarea id="modalNotes" rows="2" placeholder="Additional notes...">${existingAppt ? escapeHtml(existingAppt.notes || '') : ''}</textarea></div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
+                <button id="modalSaveBtn" class="btn-icon" style="background: var(--success); color: white;"><i class="fas fa-save"></i> Save</button>
+                <button id="modalCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('modalSaveBtn').addEventListener('click', () => {
+        const business = document.getElementById('modalBusiness').value.trim();
+        const contact = document.getElementById('modalContact').value.trim();
+        if (!business || !contact) { showToast('Business and Contact are required', 'error'); return; }
+        const selectedTags = Array.from(document.querySelectorAll('.modal-tag-checkbox:checked, .edit-tag-checkbox:checked')).map(cb => cb.value);
+        const appointmentData = {
+            date: document.getElementById('modalDate').value,
+            business: business,
+            contactName: contact,
+            role: document.getElementById('modalRole').value,
+            phone: document.getElementById('modalPhone').value,
+            time: document.getElementById('modalTime').value,
+            notes: document.getElementById('modalNotes').value,
+            assigned: document.getElementById('modalAssigned').value,
+            crmLink: document.getElementById('modalCrmLink').value,
+            status: document.getElementById('modalStatus').value,
+            tags: selectedTags
+        };
+        
+        if (existingAppt) {
+            deleteAppointment(existingAppt.date, existingAppt.id);
+            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
+                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
+                appointmentData.assigned, existingAppt.id, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
+            showToast('Appointment updated', 'success');
+        } else {
+            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
+                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
+                appointmentData.assigned, null, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
+            showToast('Appointment saved', 'success');
+        }
+        modal.remove();
+        refreshCurrentView();
+    });
+    document.getElementById('modalCancelBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
 // ==================== APPOINTMENT CRUD ====================
 function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm Call Booked', crmLink = '', tags = []) {
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
@@ -125,7 +223,6 @@ function deleteAppointment(dateStr, id) {
 
 function saveAppointments() { localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); updateStats(); }
 function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
-
 function loadAppointmentData() { 
     const saved = localStorage.getItem('scriptflow_appointments_main'); 
     if (saved) appointments = JSON.parse(saved); 
@@ -147,163 +244,35 @@ function loadAppointmentData() {
     if (needsSave) saveAppointments(); 
     updateStats(); 
 }
-
 function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
 function getWeekCount() { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) total += appointments[d].reports.length; } return total; }
 function getMonthCount() { const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length; } return total; }
 function updateStats() { document.getElementById('statToday').innerText = getTodayCount(); document.getElementById('statWeek').innerText = getWeekCount(); document.getElementById('statMonth').innerText = getMonthCount(); document.getElementById('goalDaily').innerText = goals.daily; document.getElementById('goalWeekly').innerText = goals.weekly; document.getElementById('goalMonthly').innerText = goals.monthly; }
 
-// ==================== COMPACT APPOINTMENT MODAL ====================
-function openAppointmentModal(defaultDate = null, existingAppt = null) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    
-    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
-        <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" name="tag_${tag.id}" value="${tag.id}" class="modal-tag-checkbox" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
-            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
-            <span>${tag.name}</span>
-        </label>
-    `).join('');
-    
-    const dateValue = existingAppt ? existingAppt.date : (defaultDate || getTodayStr());
-    const statusValue = existingAppt ? getStatus(existingAppt) : 'Warm Call Booked';
-    
-    modal.innerHTML = `
-        <div class="compact-modal-card">
-            <h3 style="margin-bottom: 16px; font-size: 1.1rem;"><i class="fas fa-calendar-plus"></i> ${existingAppt ? 'Edit Appointment' : 'New Appointment'}</h3>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label for="modalDate">📅 Date</label><input type="date" id="modalDate" name="modalDate" value="${dateValue}"></div>
-                <div class="compact-form-group"><label for="modalStatus">📌 Status</label><select id="modalStatus" name="modalStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${statusValue === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-            </div>
-            <div class="compact-form-group"><label for="modalBusiness">🏢 Business *</label><input type="text" id="modalBusiness" name="modalBusiness" value="${existingAppt ? escapeHtml(existingAppt.business) : ''}" placeholder="Company name"></div>
-            <div class="compact-form-group"><label for="modalContact">👤 Contact *</label><input type="text" id="modalContact" name="modalContact" value="${existingAppt ? escapeHtml(existingAppt.contactName) : ''}" placeholder="Full name"></div>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label for="modalRole">💼 Role</label><input type="text" id="modalRole" name="modalRole" value="${existingAppt ? escapeHtml(existingAppt.role || '') : ''}" placeholder="Owner/Manager"></div>
-                <div class="compact-form-group"><label for="modalPhone">📞 Phone</label><input type="tel" id="modalPhone" name="modalPhone" value="${existingAppt ? escapeHtml(existingAppt.phone || '') : ''}" placeholder="Phone number"></div>
-            </div>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label for="modalTime">⏰ Time</label><input type="text" id="modalTime" name="modalTime" value="${existingAppt ? escapeHtml(existingAppt.time || '') : ''}" placeholder="e.g., Tomorrow 2pm ET"></div>
-                <div class="compact-form-group"><label for="modalAssigned">👨‍💼 Assigned</label><input type="text" id="modalAssigned" name="modalAssigned" value="${existingAppt ? escapeHtml(existingAppt.assigned || 'Daniel') : 'Daniel'}"></div>
-            </div>
-            <div class="compact-form-group"><label for="modalCrmLink">🔗 CRM Link</label><input type="url" id="modalCrmLink" name="modalCrmLink" value="${existingAppt ? escapeHtml(existingAppt.crmLink || '') : ''}" placeholder="https://..."></div>
-            <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="modalTagSelector">${tagOptionsHtml}</div></div>
-            <div class="compact-form-group"><label for="modalNotes">📝 Notes</label><textarea id="modalNotes" name="modalNotes" rows="2" placeholder="Additional notes...">${existingAppt ? escapeHtml(existingAppt.notes || '') : ''}</textarea></div>
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
-                <button type="button" id="modalSaveBtn" class="btn-icon" style="background: var(--success); color: white;"><i class="fas fa-save"></i> Save</button>
-                <button type="button" id="modalCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    document.getElementById('modalSaveBtn').addEventListener('click', () => {
-        const business = document.getElementById('modalBusiness').value.trim();
-        const contact = document.getElementById('modalContact').value.trim();
-        if (!business || !contact) { showToast('Business and Contact are required', 'error'); return; }
-        const selectedTags = Array.from(document.querySelectorAll('.modal-tag-checkbox:checked')).map(cb => cb.value);
-        
-        if (existingAppt) {
-            deleteAppointment(existingAppt.date, existingAppt.id);
-            addAppointment(
-                document.getElementById('modalDate').value, business, contact,
-                document.getElementById('modalRole').value, document.getElementById('modalPhone').value,
-                document.getElementById('modalTime').value, document.getElementById('modalNotes').value,
-                document.getElementById('modalAssigned').value, existingAppt.id,
-                document.getElementById('modalStatus').value, document.getElementById('modalCrmLink').value, selectedTags
-            );
-            showToast('Appointment updated', 'success');
-        } else {
-            addAppointment(
-                document.getElementById('modalDate').value, business, contact,
-                document.getElementById('modalRole').value, document.getElementById('modalPhone').value,
-                document.getElementById('modalTime').value, document.getElementById('modalNotes').value,
-                document.getElementById('modalAssigned').value, null,
-                document.getElementById('modalStatus').value, document.getElementById('modalCrmLink').value, selectedTags
-            );
-            showToast('Appointment saved', 'success');
+// ==================== ADVANCED REPORTS ====================
+function renderAdvancedReports(container) {
+    const endDate = getTodayStr();
+    const startDate = new Date(); startDate.setDate(startDate.getDate() - 30);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    let appointmentsInRange = [];
+    for (let date in appointments) {
+        if (date >= startDateStr && date <= endDate && appointments[date].reports) {
+            appointments[date].reports.forEach(a => appointmentsInRange.push({ ...a, date }));
         }
-        modal.remove();
-        refreshCurrentView();
-    });
-    document.getElementById('modalCancelBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-// ==================== SMART IMPORT ====================
-function openSmartAddModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
-        <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" name="smart_tag_${tag.id}" value="${tag.id}" class="smart-tag-checkbox">
-            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
-            <span>${tag.name}</span>
-        </label>
-    `).join('');
-    
-    modal.innerHTML = `<div class="compact-modal-card" style="width: 550px;"><h3 style="margin-bottom: 16px;"><i class="fas fa-magic"></i> Smart Import</h3><p style="margin-bottom: 12px; font-size: 0.75rem; color: var(--text-muted);">Paste appointment details - auto-extracts business, contact, phone, time, notes</p>
-        <div class="compact-form-group"><label for="smartCrmLink">🔗 CRM Link</label><input type="url" id="smartCrmLink" name="smartCrmLink" placeholder="https://..."></div>
-        <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="smartTagSelector">${tagOptionsHtml}</div></div>
-        <div class="compact-form-group"><label for="smartDate">📅 Date</label><input type="date" id="smartDate" name="smartDate" value="${getTodayStr()}"></div>
-        <div class="compact-form-group"><label for="smartText">📝 Paste Details</label><textarea id="smartText" name="smartText" rows="4" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
-        <div id="smartPreview" style="background:var(--bg-primary); border-radius:12px; padding:12px; margin:12px 0; display:none; font-size:0.75rem;"><strong>Preview:</strong><div id="smartPreviewContent"></div></div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;"><button type="button" id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button type="button" id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button type="button" id="smartCancelBtn" class="btn-icon">Cancel</button></div></div>`;
-    document.body.appendChild(modal);
-    let currentParsed = null;
-    
-    document.getElementById('smartParseBtn').addEventListener('click', () => {
-        const text = document.getElementById('smartText').value;
-        const date = document.getElementById('smartDate').value;
-        if (!text.trim()) { showToast('Enter details', 'error'); return; }
-        currentParsed = parseAppointmentFromText(text, date);
-        const crmLink = document.getElementById('smartCrmLink').value;
-        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
-        document.getElementById('smartPreviewContent').innerHTML = `<div style="margin-top:6px;"><div><strong>Business:</strong> ${escapeHtml(currentParsed.business || '—')}</div><div><strong>Contact:</strong> ${escapeHtml(currentParsed.contactName || '—')}</div><div><strong>Phone:</strong> ${escapeHtml(currentParsed.phone || '—')}</div><div><strong>Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div><div><strong>Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div><div><strong>Tags:</strong> ${selectedTags.map(t => TAG_OPTIONS.find(opt => opt.id === t)?.name || t).join(', ') || '—'}</div></div>`;
-        document.getElementById('smartPreview').style.display = 'block';
-        if (!currentParsed.business || !currentParsed.contactName) showToast('Warning: Business or Contact not detected', 'error');
-        else showToast('Ready to save!', 'success');
-    });
-    
-    document.getElementById('smartSaveBtn').addEventListener('click', () => {
-        if (!currentParsed) { showToast('Parse first', 'error'); return; }
-        if (!currentParsed.business || !currentParsed.contactName) { showToast('Business and Contact required', 'error'); return; }
-        const crmLink = document.getElementById('smartCrmLink').value;
-        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
-        addAppointment(currentParsed.finalDate, currentParsed.business, currentParsed.contactName, 
-            currentParsed.role, currentParsed.phone, currentParsed.time, currentParsed.notes, 
-            currentParsed.assigned, null, 'Warm Call Booked', crmLink, selectedTags);
-        modal.remove();
-        showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
-        refreshCurrentView();
-    });
-    document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function parseAppointmentFromText(text, defaultDate) {
-    const result = { business: '', contactName: '', role: 'Owner', phone: '', time: '', notes: '', assigned: 'Daniel', parsedDate: null };
-    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY))/im);
-    if (businessMatch) result.business = businessMatch[1].trim();
-    const nameMatch = text.match(/(?:Name|Contact)[:\s]+([^\n]+)/i) || text.match(/Name:\s*([^\n]+)/i);
-    if (nameMatch) result.contactName = nameMatch[1].trim();
-    const roleMatch = text.match(/(?:Role|Position)[:\s]+([^\n]+)/i);
-    if (roleMatch) result.role = roleMatch[1].trim();
-    const phoneMatch = text.match(/(?:P\.?Number|Phone|Tel)[:\s]+([+\d\s\-\(\)]+)/i) || text.match(/[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}/);
-    if (phoneMatch) result.phone = phoneMatch[1] || phoneMatch[0];
-    const timeMatch = text.match(/(?:Time|Call back|Callback)[:\s]+([^\n]+)/i) || text.match(/(?:tomorrow|today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^.\n]*?(?:\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
-    if (timeMatch) result.time = timeMatch[1] || timeMatch[0];
-    if (result.time) {
-        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); result.parsedDate = tomorrow.toISOString().split('T')[0]; }
-        else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
     }
-    const noteMatch = text.match(/(?:Note|Notes)[:\s]+([^\n]+)/i);
-    if (noteMatch) result.notes = noteMatch[1].trim();
-    else { result.notes = text.replace(/[@Daniel]/g, '').trim(); }
-    const assignedMatch = text.match(/@(\w+)/);
-    if (assignedMatch) result.assigned = assignedMatch[1];
-    const finalDate = result.parsedDate || defaultDate;
-    return { ...result, finalDate };
+    const total = appointmentsInRange.length;
+    const warmCallBooked = appointmentsInRange.filter(a => getStatus(a) === 'Warm Call Booked').length;
+    const meetingBooked = appointmentsInRange.filter(a => getStatus(a) === 'Meeting Booked').length;
+    const canceled = appointmentsInRange.filter(a => getStatus(a) === 'Canceled').length;
+    const rescheduled = appointmentsInRange.filter(a => getStatus(a) === 'Rescheduled').length;
+    const conversionRate = warmCallBooked > 0 ? Math.round((meetingBooked / warmCallBooked) * 100) : 0;
+    const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
+    const last7Days = [], trendData = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
+    container.innerHTML = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
+    new Chart(document.getElementById('reportTrendChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Appointments', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true } });
+    new Chart(document.getElementById('reportStatusChart'), { type: 'pie', data: { labels: ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'], datasets: [{ data: [warmCallBooked, meetingBooked, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: true } });
+    document.getElementById('exportPDFBtn')?.addEventListener('click', () => { html2pdf().set({ margin: 0.5, filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(document.getElementById('reportContent')).save(); showToast('Report exported as PDF', 'success'); });
 }
 
 // ==================== INSIGHTS DASHBOARD ====================
@@ -344,91 +313,12 @@ function renderInsightsPanel(container) {
     appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
     appointmentsInRange.forEach(a => { const s = getStatus(a); statusStats[s] = (statusStats[s] || 0) + 1; });
     appointmentsInRange.forEach(a => { if (a.tags) { a.tags.forEach(tag => { tagStats[tag] = (tagStats[tag] || 0) + 1; }); } });
-    
-    const insightsHtml = `
-        <div class="insights-header"><div class="date-range-selector">
-            <span>Range</span>
-            <select id="datePresetSelect" class="date-preset" name="datePresetSelect">
-                <option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option>
-                <option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option>
-                <option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option>
-                <option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option>
-                <option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option>
-                <option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option>
-                <option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option>
-            </select>
-            <div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;">
-                <input type="date" id="customStartDate" name="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span>
-                <input type="date" id="customEndDate" name="customEndDate" value="${dashboardDateRange.end}" class="date-input">
-            </div>
-            <button id="applyDateRange" class="btn-icon">Apply</button>
-            <div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
-        </div></div>
-        <div class="insights-summary">
-            <div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div>
-            <div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div>
-            <div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div>
-            <div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div>
-        </div>
-        <div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div>
-        <div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
-        <div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
-        <div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
-            <div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div>
-            <div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div>
-            <div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
-            <div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
-            <div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
-        </div>
-    `;
-    container.innerHTML = insightsHtml;
-    
+    container.innerHTML = `<div class="insights-header"><div class="date-range-selector"><span>Range</span><select id="datePresetSelect" class="date-preset"><option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option><option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option><option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option><option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option><option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option><option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option><option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option></select><div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;"><input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span><input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input"></div><button id="applyDateRange" class="btn-icon">Apply</button><div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div></div></div><div class="insights-summary"><div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div><div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div><div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div><div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div></div><div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div><div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4><div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div></div>`;
     const ctx = document.getElementById('insightsChartCanvas');
-    if (ctx) { 
-        if (featureChartInstance) featureChartInstance.destroy(); 
-        featureChartInstance = new Chart(ctx, { 
-            type: 'bar', 
-            data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] }, 
-            options: { responsive: true, maintainAspectRatio: true } 
-        }); 
-    }
+    if (ctx) { if (featureChartInstance) featureChartInstance.destroy(); featureChartInstance = new Chart(ctx, { type: 'bar', data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: true } }); }
     const presetSelect = document.getElementById('datePresetSelect'), customDiv = document.getElementById('customDateRange'), applyBtn = document.getElementById('applyDateRange');
     if (presetSelect) presetSelect.addEventListener('change', (e) => { dashboardDatePreset = e.target.value; if (dashboardDatePreset === 'custom') customDiv.style.display = 'flex'; else { customDiv.style.display = 'none'; dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); } });
     if (applyBtn) applyBtn.addEventListener('click', () => { if (dashboardDatePreset === 'custom') { const s = document.getElementById('customStartDate')?.value, e = document.getElementById('customEndDate')?.value; if (s && e) { dashboardDateRange = { start: s, end: e }; renderInsightsPanel(container); } } else { dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); } });
-}
-
-// ==================== ADVANCED REPORTS ====================
-function renderAdvancedReports(container) {
-    const endDate = getTodayStr();
-    const startDate = new Date(); startDate.setDate(startDate.getDate() - 30);
-    const startDateStr = startDate.toISOString().split('T')[0];
-    let appointmentsInRange = [];
-    for (let date in appointments) {
-        if (date >= startDateStr && date <= endDate && appointments[date].reports) {
-            appointments[date].reports.forEach(a => appointmentsInRange.push({ ...a, date }));
-        }
-    }
-    const total = appointmentsInRange.length;
-    const warmCallBooked = appointmentsInRange.filter(a => getStatus(a) === 'Warm Call Booked').length;
-    const meetingBooked = appointmentsInRange.filter(a => getStatus(a) === 'Meeting Booked').length;
-    const canceled = appointmentsInRange.filter(a => getStatus(a) === 'Canceled').length;
-    const rescheduled = appointmentsInRange.filter(a => getStatus(a) === 'Rescheduled').length;
-    const conversionRate = warmCallBooked > 0 ? Math.round((meetingBooked / warmCallBooked) * 100) : 0;
-    const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
-    const last7Days = [], trendData = [];
-    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
-    
-    const reportsHtml = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
-    container.innerHTML = reportsHtml;
-    
-    new Chart(document.getElementById('reportTrendChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Appointments', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true } });
-    new Chart(document.getElementById('reportStatusChart'), { type: 'pie', data: { labels: ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'], datasets: [{ data: [warmCallBooked, meetingBooked, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: true } });
-    document.getElementById('exportPDFBtn')?.addEventListener('click', () => { 
-        html2pdf().set({ margin: 0.5, filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(document.getElementById('reportContent')).save(); 
-        showToast('Report exported as PDF', 'success'); 
-    });
 }
 
 // ==================== CALENDAR VIEW ====================
@@ -438,10 +328,7 @@ function renderCalendarPanel(container) {
     let daysHtml = '';
     for (let i = 0; i < firstDay; i++) daysHtml += `<div class="calendar-day"></div>`;
     for (let d = 1; d <= daysInMonth; d++) { const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const apptCount = appointments[dateStr]?.reports?.length || 0; daysHtml += `<div class="calendar-day ${selectedCalDate === dateStr ? 'selected' : ''}" data-date="${dateStr}"><span>${d}</span>${apptCount > 0 ? `<span class="appt-badge">${apptCount}</span>` : ''}</div>`; }
-    
-    const calendarHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGrid">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" name="quickDatePicker" value="${selectedCalDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>`;
-    container.innerHTML = calendarHtml;
-    
+    container.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGrid">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" value="${selectedCalDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>`;
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarPanel(container); }); });
     document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderCalendarPanel(container); });
     document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarPanel(container); });
@@ -506,41 +393,25 @@ function renderListView(container) {
     for (let date in appointments) { if (appointments[date].reports) { appointments[date].reports.forEach(a => allAppointments.push({ ...a, date })); } }
     allAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    let filtered = allAppointments.filter(a => {
-        if (currentStatusFilter !== 'all' && getStatus(a) !== currentStatusFilter) return false;
-        if (currentTagFilter !== 'all') {
-            const tags = a.tags || [];
-            if (!tags.includes(currentTagFilter)) return false;
-        }
-        if (currentListSearchTerm) {
-            const t = currentListSearchTerm.toLowerCase();
-            return (a.business && a.business.toLowerCase().includes(t)) ||
-                   (a.contactName && a.contactName.toLowerCase().includes(t)) ||
-                   (a.phone && a.phone.toLowerCase().includes(t)) ||
-                   (a.notes && a.notes.toLowerCase().includes(t));
-        }
-        return true;
-    });
+    let filtered = allAppointments.filter(a => appointmentMatchesFilters(a, currentStatusFilter, currentTagFilter, currentListSearchTerm));
     
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
     const tagOptionsHtml = `<option value="all" ${currentTagFilter === 'all' ? 'selected' : ''}>All Tags</option>` + TAG_OPTIONS.map(t => `<option value="${t.id}" ${currentTagFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('');
     
-    const listHtml = `
+    container.innerHTML = `
         <div class="list-search-container">
-            <input type="text" id="listSearchInput" class="list-search-input" name="listSearchInput" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
+            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
             <button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>
             ${currentListSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}
         </div>
         <div class="status-filter-container">
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tag"></i> Status:</span><select id="statusFilterDropdown" class="status-filter-dropdown" name="statusFilterDropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select></div>
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tags"></i> Tags:</span><select id="tagFilterDropdown" class="tag-filter-dropdown" name="tagFilterDropdown">${tagOptionsHtml}</select></div>
+            <div class="filter-group"><span class="filter-label"><i class="fas fa-tag"></i> Status:</span><select id="statusFilterDropdown" class="status-filter-dropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select></div>
+            <div class="filter-group"><span class="filter-label"><i class="fas fa-tags"></i> Tags:</span><select id="tagFilterDropdown" class="tag-filter-dropdown">${tagOptionsHtml}</select></div>
         </div>
         <div class="appointments-list-view">
             ${filtered.length === 0 ? `<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>No appointments found</p><button class="btn-icon" id="emptyStateAddBtn" style="margin-top:12px;"><i class="fas fa-plus-circle"></i> Add Appointment</button></div>` : filtered.map(a => renderListItem(a)).join('')}
         </div>
     `;
-    container.innerHTML = listHtml;
-    
     document.getElementById('listSearchInput')?.addEventListener('input', (e) => { currentListSearchTerm = e.target.value; renderListView(container); });
     document.getElementById('clearSearchBtn')?.addEventListener('click', () => { currentListSearchTerm = ''; renderListView(container); });
     document.getElementById('statusFilterDropdown')?.addEventListener('change', (e) => { currentStatusFilter = e.target.value; renderListView(container); });
@@ -587,7 +458,7 @@ function renderListItem(appointment) {
 }
 
 function bindListActions() {
-    document.querySelectorAll('.status-select-list').forEach(select => { select.removeEventListener('change', handleStatusChange); select.addEventListener('change', handleStatusChange); });
+    document.querySelectorAll('.status-select-list').forEach(select => { select.removeEventListener('change', handleListStatus); select.addEventListener('change', handleListStatus); });
     document.querySelectorAll('.copy-list').forEach(btn => { btn.removeEventListener('click', handleCopy); btn.addEventListener('click', handleCopy); });
     document.querySelectorAll('.edit-list').forEach(btn => { btn.removeEventListener('click', () => { const id = parseInt(btn.getAttribute('data-id')), date = btn.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openAppointmentModal(null, appt); }); });
     document.querySelectorAll('.delete-list').forEach(btn => { btn.removeEventListener('click', handleDelete); btn.addEventListener('click', handleDelete); });
@@ -596,6 +467,7 @@ function bindListActions() {
 function handleStatusChange(e) { const select = e.target; const id = parseInt(select.getAttribute('data-id')), date = select.getAttribute('data-date'), newStatus = select.value; const idx = appointments[date]?.reports?.findIndex(r => r.id === id); if (idx !== -1 && appointments[date]) { appointments[date].reports[idx].status = newStatus; saveAppointments(); showToast(`Status updated to ${newStatus}`, 'info'); refreshCurrentView(); } }
 function handleCopy(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')); for (let d in appointments) { const appt = appointments[d]?.reports?.find(r => r.id === id); if (appt) { copyToClipboard(appt.fullText); showToast('Copied!', 'success'); break; } } }
 function handleDelete(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); showToast('Deleted', 'info'); refreshCurrentView(); } }
+function handleListStatus(e) { handleStatusChange(e); }
 
 function refreshCurrentView() { const container = document.getElementById('featurePanelBody'); if (!container) return; if (currentView === 'calendar') renderCalendarPanel(container); else renderListView(container); }
 
@@ -610,6 +482,82 @@ function showFeaturePanel(featureType, title) {
 }
 
 function hideFeaturePanel() { const scriptPanel = document.getElementById('scriptPanel'), featurePanel = document.getElementById('featurePanel'); if (scriptPanel && featurePanel) { featurePanel.style.display = 'none'; scriptPanel.style.display = 'block'; if (featureChartInstance) { featureChartInstance.destroy(); featureChartInstance = null; } currentListSearchTerm = ''; } }
+
+// ==================== SMART IMPORT ====================
+function openSmartAddModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="smart-tag-checkbox">
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    modal.innerHTML = `<div class="compact-modal-card" style="width: 550px;"><h3 style="margin-bottom: 16px;"><i class="fas fa-magic"></i> Smart Import</h3><p style="margin-bottom: 12px; font-size: 0.75rem; color: var(--text-muted);">Paste appointment details - auto-extracts business, contact, phone, time, notes</p>
+        <div class="compact-form-group"><label>🔗 CRM Link</label><input type="url" id="smartCrmLink" placeholder="https://..."></div>
+        <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="smartTagSelector">${tagOptionsHtml}</div></div>
+        <div class="compact-form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
+        <div class="compact-form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="4" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
+        <div id="smartPreview" style="background:var(--bg-primary); border-radius:12px; padding:12px; margin:12px 0; display:none; font-size:0.75rem;"><strong>Preview:</strong><div id="smartPreviewContent"></div></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="smartCancelBtn" class="btn-icon">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    let currentParsed = null;
+    
+    document.getElementById('smartParseBtn').addEventListener('click', () => {
+        const text = document.getElementById('smartText').value;
+        const date = document.getElementById('smartDate').value;
+        if (!text.trim()) { showToast('Enter details', 'error'); return; }
+        currentParsed = parseAppointmentFromText(text, date);
+        const crmLink = document.getElementById('smartCrmLink').value;
+        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
+        document.getElementById('smartPreviewContent').innerHTML = `<div style="margin-top:6px;"><div><strong>Business:</strong> ${escapeHtml(currentParsed.business || '—')}</div><div><strong>Contact:</strong> ${escapeHtml(currentParsed.contactName || '—')}</div><div><strong>Phone:</strong> ${escapeHtml(currentParsed.phone || '—')}</div><div><strong>Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div><div><strong>Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div><div><strong>Tags:</strong> ${selectedTags.map(t => TAG_OPTIONS.find(opt => opt.id === t)?.name || t).join(', ') || '—'}</div></div>`;
+        document.getElementById('smartPreview').style.display = 'block';
+        if (!currentParsed.business || !currentParsed.contactName) showToast('Warning: Business or Contact not detected', 'error');
+        else showToast('Ready to save!', 'success');
+    });
+    
+    document.getElementById('smartSaveBtn').addEventListener('click', () => {
+        if (!currentParsed) { showToast('Parse first', 'error'); return; }
+        if (!currentParsed.business || !currentParsed.contactName) { showToast('Business and Contact required', 'error'); return; }
+        const crmLink = document.getElementById('smartCrmLink').value;
+        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
+        addAppointment(currentParsed.finalDate, currentParsed.business, currentParsed.contactName, 
+            currentParsed.role, currentParsed.phone, currentParsed.time, currentParsed.notes, 
+            currentParsed.assigned, null, 'Warm Call Booked', crmLink, selectedTags);
+        modal.remove();
+        showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
+        refreshCurrentView();
+    });
+    document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function parseAppointmentFromText(text, defaultDate) {
+    const result = { business: '', contactName: '', role: 'Owner', phone: '', time: '', notes: '', assigned: 'Daniel', parsedDate: null };
+    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY))/im);
+    if (businessMatch) result.business = businessMatch[1].trim();
+    const nameMatch = text.match(/(?:Name|Contact)[:\s]+([^\n]+)/i) || text.match(/Name:\s*([^\n]+)/i);
+    if (nameMatch) result.contactName = nameMatch[1].trim();
+    const roleMatch = text.match(/(?:Role|Position)[:\s]+([^\n]+)/i);
+    if (roleMatch) result.role = roleMatch[1].trim();
+    const phoneMatch = text.match(/(?:P\.?Number|Phone|Tel)[:\s]+([+\d\s\-\(\)]+)/i) || text.match(/[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}/);
+    if (phoneMatch) result.phone = phoneMatch[1] || phoneMatch[0];
+    const timeMatch = text.match(/(?:Time|Call back|Callback)[:\s]+([^\n]+)/i) || text.match(/(?:tomorrow|today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^.\n]*?(?:\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
+    if (timeMatch) result.time = timeMatch[1] || timeMatch[0];
+    if (result.time) {
+        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); result.parsedDate = tomorrow.toISOString().split('T')[0]; }
+        else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
+    }
+    const noteMatch = text.match(/(?:Note|Notes)[:\s]+([^\n]+)/i);
+    if (noteMatch) result.notes = noteMatch[1].trim();
+    else { result.notes = text.replace(/[@Daniel]/g, '').trim(); }
+    const assignedMatch = text.match(/@(\w+)/);
+    if (assignedMatch) result.assigned = assignedMatch[1];
+    const finalDate = result.parsedDate || defaultDate;
+    return { ...result, finalDate };
+}
 
 // ==================== SCRIPT MANAGEMENT ====================
 const defaultScripts = {
