@@ -28,18 +28,18 @@ let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
 let draggedItem = null;
 
-// Status Options
+// Status Options (Updated)
 const STATUS_OPTIONS = ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'];
 
 // Tag Options
 const TAG_OPTIONS = [
-    { id: 'qualified_warm_call', name: 'Qualified Warm Call', color: 'var(--tag-qualified)', colorClass: 'tag-qualified-bg' },
-    { id: 'unqualified_warm_callback', name: 'Unqualified Warm Callback', color: 'var(--tag-unqualified)', colorClass: 'tag-unqualified-bg' },
+    { id: 'qualified_warm_call', name: 'Qualified Warm Call', color: 'var(--tag-qualified-warm-call)', colorClass: 'tag-qualified-warm-call-bg' },
+    { id: 'unqualified_warm_callback', name: 'Unqualified Warm Callback', color: 'var(--tag-unqualified-warm-callback)', colorClass: 'tag-unqualified-warm-callback-bg' },
     { id: 'vip', name: 'VIP', color: 'var(--tag-vip)', colorClass: 'tag-vip-bg' },
-    { id: 'negligent_warm_callback', name: 'Negligent Warm Callback', color: 'var(--tag-negligent)', colorClass: 'tag-negligent-bg' }
+    { id: 'negligent_warm_callback', name: 'Negligent Warm Callback', color: 'var(--tag-negligent-warm-callback)', colorClass: 'tag-negligent-warm-callback-bg' }
 ];
 
-function getStatusClassSmall(status) {
+function getStatusClass(status) {
     switch(status) {
         case 'Warm Call Booked': return 'status-warm-call-booked-sm';
         case 'Meeting Booked': return 'status-meeting-booked-sm';
@@ -55,6 +55,16 @@ function getStatus(appt) {
     if (appt.status === 'Warm-Booked') return 'Warm Call Booked';
     if (appt.status === 'Called') return 'Meeting Booked';
     return appt.status;
+}
+
+function getStatusClassSmall(status) {
+    switch(status) {
+        case 'Warm Call Booked': return 'status-warm-call-booked-sm';
+        case 'Meeting Booked': return 'status-meeting-booked-sm';
+        case 'Canceled': return 'status-canceled-sm';
+        case 'Rescheduled': return 'status-rescheduled-sm';
+        default: return 'status-warm-call-booked-sm';
+    }
 }
 
 function getTagDisplay(tags) {
@@ -112,85 +122,91 @@ function formatDate(dateStr) { if (!dateStr) return 'No date'; const d = new Dat
 function formatDateShort(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 function replaceNameInScript(content) { return content; }
 
-// ==================== COMPACT APPOINTMENT MODAL ====================
-function openAppointmentModal(defaultDate = null, existingAppt = null) {
+// ==================== SMART IMPORT ====================
+function parseAppointmentFromText(text, defaultDate) {
+    const result = { 
+        business: '', contactName: '', role: 'Owner', phone: '', time: '', 
+        notes: '', assigned: 'Daniel', status: 'Warm Call Booked', parsedDate: null, tags: []
+    };
+    
+    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY))/im);
+    if (businessMatch) result.business = businessMatch[1].trim();
+    
+    const nameMatch = text.match(/(?:Name|Contact)[:\s]+([^\n]+)/i) || text.match(/Name:\s*([^\n]+)/i);
+    if (nameMatch) result.contactName = nameMatch[1].trim();
+    
+    const roleMatch = text.match(/(?:Role|Position)[:\s]+([^\n]+)/i);
+    if (roleMatch) result.role = roleMatch[1].trim();
+    
+    const phoneMatch = text.match(/(?:P\.?Number|Phone|Tel)[:\s]+([+\d\s\-\(\)]+)/i) || text.match(/[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}/);
+    if (phoneMatch) result.phone = phoneMatch[1] || phoneMatch[0];
+    
+    const timeMatch = text.match(/(?:Time|Call back|Callback)[:\s]+([^\n]+)/i) || text.match(/(?:tomorrow|today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^.\n]*?(?:\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
+    if (timeMatch) result.time = timeMatch[1] || timeMatch[0];
+    
+    if (result.time) {
+        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); result.parsedDate = tomorrow.toISOString().split('T')[0]; }
+        else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
+    }
+    
+    const noteMatch = text.match(/(?:Note|Notes)[:\s]+([^\n]+)/i);
+    if (noteMatch) result.notes = noteMatch[1].trim();
+    else { result.notes = text.replace(/[@Daniel]/g, '').trim(); }
+    
+    const assignedMatch = text.match(/@(\w+)/);
+    if (assignedMatch) result.assigned = assignedMatch[1];
+    
+    const finalDate = result.parsedDate || defaultDate;
+    return { ...result, finalDate };
+}
+
+function openSmartAddModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    
     const tagOptionsHtml = TAG_OPTIONS.map(tag => `
         <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="${existingAppt ? 'edit-tag-checkbox' : 'modal-tag-checkbox'}" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
+            <input type="checkbox" value="${tag.id}" class="tag-checkbox">
             <span class="tag-color-indicator" style="background: ${tag.color};"></span>
             <span>${tag.name}</span>
         </label>
     `).join('');
     
-    const dateValue = existingAppt ? existingAppt.date : (defaultDate || getTodayStr());
-    const statusValue = existingAppt ? getStatus(existingAppt) : 'Warm Call Booked';
-    
-    modal.innerHTML = `
-        <div class="compact-modal-card">
-            <h3 style="margin-bottom: 16px; font-size: 1.1rem;"><i class="fas fa-calendar-plus"></i> ${existingAppt ? 'Edit Appointment' : 'New Appointment'}</h3>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label>📅 Date</label><input type="date" id="modalDate" value="${dateValue}"></div>
-                <div class="compact-form-group"><label>📌 Status</label><select id="modalStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${statusValue === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-            </div>
-            <div class="compact-form-group"><label>🏢 Business *</label><input id="modalBusiness" value="${existingAppt ? escapeHtml(existingAppt.business) : ''}" placeholder="Company name"></div>
-            <div class="compact-form-group"><label>👤 Contact *</label><input id="modalContact" value="${existingAppt ? escapeHtml(existingAppt.contactName) : ''}" placeholder="Full name"></div>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label>💼 Role</label><input id="modalRole" value="${existingAppt ? escapeHtml(existingAppt.role || '') : ''}" placeholder="Owner/Manager"></div>
-                <div class="compact-form-group"><label>📞 Phone</label><input id="modalPhone" value="${existingAppt ? escapeHtml(existingAppt.phone || '') : ''}" placeholder="Phone number"></div>
-            </div>
-            <div class="compact-form-row">
-                <div class="compact-form-group"><label>⏰ Time</label><input id="modalTime" value="${existingAppt ? escapeHtml(existingAppt.time || '') : ''}" placeholder="e.g., Tomorrow 2pm ET"></div>
-                <div class="compact-form-group"><label>👨‍💼 Assigned</label><input id="modalAssigned" value="${existingAppt ? escapeHtml(existingAppt.assigned || 'Daniel') : 'Daniel'}"></div>
-            </div>
-            <div class="compact-form-group"><label>🔗 CRM Link</label><input id="modalCrmLink" value="${existingAppt ? escapeHtml(existingAppt.crmLink || '') : ''}" placeholder="https://..."></div>
-            <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="modalTagSelector">${tagOptionsHtml}</div></div>
-            <div class="compact-form-group"><label>📝 Notes</label><textarea id="modalNotes" rows="2" placeholder="Additional notes...">${existingAppt ? escapeHtml(existingAppt.notes || '') : ''}</textarea></div>
-            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
-                <button id="modalSaveBtn" class="btn-icon" style="background: var(--success); color: white;"><i class="fas fa-save"></i> Save</button>
-                <button id="modalCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
-            </div>
-        </div>
-    `;
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-magic"></i> Smart Appointment Import</h3><p style="margin:12px 0; font-size:0.8rem; color:var(--text-muted);">Fill in the CRM link below, select tags, then paste appointment details.</p>
+        <div class="form-group"><label>🔗 CRM Link (Optional)</label><input type="url" id="crmLinkInput" class="crm-link-input" placeholder="https://yourcrm.com/lead/..."></div>
+        <div class="form-group"><label>🏷️ Select Tags (Optional)</label><div class="tag-selector" id="tagSelector">${tagOptionsHtml}</div></div>
+        <div class="form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
+        <div class="form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
+        <div id="smartPreview" style="background:var(--bg-primary); border-radius:16px; padding:16px; margin:16px 0; display:none;"><strong><i class="fas fa-eye"></i> Preview:</strong><div id="smartPreviewContent"></div></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save</button><button id="smartCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button></div></div>`;
     document.body.appendChild(modal);
+    let currentParsed = null;
     
-    document.getElementById('modalSaveBtn').addEventListener('click', () => {
-        const business = document.getElementById('modalBusiness').value.trim();
-        const contact = document.getElementById('modalContact').value.trim();
-        if (!business || !contact) { showToast('Business and Contact are required', 'error'); return; }
-        const selectedTags = Array.from(document.querySelectorAll('.modal-tag-checkbox:checked, .edit-tag-checkbox:checked')).map(cb => cb.value);
-        const appointmentData = {
-            date: document.getElementById('modalDate').value,
-            business: business,
-            contactName: contact,
-            role: document.getElementById('modalRole').value,
-            phone: document.getElementById('modalPhone').value,
-            time: document.getElementById('modalTime').value,
-            notes: document.getElementById('modalNotes').value,
-            assigned: document.getElementById('modalAssigned').value,
-            crmLink: document.getElementById('modalCrmLink').value,
-            status: document.getElementById('modalStatus').value,
-            tags: selectedTags
-        };
-        
-        if (existingAppt) {
-            deleteAppointment(existingAppt.date, existingAppt.id);
-            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
-                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
-                appointmentData.assigned, existingAppt.id, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
-            showToast('Appointment updated', 'success');
-        } else {
-            addAppointment(appointmentData.date, appointmentData.business, appointmentData.contactName,
-                appointmentData.role, appointmentData.phone, appointmentData.time, appointmentData.notes,
-                appointmentData.assigned, null, appointmentData.status, appointmentData.crmLink, appointmentData.tags);
-            showToast('Appointment saved', 'success');
-        }
+    document.getElementById('smartParseBtn').addEventListener('click', () => {
+        const text = document.getElementById('smartText').value;
+        const date = document.getElementById('smartDate').value;
+        if (!text.trim()) { showToast('Enter details', 'error'); return; }
+        currentParsed = parseAppointmentFromText(text, date);
+        const crmLink = document.getElementById('crmLinkInput').value;
+        const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+        document.getElementById('smartPreviewContent').innerHTML = `<div style="margin-top:8px;"><div><strong>📅 Date:</strong> ${currentParsed.finalDate}</div><div><strong>🏢 Business:</strong> ${escapeHtml(currentParsed.business || '—')}</div><div><strong>👤 Contact:</strong> ${escapeHtml(currentParsed.contactName || '—')}</div><div><strong>💼 Role:</strong> ${escapeHtml(currentParsed.role || '—')}</div><div><strong>📞 Phone:</strong> ${escapeHtml(currentParsed.phone || '—')}</div><div><strong>⏰ Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div><div><strong>🔗 CRM Link:</strong> ${crmLink ? `<a href="${crmLink}" target="_blank" style="color:var(--primary);">${escapeHtml(crmLink)}</a>` : '—'}</div><div><strong>🏷️ Tags:</strong> ${selectedTags.map(t => TAG_OPTIONS.find(opt => opt.id === t)?.name || t).join(', ') || '—'}</div><div><strong>👨‍💼 Assigned:</strong> ${escapeHtml(currentParsed.assigned || 'Daniel')}</div><div><strong>📝 Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div></div>`;
+        document.getElementById('smartPreview').style.display = 'block';
+        if (!currentParsed.business || !currentParsed.contactName) showToast('Warning: Business or Contact not detected', 'error');
+        else showToast('Ready to save!', 'success');
+    });
+    
+    document.getElementById('smartSaveBtn').addEventListener('click', () => {
+        if (!currentParsed) { showToast('Parse first', 'error'); return; }
+        if (!currentParsed.business || !currentParsed.contactName) { showToast('Business and Contact required', 'error'); return; }
+        const crmLink = document.getElementById('crmLinkInput').value;
+        const selectedTags = Array.from(document.querySelectorAll('.tag-checkbox:checked')).map(cb => cb.value);
+        addAppointment(currentParsed.finalDate, currentParsed.business, currentParsed.contactName, 
+            currentParsed.role, currentParsed.phone, currentParsed.time, currentParsed.notes, 
+            currentParsed.assigned, null, 'Warm Call Booked', crmLink, selectedTags);
         modal.remove();
+        showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
         refreshCurrentView();
     });
-    document.getElementById('modalCancelBtn').addEventListener('click', () => modal.remove());
+    document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
@@ -269,7 +285,7 @@ function renderAdvancedReports(container) {
     const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
     const last7Days = [], trendData = [];
     for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
-    container.innerHTML = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
+    container.innerHTML = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:20px 0 12px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:20px 0 12px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:20px 0 12px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
     new Chart(document.getElementById('reportTrendChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Appointments', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true } });
     new Chart(document.getElementById('reportStatusChart'), { type: 'pie', data: { labels: ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'], datasets: [{ data: [warmCallBooked, meetingBooked, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: true } });
     document.getElementById('exportPDFBtn')?.addEventListener('click', () => { html2pdf().set({ margin: 0.5, filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(document.getElementById('reportContent')).save(); showToast('Report exported as PDF', 'success'); });
@@ -313,7 +329,7 @@ function renderInsightsPanel(container) {
     appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
     appointmentsInRange.forEach(a => { const s = getStatus(a); statusStats[s] = (statusStats[s] || 0) + 1; });
     appointmentsInRange.forEach(a => { if (a.tags) { a.tags.forEach(tag => { tagStats[tag] = (tagStats[tag] || 0) + 1; }); } });
-    container.innerHTML = `<div class="insights-header"><div class="date-range-selector"><span>Range</span><select id="datePresetSelect" class="date-preset"><option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option><option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option><option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option><option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option><option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option><option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option><option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option></select><div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;"><input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span><input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input"></div><button id="applyDateRange" class="btn-icon">Apply</button><div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div></div></div><div class="insights-summary"><div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div><div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div><div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div><div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div></div><div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div><div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4><div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div></div>`;
+    container.innerHTML = `<div class="insights-header"><div class="date-range-selector"><span>Range</span><select id="datePresetSelect" class="date-preset"><option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option><option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option><option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option><option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option><option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option><option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option><option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option></select><div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;"><input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span><input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input"></div><button id="applyDateRange" class="btn-icon">Apply</button><div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div></div></div><div class="insights-summary"><div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div><div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div><div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div><div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div></div><div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div><div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4><div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;"><div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div></div>`;
     const ctx = document.getElementById('insightsChartCanvas');
     if (ctx) { if (featureChartInstance) featureChartInstance.destroy(); featureChartInstance = new Chart(ctx, { type: 'bar', data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: true } }); }
     const presetSelect = document.getElementById('datePresetSelect'), customDiv = document.getElementById('customDateRange'), applyBtn = document.getElementById('applyDateRange');
@@ -334,7 +350,7 @@ function renderCalendarPanel(container) {
     document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarPanel(container); });
     document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarPanel(container); });
     document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedCalDate = e.target.value; renderCalendarPanel(container); });
-    document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openAppointmentModal(selectedCalDate), 100); });
+    document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
     document.getElementById('smartAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
     setupDragAndDrop();
     bindCalendarActions();
@@ -346,22 +362,25 @@ function renderAppointmentsList(dateStr) {
     return apptData.map(r => {
         const hasCrmLink = r.crmLink && r.crmLink.trim() !== '';
         const tagsDisplay = getTagDisplay(r.tags);
-        return `<div class="appointment-item-draggable" draggable="true" data-id="${r.id}" data-date="${dateStr}" style="background:var(--bg-card); border-radius:16px; padding:14px; margin-bottom:12px; border:1px solid var(--border-color);">
+        return `<div class="appointment-item-draggable" draggable="true" data-id="${r.id}" data-date="${dateStr}" style="background:var(--bg-card); border-radius:16px; padding:16px; margin-bottom:12px; border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:8px;">
-                <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted); font-size:0.7rem;">${escapeHtml(r.role || '')}</span></div>
-                <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                    ${hasCrmLink ? `<a href="${escapeHtml(r.crmLink)}" target="_blank" class="crm-link-btn"><i class="fas fa-external-link-alt"></i> CRM</a>` : ''}
-                    <select class="status-select-calendar" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px; font-size:0.7rem;">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(r) === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
-                    <button class="action-icon-btn copy-calendar" data-id="${r.id}" title="Copy"><i class="fas fa-copy"></i></button>
-                    <button class="action-icon-btn edit-calendar" data-id="${r.id}" data-date="${dateStr}" title="Edit"><i class="fas fa-edit"></i></button>
-                    <button class="action-icon-btn danger delete-calendar" data-id="${r.id}" data-date="${dateStr}" title="Delete"><i class="fas fa-trash"></i></button>
+                <div><strong>${escapeHtml(r.business)}</strong> <span style="color:var(--text-muted);">${escapeHtml(r.role || '')}</span></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    ${hasCrmLink ? `<a href="${escapeHtml(r.crmLink)}" target="_blank" class="crm-link-btn"><i class="fas fa-external-link-alt"></i> CRM Link</a>` : ''}
+                    <select class="status-select-calendar" data-id="${r.id}" data-date="${dateStr}" style="padding:4px 8px; border-radius:20px;">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(r) === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
+                    <button class="action-btn-sm copy-calendar" data-id="${r.id}"><i class="fas fa-copy"></i> Copy</button>
+                    <button class="action-btn-sm edit-calendar" data-id="${r.id}" data-date="${dateStr}"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="action-btn-sm danger delete-calendar" data-id="${r.id}" data-date="${dateStr}"><i class="fas fa-trash"></i> Delete</button>
                 </div>
             </div>
-            <div style="margin-top:8px; font-size:0.8rem;">
+            <div style="margin-top:8px; font-size:0.85rem;">
                 <div><i class="fas fa-user"></i> ${escapeHtml(r.contactName)}</div>
                 <div><i class="fas fa-phone"></i> ${escapeHtml(r.phone || 'No phone')}</div>
                 <div><i class="fas fa-clock"></i> ${escapeHtml(r.time || 'No time')}</div>
+                <div><i class="fas fa-sticky-note"></i> ${escapeHtml(r.notes || 'No notes')}</div>
+                <div><i class="fas fa-user-tie"></i> Assigned: ${escapeHtml(r.assigned || 'Unassigned')}</div>
                 ${tagsDisplay ? `<div class="appointment-tags">${tagsDisplay}</div>` : ''}
+                ${hasCrmLink ? `<div><i class="fas fa-link"></i> CRM: <a href="${escapeHtml(r.crmLink)}" target="_blank" style="color:var(--primary);">${escapeHtml(r.crmLink.substring(0, 50))}${r.crmLink.length > 50 ? '...' : ''}</a></div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -383,7 +402,7 @@ function setupDragAndDrop() {
 function bindCalendarActions() {
     document.querySelectorAll('.status-select-calendar').forEach(select => { select.removeEventListener('change', handleStatusChange); select.addEventListener('change', handleStatusChange); });
     document.querySelectorAll('.copy-calendar').forEach(btn => { btn.removeEventListener('click', handleCopy); btn.addEventListener('click', handleCopy); });
-    document.querySelectorAll('.edit-calendar').forEach(btn => { btn.removeEventListener('click', () => { const id = parseInt(btn.getAttribute('data-id')), date = btn.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openAppointmentModal(null, appt); }); });
+    document.querySelectorAll('.edit-calendar').forEach(btn => { btn.removeEventListener('click', handleEdit); btn.addEventListener('click', handleEdit); });
     document.querySelectorAll('.delete-calendar').forEach(btn => { btn.removeEventListener('click', handleDelete); btn.addEventListener('click', handleDelete); });
 }
 
@@ -398,25 +417,12 @@ function renderListView(container) {
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
     const tagOptionsHtml = `<option value="all" ${currentTagFilter === 'all' ? 'selected' : ''}>All Tags</option>` + TAG_OPTIONS.map(t => `<option value="${t.id}" ${currentTagFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('');
     
-    container.innerHTML = `
-        <div class="list-search-container">
-            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
-            <button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>
-            ${currentListSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}
-        </div>
-        <div class="status-filter-container">
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tag"></i> Status:</span><select id="statusFilterDropdown" class="status-filter-dropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select></div>
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tags"></i> Tags:</span><select id="tagFilterDropdown" class="tag-filter-dropdown">${tagOptionsHtml}</select></div>
-        </div>
-        <div class="appointments-list-view">
-            ${filtered.length === 0 ? `<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>No appointments found</p><button class="btn-icon" id="emptyStateAddBtn" style="margin-top:12px;"><i class="fas fa-plus-circle"></i> Add Appointment</button></div>` : filtered.map(a => renderListItem(a)).join('')}
-        </div>
-    `;
+    container.innerHTML = `<div class="list-search-container"><input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}"><button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>${currentListSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}</div><div class="status-filter-container"><select id="statusFilterDropdown" class="status-filter-dropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select><select id="tagFilterDropdown" class="tag-filter-dropdown">${tagOptionsHtml}</select></div><div class="appointments-list-view">${filtered.length === 0 ? `<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>No appointments found</p><button class="btn-icon" id="emptyStateSmartImport" style="margin-top:12px;"><i class="fas fa-magic"></i> Smart Import</button></div>` : filtered.map(a => renderListItem(a)).join('')}</div>`;
     document.getElementById('listSearchInput')?.addEventListener('input', (e) => { currentListSearchTerm = e.target.value; renderListView(container); });
     document.getElementById('clearSearchBtn')?.addEventListener('click', () => { currentListSearchTerm = ''; renderListView(container); });
     document.getElementById('statusFilterDropdown')?.addEventListener('change', (e) => { currentStatusFilter = e.target.value; renderListView(container); });
     document.getElementById('tagFilterDropdown')?.addEventListener('change', (e) => { currentTagFilter = e.target.value; renderListView(container); });
-    document.getElementById('emptyStateAddBtn')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openAppointmentModal(), 100); });
+    document.getElementById('emptyStateSmartImport')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
     bindListActions();
 }
 
@@ -424,50 +430,104 @@ function renderListItem(appointment) {
     const status = getStatus(appointment);
     const tagsDisplay = getTagDisplay(appointment.tags);
     const hasCrmLink = appointment.crmLink && appointment.crmLink.trim() !== '';
-    return `<div class="list-item" data-id="${appointment.id}" data-date="${appointment.date}">
-        <div class="hover-tooltip">
-            <div class="hover-tooltip-row"><i class="fas fa-building"></i><span class="label">Business:</span><span class="value">${escapeHtml(appointment.business)}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-user"></i><span class="label">Contact:</span><span class="value">${escapeHtml(appointment.contactName)}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-briefcase"></i><span class="label">Role:</span><span class="value">${escapeHtml(appointment.role || 'Owner')}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-phone"></i><span class="label">Phone:</span><span class="value">${escapeHtml(appointment.phone || 'No phone')}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-calendar-alt"></i><span class="label">Date:</span><span class="value">${escapeHtml(appointment.date)}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-clock"></i><span class="label">Time:</span><span class="value">${escapeHtml(appointment.time || 'No time')}</span></div>
-            ${hasCrmLink ? `<div class="hover-tooltip-row"><i class="fas fa-link"></i><span class="label">CRM Link:</span><span class="value"><a href="${escapeHtml(appointment.crmLink)}" target="_blank" style="color:var(--primary);">Open</a></span></div>` : ''}
-            <div class="hover-tooltip-row"><i class="fas fa-tag"></i><span class="label">Status:</span><span class="value">${escapeHtml(status)}</span></div>
-            <div class="hover-tooltip-row"><i class="fas fa-user-tie"></i><span class="label">Assigned:</span><span class="value">${escapeHtml(appointment.assigned || 'Unassigned')}</span></div>
-            ${appointment.notes ? `<div class="hover-tooltip-row"><i class="fas fa-sticky-note"></i><span class="label">Notes:</span><span class="value">${escapeHtml(appointment.notes.substring(0, 150))}${appointment.notes.length > 150 ? '...' : ''}</span></div>` : ''}
-        </div>
-        <div class="list-item-content">
-            <div class="list-item-left">
-                <div class="company-name"><i class="fas fa-building"></i>${escapeHtml(appointment.business)}</div>
-                <div class="contact-info"><i class="fas fa-user"></i>${escapeHtml(appointment.contactName)}</div>
-            </div>
-            <div class="list-item-right">
-                <span class="status-badge-sm ${getStatusClassSmall(status)}">${escapeHtml(status)}</span>
-                <select class="status-select-list" data-id="${appointment.id}" data-date="${appointment.date}" style="padding:4px 8px; border-radius:20px; font-size:0.7rem;">${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
-                ${hasCrmLink ? `<a href="${escapeHtml(appointment.crmLink)}" target="_blank" class="crm-link-btn"><i class="fas fa-external-link-alt"></i> CRM</a>` : ''}
-                <div class="action-buttons-list">
-                    <button class="action-icon-btn copy-list" data-id="${appointment.id}" title="Copy"><i class="fas fa-copy"></i></button>
-                    <button class="action-icon-btn edit-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Edit"><i class="fas fa-edit"></i></button>
-                    <button class="action-icon-btn danger delete-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Delete"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-        </div>
-        ${tagsDisplay ? `<div class="appointment-tags" style="margin-top:4px; padding:0 18px 12px 18px;">${tagsDisplay}</div>` : ''}
-    </div>`;
+    return `<div class="list-item" data-id="${appointment.id}" data-date="${appointment.date}"><div class="hover-tooltip"><div class="hover-tooltip-row"><i class="fas fa-building"></i><span class="label">Business:</span><span class="value">${escapeHtml(appointment.business)}</span></div><div class="hover-tooltip-row"><i class="fas fa-user"></i><span class="label">Contact:</span><span class="value">${escapeHtml(appointment.contactName)}</span></div><div class="hover-tooltip-row"><i class="fas fa-briefcase"></i><span class="label">Role:</span><span class="value">${escapeHtml(appointment.role || 'Owner')}</span></div><div class="hover-tooltip-row"><i class="fas fa-phone"></i><span class="label">Phone:</span><span class="value">${escapeHtml(appointment.phone || 'No phone')}</span></div><div class="hover-tooltip-row"><i class="fas fa-calendar-alt"></i><span class="label">Date:</span><span class="value">${escapeHtml(appointment.date)}</span></div><div class="hover-tooltip-row"><i class="fas fa-clock"></i><span class="label">Time:</span><span class="value">${escapeHtml(appointment.time || 'No time')}</span></div>${hasCrmLink ? `<div class="hover-tooltip-row"><i class="fas fa-link"></i><span class="label">CRM Link:</span><span class="value"><a href="${escapeHtml(appointment.crmLink)}" target="_blank" style="color:var(--primary);">${escapeHtml(appointment.crmLink)}</a></span></div>` : ''}<div class="hover-tooltip-row"><i class="fas fa-tag"></i><span class="label">Status:</span><span class="value">${escapeHtml(status)}</span></div><div class="hover-tooltip-row"><i class="fas fa-user-tie"></i><span class="label">Assigned:</span><span class="value">${escapeHtml(appointment.assigned || 'Unassigned')}</span></div>${appointment.notes ? `<div class="hover-tooltip-row"><i class="fas fa-sticky-note"></i><span class="label">Notes:</span><span class="value">${escapeHtml(appointment.notes.substring(0, 150))}${appointment.notes.length > 150 ? '...' : ''}</span></div>` : ''}</div><div class="list-item-content"><div class="list-item-left"><div class="company-name"><i class="fas fa-building"></i>${escapeHtml(appointment.business)}</div><div class="contact-info"><i class="fas fa-user"></i>${escapeHtml(appointment.contactName)}</div></div><div class="list-item-right"><span class="status-badge-sm ${getStatusClassSmall(status)}">${escapeHtml(status)}</span><select class="status-select-list" data-id="${appointment.id}" data-date="${appointment.date}" style="padding:4px 8px; border-radius:20px; font-size:0.7rem;">${STATUS_OPTIONS.map(s => `<option value="${s}" ${status === s ? 'selected' : ''}>${s}</option>`).join('')}</select>${hasCrmLink ? `<a href="${escapeHtml(appointment.crmLink)}" target="_blank" class="crm-link-btn"><i class="fas fa-external-link-alt"></i> CRM Link</a>` : ''}<div class="action-buttons-list"><button class="action-icon-btn copy-list" data-id="${appointment.id}" title="Copy"><i class="fas fa-copy"></i></button><button class="action-icon-btn edit-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Edit"><i class="fas fa-edit"></i></button><button class="action-icon-btn danger delete-list" data-id="${appointment.id}" data-date="${appointment.date}" title="Delete"><i class="fas fa-trash"></i></button></div></div></div>${tagsDisplay ? `<div class="appointment-tags" style="margin-top:8px; padding:0 18px 14px 18px;">${tagsDisplay}</div>` : ''}</div>`;
 }
 
 function bindListActions() {
     document.querySelectorAll('.status-select-list').forEach(select => { select.removeEventListener('change', handleListStatus); select.addEventListener('change', handleListStatus); });
     document.querySelectorAll('.copy-list').forEach(btn => { btn.removeEventListener('click', handleCopy); btn.addEventListener('click', handleCopy); });
-    document.querySelectorAll('.edit-list').forEach(btn => { btn.removeEventListener('click', () => { const id = parseInt(btn.getAttribute('data-id')), date = btn.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openAppointmentModal(null, appt); }); });
+    document.querySelectorAll('.edit-list').forEach(btn => { btn.removeEventListener('click', handleEdit); btn.addEventListener('click', handleEdit); });
     document.querySelectorAll('.delete-list').forEach(btn => { btn.removeEventListener('click', handleDelete); btn.addEventListener('click', handleDelete); });
 }
 
 function handleStatusChange(e) { const select = e.target; const id = parseInt(select.getAttribute('data-id')), date = select.getAttribute('data-date'), newStatus = select.value; const idx = appointments[date]?.reports?.findIndex(r => r.id === id); if (idx !== -1 && appointments[date]) { appointments[date].reports[idx].status = newStatus; saveAppointments(); showToast(`Status updated to ${newStatus}`, 'info'); refreshCurrentView(); } }
 function handleCopy(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')); for (let d in appointments) { const appt = appointments[d]?.reports?.find(r => r.id === id); if (appt) { copyToClipboard(appt.fullText); showToast('Copied!', 'success'); break; } } }
+function handleEdit(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openEditAppointmentModal(date, appt); }
 function handleDelete(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); showToast('Deleted', 'info'); refreshCurrentView(); } }
 function handleListStatus(e) { handleStatusChange(e); }
+
+function openEditAppointmentModal(dateStr, appt) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="edit-tag-checkbox" ${(appt.tags || []).includes(tag.id) ? 'checked' : ''}>
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div>
+        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
+        <div class="form-group"><label>Contact *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
+        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role || '')}"></div>
+        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone || '')}"></div>
+        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time || '')}"></div>
+        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(appt) === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="editTagSelector">${tagOptionsHtml}</div></div>
+        <div class="form-group"><label>CRM Link</label><input id="editCrmLink" value="${escapeHtml(appt.crmLink || '')}" placeholder="https://..."></div>
+        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelEditBtn" class="btn-icon">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('saveEditBtn').addEventListener('click', () => { 
+        const newDate = document.getElementById('editDate').value; 
+        if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) { showToast('Business and Contact required', 'error'); return; } 
+        const selectedTags = Array.from(document.querySelectorAll('.edit-tag-checkbox:checked')).map(cb => cb.value);
+        deleteAppointment(dateStr, appt.id); 
+        addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value, 
+            document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, 
+            document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id, 
+            document.getElementById('editStatus').value, document.getElementById('editCrmLink').value, selectedTags); 
+        modal.remove(); 
+        showToast(`Updated`, 'success'); 
+        refreshCurrentView(); 
+    });
+    document.getElementById('cancelEditBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function openQuickReportWithDate(defaultDate) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="quick-tag-checkbox">
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    modal.innerHTML = `<div class="modal-card"><h3>Quick Add</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
+        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div>
+        <div class="form-group"><label>Contact *</label><input id="reportName"></div>
+        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
+        <div class="form-group"><label>Phone</label><input id="reportPhone"></div>
+        <div class="form-group"><label>Time</label><input id="reportTime"></div>
+        <div class="form-group"><label>Status</label><select id="reportStatus">${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="quickTagSelector">${tagOptionsHtml}</div></div>
+        <div class="form-group"><label>CRM Link</label><input id="reportCrmLink" placeholder="https://..."></div>
+        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
+        <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('submitReportBtn').addEventListener('click', () => { 
+        const bus = document.getElementById('reportBusiness').value, name = document.getElementById('reportName').value; 
+        if (!bus || !name) { showToast('Required fields', 'error'); return; } 
+        const selectedTags = Array.from(document.querySelectorAll('.quick-tag-checkbox:checked')).map(cb => cb.value);
+        addAppointment(document.getElementById('reportDate').value, bus, name, document.getElementById('reportRole').value, 
+            document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value, 
+            document.getElementById('reportAssigned').value, null, document.getElementById('reportStatus').value, 
+            document.getElementById('reportCrmLink').value, selectedTags); 
+        modal.remove(); 
+        showToast('Saved!', 'success'); 
+        refreshCurrentView(); 
+    });
+    document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
 
 function refreshCurrentView() { const container = document.getElementById('featurePanelBody'); if (!container) return; if (currentView === 'calendar') renderCalendarPanel(container); else renderListView(container); }
 
@@ -482,82 +542,6 @@ function showFeaturePanel(featureType, title) {
 }
 
 function hideFeaturePanel() { const scriptPanel = document.getElementById('scriptPanel'), featurePanel = document.getElementById('featurePanel'); if (scriptPanel && featurePanel) { featurePanel.style.display = 'none'; scriptPanel.style.display = 'block'; if (featureChartInstance) { featureChartInstance.destroy(); featureChartInstance = null; } currentListSearchTerm = ''; } }
-
-// ==================== SMART IMPORT ====================
-function openSmartAddModal() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
-        <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="smart-tag-checkbox">
-            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
-            <span>${tag.name}</span>
-        </label>
-    `).join('');
-    
-    modal.innerHTML = `<div class="compact-modal-card" style="width: 550px;"><h3 style="margin-bottom: 16px;"><i class="fas fa-magic"></i> Smart Import</h3><p style="margin-bottom: 12px; font-size: 0.75rem; color: var(--text-muted);">Paste appointment details - auto-extracts business, contact, phone, time, notes</p>
-        <div class="compact-form-group"><label>🔗 CRM Link</label><input type="url" id="smartCrmLink" placeholder="https://..."></div>
-        <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="smartTagSelector">${tagOptionsHtml}</div></div>
-        <div class="compact-form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
-        <div class="compact-form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="4" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
-        <div id="smartPreview" style="background:var(--bg-primary); border-radius:12px; padding:12px; margin:12px 0; display:none; font-size:0.75rem;"><strong>Preview:</strong><div id="smartPreviewContent"></div></div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="smartCancelBtn" class="btn-icon">Cancel</button></div></div>`;
-    document.body.appendChild(modal);
-    let currentParsed = null;
-    
-    document.getElementById('smartParseBtn').addEventListener('click', () => {
-        const text = document.getElementById('smartText').value;
-        const date = document.getElementById('smartDate').value;
-        if (!text.trim()) { showToast('Enter details', 'error'); return; }
-        currentParsed = parseAppointmentFromText(text, date);
-        const crmLink = document.getElementById('smartCrmLink').value;
-        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
-        document.getElementById('smartPreviewContent').innerHTML = `<div style="margin-top:6px;"><div><strong>Business:</strong> ${escapeHtml(currentParsed.business || '—')}</div><div><strong>Contact:</strong> ${escapeHtml(currentParsed.contactName || '—')}</div><div><strong>Phone:</strong> ${escapeHtml(currentParsed.phone || '—')}</div><div><strong>Time:</strong> ${escapeHtml(currentParsed.time || '—')}</div><div><strong>Notes:</strong> ${escapeHtml(currentParsed.notes || '—')}</div><div><strong>Tags:</strong> ${selectedTags.map(t => TAG_OPTIONS.find(opt => opt.id === t)?.name || t).join(', ') || '—'}</div></div>`;
-        document.getElementById('smartPreview').style.display = 'block';
-        if (!currentParsed.business || !currentParsed.contactName) showToast('Warning: Business or Contact not detected', 'error');
-        else showToast('Ready to save!', 'success');
-    });
-    
-    document.getElementById('smartSaveBtn').addEventListener('click', () => {
-        if (!currentParsed) { showToast('Parse first', 'error'); return; }
-        if (!currentParsed.business || !currentParsed.contactName) { showToast('Business and Contact required', 'error'); return; }
-        const crmLink = document.getElementById('smartCrmLink').value;
-        const selectedTags = Array.from(document.querySelectorAll('.smart-tag-checkbox:checked')).map(cb => cb.value);
-        addAppointment(currentParsed.finalDate, currentParsed.business, currentParsed.contactName, 
-            currentParsed.role, currentParsed.phone, currentParsed.time, currentParsed.notes, 
-            currentParsed.assigned, null, 'Warm Call Booked', crmLink, selectedTags);
-        modal.remove();
-        showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
-        refreshCurrentView();
-    });
-    document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function parseAppointmentFromText(text, defaultDate) {
-    const result = { business: '', contactName: '', role: 'Owner', phone: '', time: '', notes: '', assigned: 'Daniel', parsedDate: null };
-    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY))/im);
-    if (businessMatch) result.business = businessMatch[1].trim();
-    const nameMatch = text.match(/(?:Name|Contact)[:\s]+([^\n]+)/i) || text.match(/Name:\s*([^\n]+)/i);
-    if (nameMatch) result.contactName = nameMatch[1].trim();
-    const roleMatch = text.match(/(?:Role|Position)[:\s]+([^\n]+)/i);
-    if (roleMatch) result.role = roleMatch[1].trim();
-    const phoneMatch = text.match(/(?:P\.?Number|Phone|Tel)[:\s]+([+\d\s\-\(\)]+)/i) || text.match(/[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,5}[-\s\.]?[0-9]{1,5}/);
-    if (phoneMatch) result.phone = phoneMatch[1] || phoneMatch[0];
-    const timeMatch = text.match(/(?:Time|Call back|Callback)[:\s]+([^\n]+)/i) || text.match(/(?:tomorrow|today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^.\n]*?(?:\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
-    if (timeMatch) result.time = timeMatch[1] || timeMatch[0];
-    if (result.time) {
-        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); result.parsedDate = tomorrow.toISOString().split('T')[0]; }
-        else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
-    }
-    const noteMatch = text.match(/(?:Note|Notes)[:\s]+([^\n]+)/i);
-    if (noteMatch) result.notes = noteMatch[1].trim();
-    else { result.notes = text.replace(/[@Daniel]/g, '').trim(); }
-    const assignedMatch = text.match(/@(\w+)/);
-    if (assignedMatch) result.assigned = assignedMatch[1];
-    const finalDate = result.parsedDate || defaultDate;
-    return { ...result, finalDate };
-}
 
 // ==================== SCRIPT MANAGEMENT ====================
 const defaultScripts = {
@@ -596,8 +580,8 @@ function showVersionHistoryModal(){ if(!versionHistory[currentScriptId]){ showTo
 // ==================== UTILITIES ====================
 function toggleTheme(){ document.body.classList.toggle('dark'); localStorage.setItem('scriptflow_theme_main',document.body.classList.contains('dark')?'dark':'light'); showToast(`${document.body.classList.contains('dark')?'Dark':'Light'} mode`,'info'); }
 function exportToCSV(){ let rows=[['Date','Business','Contact','Role','Phone','Time','Status','Tags','CRM Link','Notes','Assigned']]; for(let date in appointments){ if(appointments[date].reports){ appointments[date].reports.forEach(a=>{ rows.push([date,a.business,a.contactName,a.role,a.phone,a.time,getStatus(a),(a.tags || []).map(t=>TAG_OPTIONS.find(opt=>opt.id===t)?.name||t).join(', '),a.crmLink || '',a.notes,a.assigned]); }); } } const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`appointments_${getTodayStr()}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('Exported','success'); }
-function openPriorityModal(){ const now=new Date(); const zones=[{name:'Eastern (ET) ★',zone:'America/New_York'},{name:'Central (CT)',zone:'America/Chicago'},{name:'Mountain (MT)',zone:'America/Denver'},{name:'Pacific (PT)',zone:'America/Los_Angeles'}]; let zHtml='', active=[]; for(let tz of zones){ const tzTime=new Date(now.toLocaleString('en-US',{timeZone:tz.zone})); const hour=tzTime.getHours(), min=tzTime.getMinutes(); const isPrime=(hour>=10&&hour<=11)||(hour>=14&&hour<=15)||(hour===16&&min===0); if(isPrime) active.push(tz.name); zHtml+=`<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime?'var(--success)':'var(--primary)'}"><div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div><div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime?'var(--success)':'var(--warning)'}; color:${isPrime?'white':'#1e293b'};">${isPrime?'🔥 PRIME TIME':'Awaiting Prime'}</span></div><div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`; } const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="compact-modal-card" style="width:500px;"><div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:16px; border-radius:20px; text-align:center;"><h2><i class="fas fa-chart-line"></i> Call Priority</h2></div>${active.length?`<div style="background:var(--success); color:white; padding:10px; border-radius:14px; margin:16px 0; text-align:center;"><strong>ACTIVE:</strong> ${active.join(', ')}</div>`:`<div style="background:var(--warning); padding:10px; border-radius:14px; margin:16px 0; text-align:center;">No active prime windows</div>`}${zHtml}<div style="padding:12px; background:var(--bg-primary); border-radius:14px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div><button id="closePrioBtn" class="btn-icon" style="margin-top:16px; width:100%;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closePrioBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
-function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="compact-modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:12px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:12px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel</div><div style="margin:12px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div><div style="margin:12px 0;"><strong>📋 List View</strong><br>Search, filter by status and tags</div><div style="margin:12px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+function openPriorityModal(){ const now=new Date(); const zones=[{name:'Eastern (ET) ★',zone:'America/New_York'},{name:'Central (CT)',zone:'America/Chicago'},{name:'Mountain (MT)',zone:'America/Denver'},{name:'Pacific (PT)',zone:'America/Los_Angeles'}]; let zHtml='', active=[]; for(let tz of zones){ const tzTime=new Date(now.toLocaleString('en-US',{timeZone:tz.zone})); const hour=tzTime.getHours(), min=tzTime.getMinutes(); const isPrime=(hour>=10&&hour<=11)||(hour>=14&&hour<=15)||(hour===16&&min===0); if(isPrime) active.push(tz.name); zHtml+=`<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime?'var(--success)':'var(--primary)'}"><div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div><div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime?'var(--success)':'var(--warning)'}; color:${isPrime?'white':'#1e293b'};">${isPrime?'🔥 PRIME TIME':'Awaiting Prime'}</span></div><div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`; } const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card" style="width:550px;"><div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:20px; border-radius:24px; text-align:center;"><h2><i class="fas fa-chart-line"></i> Call Priority</h2></div>${active.length?`<div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin:16px 0; text-align:center;"><strong>ACTIVE:</strong> ${active.join(', ')}</div>`:`<div style="background:var(--warning); padding:12px; border-radius:16px; margin:16px 0; text-align:center;">No active prime windows</div>`}${zHtml}<div style="padding:16px; background:var(--bg-primary); border-radius:16px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div><button id="closePrioBtn" class="btn-icon" style="margin-top:20px; width:100%;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closePrioBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div><div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div><div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter by status and tags, hover tooltips, CRM links</div><div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>CRM link field, tag selection, auto-extracts all fields</div><div style="margin:16px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div><div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm Call Booked, Meeting Booked, Canceled, Rescheduled</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
 function updateRealTimePriorityDashboard(){ const now=new Date(); const et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'})); const h=et.getHours(), m=et.getMinutes(); const isPrime=((h===10)||(h===11&&m<=30)||(h>=14&&h<=15)||(h===16&&m===0))&&et.getDay()>=1&&et.getDay()<=5; const txt=document.getElementById('priorityTimeText'); const tt=document.getElementById('tooltipPrimeStatus'); if(txt){ if(isPrime){ txt.innerHTML=`<i class="fas fa-fire"></i> PRIME TIME (${et.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} ET)`; if(tt) tt.innerHTML='🔥 ACTIVE PRIME WINDOW'; } else { let next=''; if(h<10) next='Next: 10-11:30 AM ET'; else if(h<14) next='Next: 2-4 PM ET'; else next='Tomorrow 10-11:30 AM ET'; txt.innerHTML=`<i class="fas fa-clock"></i> ${next}`; if(tt) tt.innerHTML=`⏳ ${next}`; } } }
 function toggleToolsMenu(){ toolsOpen=!toolsOpen; const m=document.getElementById('toolsMenu'); const c=document.getElementById('toolsChevron'); if(toolsOpen){ if(m) m.classList.add('open'); if(c) c.classList.add('rotated'); } else { if(m) m.classList.remove('open'); if(c) c.classList.remove('rotated'); } localStorage.setItem('toolsMenuOpen',toolsOpen); }
 
@@ -611,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('listViewBtn')?.addEventListener('click', () => { currentView = 'list'; refreshCurrentView(); document.getElementById('listViewBtn').classList.add('active'); document.getElementById('calendarViewBtn').classList.remove('active'); });
     const menuToggle = document.getElementById('menuToggleBtn'), sidebar = document.getElementById('mainSidebar'), main = document.getElementById('mainContent'); if (menuToggle) menuToggle.addEventListener('click', () => { sidebar.classList.toggle('closed'); main.classList.toggle('expanded'); localStorage.setItem('sidebarClosed', sidebar.classList.contains('closed')); }); if (sidebar && localStorage.getItem('sidebarClosed') === 'true') { sidebar.classList.add('closed'); main.classList.add('expanded'); }
     loadAppointmentData(); loadScripts(); renderSidebar(); loadScript('opening'); if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
-    document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript); document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit); document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit); document.getElementById('cancelEditBtn')?.addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn')?.addEventListener('click', copyScript); document.getElementById('resetScriptBtn')?.addEventListener('click', resetScript); document.getElementById('undoBtn')?.addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn')?.addEventListener('click', () => redoScript(currentScriptId)); document.getElementById('quickReportBtn')?.addEventListener('click', () => openAppointmentModal()); document.getElementById('historyBtn')?.addEventListener('click', showVersionHistoryModal); document.getElementById('scriptSearch')?.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderSidebar(); });
+    document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript); document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit); document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit); document.getElementById('cancelEditBtn')?.addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn')?.addEventListener('click', copyScript); document.getElementById('resetScriptBtn')?.addEventListener('click', resetScript); document.getElementById('undoBtn')?.addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn')?.addEventListener('click', () => redoScript(currentScriptId)); document.getElementById('quickReportBtn')?.addEventListener('click', openSmartAddModal); document.getElementById('historyBtn')?.addEventListener('click', showVersionHistoryModal); document.getElementById('scriptSearch')?.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderSidebar(); });
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const fp = document.getElementById('featurePanel'); if (fp && fp.style.display === 'block') { hideFeaturePanel(); e.preventDefault(); } } if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input')) { const fp = document.getElementById('featurePanel'); if (fp && fp.style.display === 'block') return; e.preventDefault(); const t = getKeyMapping().get(e.key); if (t && scripts[t]) { loadScript(t); showToast(`Switched to: ${scripts[t].name}`, 'info'); } } if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault(); undoScript(currentScriptId); } if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault(); redoScript(currentScriptId); } if (e.key === 'Escape' && isEditing) { cancelEdit(); showToast('Edit cancelled', 'info'); } });
     updateRealTimePriorityDashboard(); setInterval(updateRealTimePriorityDashboard, 1000); setInterval(() => updateStats(), 5000);
 });
