@@ -160,7 +160,7 @@ function openAppointmentModal(defaultDate = null, existingAppt = null) {
     
     const tagOptionsHtml = TAG_OPTIONS.map(tag => `
         <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="modal-tag-checkbox" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
+            <input type="checkbox" name="tag_${tag.id}" value="${tag.id}" class="modal-tag-checkbox" ${existingAppt && existingAppt.tags && existingAppt.tags.includes(tag.id) ? 'checked' : ''}>
             <span class="tag-color-indicator" style="background: ${tag.color};"></span>
             <span>${tag.name}</span>
         </label>
@@ -173,25 +173,25 @@ function openAppointmentModal(defaultDate = null, existingAppt = null) {
         <div class="compact-modal-card">
             <h3 style="margin-bottom: 16px; font-size: 1.1rem;"><i class="fas fa-calendar-plus"></i> ${existingAppt ? 'Edit Appointment' : 'New Appointment'}</h3>
             <div class="compact-form-row">
-                <div class="compact-form-group"><label>📅 Date</label><input type="date" id="modalDate" value="${dateValue}"></div>
-                <div class="compact-form-group"><label>📌 Status</label><select id="modalStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${statusValue === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+                <div class="compact-form-group"><label for="modalDate">📅 Date</label><input type="date" id="modalDate" name="modalDate" value="${dateValue}"></div>
+                <div class="compact-form-group"><label for="modalStatus">📌 Status</label><select id="modalStatus" name="modalStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${statusValue === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
             </div>
-            <div class="compact-form-group"><label>🏢 Business *</label><input id="modalBusiness" value="${existingAppt ? escapeHtml(existingAppt.business) : ''}" placeholder="Company name"></div>
-            <div class="compact-form-group"><label>👤 Contact *</label><input id="modalContact" value="${existingAppt ? escapeHtml(existingAppt.contactName) : ''}" placeholder="Full name"></div>
+            <div class="compact-form-group"><label for="modalBusiness">🏢 Business *</label><input type="text" id="modalBusiness" name="modalBusiness" value="${existingAppt ? escapeHtml(existingAppt.business) : ''}" placeholder="Company name"></div>
+            <div class="compact-form-group"><label for="modalContact">👤 Contact *</label><input type="text" id="modalContact" name="modalContact" value="${existingAppt ? escapeHtml(existingAppt.contactName) : ''}" placeholder="Full name"></div>
             <div class="compact-form-row">
-                <div class="compact-form-group"><label>💼 Role</label><input id="modalRole" value="${existingAppt ? escapeHtml(existingAppt.role || '') : ''}" placeholder="Owner/Manager"></div>
-                <div class="compact-form-group"><label>📞 Phone</label><input id="modalPhone" value="${existingAppt ? escapeHtml(existingAppt.phone || '') : ''}" placeholder="Phone number"></div>
+                <div class="compact-form-group"><label for="modalRole">💼 Role</label><input type="text" id="modalRole" name="modalRole" value="${existingAppt ? escapeHtml(existingAppt.role || '') : ''}" placeholder="Owner/Manager"></div>
+                <div class="compact-form-group"><label for="modalPhone">📞 Phone</label><input type="tel" id="modalPhone" name="modalPhone" value="${existingAppt ? escapeHtml(existingAppt.phone || '') : ''}" placeholder="Phone number"></div>
             </div>
             <div class="compact-form-row">
-                <div class="compact-form-group"><label>⏰ Time</label><input id="modalTime" value="${existingAppt ? escapeHtml(existingAppt.time || '') : ''}" placeholder="e.g., Tomorrow 2pm ET"></div>
-                <div class="compact-form-group"><label>👨‍💼 Assigned</label><input id="modalAssigned" value="${existingAppt ? escapeHtml(existingAppt.assigned || 'Daniel') : 'Daniel'}"></div>
+                <div class="compact-form-group"><label for="modalTime">⏰ Time</label><input type="text" id="modalTime" name="modalTime" value="${existingAppt ? escapeHtml(existingAppt.time || '') : ''}" placeholder="e.g., Tomorrow 2pm ET"></div>
+                <div class="compact-form-group"><label for="modalAssigned">👨‍💼 Assigned</label><input type="text" id="modalAssigned" name="modalAssigned" value="${existingAppt ? escapeHtml(existingAppt.assigned || 'Daniel') : 'Daniel'}"></div>
             </div>
-            <div class="compact-form-group"><label>🔗 CRM Link</label><input id="modalCrmLink" value="${existingAppt ? escapeHtml(existingAppt.crmLink || '') : ''}" placeholder="https://..."></div>
+            <div class="compact-form-group"><label for="modalCrmLink">🔗 CRM Link</label><input type="url" id="modalCrmLink" name="modalCrmLink" value="${existingAppt ? escapeHtml(existingAppt.crmLink || '') : ''}" placeholder="https://..."></div>
             <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="modalTagSelector">${tagOptionsHtml}</div></div>
-            <div class="compact-form-group"><label>📝 Notes</label><textarea id="modalNotes" rows="2" placeholder="Additional notes...">${existingAppt ? escapeHtml(existingAppt.notes || '') : ''}</textarea></div>
+            <div class="compact-form-group"><label for="modalNotes">📝 Notes</label><textarea id="modalNotes" name="modalNotes" rows="2" placeholder="Additional notes...">${existingAppt ? escapeHtml(existingAppt.notes || '') : ''}</textarea></div>
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px;">
-                <button id="modalSaveBtn" class="btn-icon" style="background: var(--success); color: white;"><i class="fas fa-save"></i> Save</button>
-                <button id="modalCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
+                <button type="button" id="modalSaveBtn" class="btn-icon" style="background: var(--success); color: white;"><i class="fas fa-save"></i> Save</button>
+                <button type="button" id="modalCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button>
             </div>
         </div>
     `;
@@ -236,19 +236,19 @@ function openSmartAddModal() {
     modal.className = 'modal-overlay';
     const tagOptionsHtml = TAG_OPTIONS.map(tag => `
         <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="smart-tag-checkbox">
+            <input type="checkbox" name="smart_tag_${tag.id}" value="${tag.id}" class="smart-tag-checkbox">
             <span class="tag-color-indicator" style="background: ${tag.color};"></span>
             <span>${tag.name}</span>
         </label>
     `).join('');
     
     modal.innerHTML = `<div class="compact-modal-card" style="width: 550px;"><h3 style="margin-bottom: 16px;"><i class="fas fa-magic"></i> Smart Import</h3><p style="margin-bottom: 12px; font-size: 0.75rem; color: var(--text-muted);">Paste appointment details - auto-extracts business, contact, phone, time, notes</p>
-        <div class="compact-form-group"><label>🔗 CRM Link</label><input type="url" id="smartCrmLink" placeholder="https://..."></div>
+        <div class="compact-form-group"><label for="smartCrmLink">🔗 CRM Link</label><input type="url" id="smartCrmLink" name="smartCrmLink" placeholder="https://..."></div>
         <div class="compact-form-group"><label>🏷️ Tags</label><div class="tag-selector" id="smartTagSelector">${tagOptionsHtml}</div></div>
-        <div class="compact-form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
-        <div class="compact-form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="4" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
+        <div class="compact-form-group"><label for="smartDate">📅 Date</label><input type="date" id="smartDate" name="smartDate" value="${getTodayStr()}"></div>
+        <div class="compact-form-group"><label for="smartText">📝 Paste Details</label><textarea id="smartText" name="smartText" rows="4" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
         <div id="smartPreview" style="background:var(--bg-primary); border-radius:12px; padding:12px; margin:12px 0; display:none; font-size:0.75rem;"><strong>Preview:</strong><div id="smartPreviewContent"></div></div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="smartCancelBtn" class="btn-icon">Cancel</button></div></div>`;
+        <div style="display:flex; gap:12px; justify-content:flex-end;"><button type="button" id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button type="button" id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button type="button" id="smartCancelBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     let currentParsed = null;
     
@@ -344,9 +344,56 @@ function renderInsightsPanel(container) {
     appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
     appointmentsInRange.forEach(a => { const s = getStatus(a); statusStats[s] = (statusStats[s] || 0) + 1; });
     appointmentsInRange.forEach(a => { if (a.tags) { a.tags.forEach(tag => { tagStats[tag] = (tagStats[tag] || 0) + 1; }); } });
-    container.innerHTML = `<div class="insights-header"><div class="date-range-selector"><span>Range</span><select id="datePresetSelect" class="date-preset"><option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option><option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option><option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option><option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option><option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option><option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option><option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option></select><div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;"><input type="date" id="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span><input type="date" id="customEndDate" value="${dashboardDateRange.end}" class="date-input"></div><button id="applyDateRange" class="btn-icon">Apply</button><div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div></div></div><div class="insights-summary"><div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div><div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div><div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div><div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div></div><div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div><div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4><div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div><div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div></div><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div><div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div></div>`;
+    
+    const insightsHtml = `
+        <div class="insights-header"><div class="date-range-selector">
+            <span>Range</span>
+            <select id="datePresetSelect" class="date-preset" name="datePresetSelect">
+                <option value="today" ${dashboardDatePreset==='today'?'selected':''}>Today</option>
+                <option value="yesterday" ${dashboardDatePreset==='yesterday'?'selected':''}>Yesterday</option>
+                <option value="this_week" ${dashboardDatePreset==='this_week'?'selected':''}>This Week</option>
+                <option value="last_week" ${dashboardDatePreset==='last_week'?'selected':''}>Last Week</option>
+                <option value="this_month" ${dashboardDatePreset==='this_month'?'selected':''}>This Month</option>
+                <option value="last_month" ${dashboardDatePreset==='last_month'?'selected':''}>Last Month</option>
+                <option value="custom" ${dashboardDatePreset==='custom'?'selected':''}>Custom</option>
+            </select>
+            <div id="customDateRange" style="display:${dashboardDatePreset==='custom'?'flex':'none'}; gap:8px;">
+                <input type="date" id="customStartDate" name="customStartDate" value="${dashboardDateRange.start}" class="date-input"><span>to</span>
+                <input type="date" id="customEndDate" name="customEndDate" value="${dashboardDateRange.end}" class="date-input">
+            </div>
+            <button id="applyDateRange" class="btn-icon">Apply</button>
+            <div class="timezone-display"><i class="fas fa-globe"></i><span>Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}</span></div>
+        </div></div>
+        <div class="insights-summary">
+            <div class="insight-stat"><div class="insight-stat-value">${total}</div><div class="insight-stat-label">Total Appointments</div></div>
+            <div class="insight-stat"><div class="insight-stat-value">${unique}</div><div class="insight-stat-label">Unique Businesses</div></div>
+            <div class="insight-stat"><div class="insight-stat-value">${todayCount}/${goals.daily}</div><div class="insight-stat-label">Today's Progress</div><div class="progress-mini"><div style="width:${todayProgress}%; background:var(--success); height:100%;"></div></div></div>
+            <div class="insight-stat"><div class="insight-stat-value">${Math.round(total/Math.max(1,daysDiff))}</div><div class="insight-stat-label">Avg per Day</div></div>
+        </div>
+        <div class="feature-card"><h4><i class="fas fa-chart-line"></i> Appointment Trend</h4><canvas id="insightsChartCanvas" style="width:100%; max-height:300px;"></canvas></div>
+        <div class="feature-card"><h4><i class="fas fa-chart-pie"></i> Status Distribution</h4><div class="distribution-list">${Object.entries(statusStats).map(([s,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${s}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
+        <div class="feature-card"><h4><i class="fas fa-tags"></i> Tag Distribution</h4><div class="distribution-list">${Object.entries(tagStats).map(([t,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${TAG_OPTIONS.find(opt=>opt.id===t)?.name||t}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
+        <div class="feature-card"><h4><i class="fas fa-bullseye"></i> Goal Progress</h4>
+            <div class="goal-progress-item"><div class="goal-progress-label"><span>Daily</span><span>${getTodayCount()}/${goals.daily}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getTodayCount()/goals.daily)*100)}%; background:var(--primary);"></div></div></div>
+            <div class="goal-progress-item"><div class="goal-progress-label"><span>Weekly</span><span>${getWeekCount()}/${goals.weekly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getWeekCount()/goals.weekly)*100)}%; background:var(--success);"></div></div></div>
+            <div class="goal-progress-item"><div class="goal-progress-label"><span>Monthly</span><span>${getMonthCount()}/${goals.monthly}</span></div><div class="goal-progress-bar"><div class="goal-progress-fill" style="width:${Math.min(100,(getMonthCount()/goals.monthly)*100)}%; background:var(--secondary);"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <div class="feature-card"><h4><i class="fas fa-users"></i> Assignment</h4><div class="distribution-list">${Object.entries(assignedStats).map(([n,c])=>`<div class="distribution-item"><span><i class="fas fa-user"></i> ${escapeHtml(n)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
+            <div class="feature-card"><h4><i class="fas fa-briefcase"></i> Roles</h4><div class="distribution-list">${Object.entries(roleStats).map(([r,c])=>`<div class="distribution-item"><span><i class="fas fa-tag"></i> ${escapeHtml(r)}</span><span>${c}</span></div>`).join('')||'No data'}</div></div>
+        </div>
+    `;
+    container.innerHTML = insightsHtml;
+    
     const ctx = document.getElementById('insightsChartCanvas');
-    if (ctx) { if (featureChartInstance) featureChartInstance.destroy(); featureChartInstance = new Chart(ctx, { type: 'bar', data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: true } }); }
+    if (ctx) { 
+        if (featureChartInstance) featureChartInstance.destroy(); 
+        featureChartInstance = new Chart(ctx, { 
+            type: 'bar', 
+            data: { labels: chartLabels, datasets: [{ label: 'Appointments', data: chartData, backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 8 }] }, 
+            options: { responsive: true, maintainAspectRatio: true } 
+        }); 
+    }
     const presetSelect = document.getElementById('datePresetSelect'), customDiv = document.getElementById('customDateRange'), applyBtn = document.getElementById('applyDateRange');
     if (presetSelect) presetSelect.addEventListener('change', (e) => { dashboardDatePreset = e.target.value; if (dashboardDatePreset === 'custom') customDiv.style.display = 'flex'; else { customDiv.style.display = 'none'; dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); } });
     if (applyBtn) applyBtn.addEventListener('click', () => { if (dashboardDatePreset === 'custom') { const s = document.getElementById('customStartDate')?.value, e = document.getElementById('customEndDate')?.value; if (s && e) { dashboardDateRange = { start: s, end: e }; renderInsightsPanel(container); } } else { dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); } });
@@ -372,10 +419,16 @@ function renderAdvancedReports(container) {
     const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
     const last7Days = [], trendData = [];
     for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
-    container.innerHTML = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
+    
+    const reportsHtml = `<div class="reports-container"><div class="report-section"><div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div><div class="report-content" id="reportContent"><div class="report-metrics"><div class="metric-card"><div class="metric-value">${total}</div><div class="metric-label">Total Appointments</div></div><div class="metric-card"><div class="metric-value">${uniqueBusinesses}</div><div class="metric-label">Unique Businesses</div></div><div class="metric-card"><div class="metric-value">${conversionRate}%</div><div class="metric-label">Conversion Rate</div></div><div class="metric-card"><div class="metric-value">${Math.round(total / 30)}</div><div class="metric-label">Avg/Day</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-funnel-dollar"></i> Conversion Funnel</h4><div class="conversion-funnel"><div class="funnel-step"><div class="count">${warmCallBooked}</div><div class="label">Warm Call Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div><div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div><div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div></div><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-simple"></i> 7-Day Trend</h4><canvas id="reportTrendChart" style="width:100%; height:200px;"></canvas><h4 style="margin:16px 0 10px 0;"><i class="fas fa-chart-pie"></i> Status Distribution</h4><canvas id="reportStatusChart" style="width:100%; height:200px;"></canvas></div></div></div>`;
+    container.innerHTML = reportsHtml;
+    
     new Chart(document.getElementById('reportTrendChart'), { type: 'line', data: { labels: last7Days, datasets: [{ label: 'Appointments', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: true } });
     new Chart(document.getElementById('reportStatusChart'), { type: 'pie', data: { labels: ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'], datasets: [{ data: [warmCallBooked, meetingBooked, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: true } });
-    document.getElementById('exportPDFBtn')?.addEventListener('click', () => { html2pdf().set({ margin: 0.5, filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(document.getElementById('reportContent')).save(); showToast('Report exported as PDF', 'success'); });
+    document.getElementById('exportPDFBtn')?.addEventListener('click', () => { 
+        html2pdf().set({ margin: 0.5, filename: `ScriptFlow_Report_${getTodayStr()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(document.getElementById('reportContent')).save(); 
+        showToast('Report exported as PDF', 'success'); 
+    });
 }
 
 // ==================== CALENDAR VIEW ====================
@@ -385,7 +438,10 @@ function renderCalendarPanel(container) {
     let daysHtml = '';
     for (let i = 0; i < firstDay; i++) daysHtml += `<div class="calendar-day"></div>`;
     for (let d = 1; d <= daysInMonth; d++) { const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const apptCount = appointments[dateStr]?.reports?.length || 0; daysHtml += `<div class="calendar-day ${selectedCalDate === dateStr ? 'selected' : ''}" data-date="${dateStr}"><span>${d}</span>${apptCount > 0 ? `<span class="appt-badge">${apptCount}</span>` : ''}</div>`; }
-    container.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGrid">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" value="${selectedCalDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>`;
+    
+    const calendarHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGrid">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" name="quickDatePicker" value="${selectedCalDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>`;
+    container.innerHTML = calendarHtml;
+    
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarPanel(container); }); });
     document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderCalendarPanel(container); });
     document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarPanel(container); });
@@ -469,20 +525,22 @@ function renderListView(container) {
     const statusOptionsHtml = STATUS_OPTIONS.map(s => `<option value="${s}" ${currentStatusFilter === s ? 'selected' : ''}>${s}</option>`).join('');
     const tagOptionsHtml = `<option value="all" ${currentTagFilter === 'all' ? 'selected' : ''}>All Tags</option>` + TAG_OPTIONS.map(t => `<option value="${t.id}" ${currentTagFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('');
     
-    container.innerHTML = `
+    const listHtml = `
         <div class="list-search-container">
-            <input type="text" id="listSearchInput" class="list-search-input" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
+            <input type="text" id="listSearchInput" class="list-search-input" name="listSearchInput" placeholder="🔍 Search by business, contact, phone, or notes..." value="${escapeHtml(currentListSearchTerm)}">
             <button id="clearSearchBtn" class="search-clear-btn"><i class="fas fa-times"></i> Clear</button>
             ${currentListSearchTerm ? `<span class="search-results-count">Found ${filtered.length} result${filtered.length !== 1 ? 's' : ''}</span>` : ''}
         </div>
         <div class="status-filter-container">
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tag"></i> Status:</span><select id="statusFilterDropdown" class="status-filter-dropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select></div>
-            <div class="filter-group"><span class="filter-label"><i class="fas fa-tags"></i> Tags:</span><select id="tagFilterDropdown" class="tag-filter-dropdown">${tagOptionsHtml}</select></div>
+            <div class="filter-group"><span class="filter-label"><i class="fas fa-tag"></i> Status:</span><select id="statusFilterDropdown" class="status-filter-dropdown" name="statusFilterDropdown"><option value="all" ${currentStatusFilter === 'all' ? 'selected' : ''}>All Statuses</option>${statusOptionsHtml}</select></div>
+            <div class="filter-group"><span class="filter-label"><i class="fas fa-tags"></i> Tags:</span><select id="tagFilterDropdown" class="tag-filter-dropdown" name="tagFilterDropdown">${tagOptionsHtml}</select></div>
         </div>
         <div class="appointments-list-view">
             ${filtered.length === 0 ? `<div class="empty-state"><i class="fas fa-calendar-alt"></i><p>No appointments found</p><button class="btn-icon" id="emptyStateAddBtn" style="margin-top:12px;"><i class="fas fa-plus-circle"></i> Add Appointment</button></div>` : filtered.map(a => renderListItem(a)).join('')}
         </div>
     `;
+    container.innerHTML = listHtml;
+    
     document.getElementById('listSearchInput')?.addEventListener('input', (e) => { currentListSearchTerm = e.target.value; renderListView(container); });
     document.getElementById('clearSearchBtn')?.addEventListener('click', () => { currentListSearchTerm = ''; renderListView(container); });
     document.getElementById('statusFilterDropdown')?.addEventListener('change', (e) => { currentStatusFilter = e.target.value; renderListView(container); });
