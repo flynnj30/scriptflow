@@ -12,7 +12,7 @@
 </head>
 <body>
 <div class="app-wrapper">
-    <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
+    <button class="menu-toggle" id="menuToggleBtn" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
     
     <aside class="sidebar" id="mainSidebar">
         <div class="sidebar-header">
@@ -23,7 +23,10 @@
         </div>
         
         <div id="scriptsListSection" class="scripts-list-section">
-            <div class="search-area"><input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..."></div>
+            <div class="search-area">
+                <label for="scriptSearch" class="visually-hidden">Search scripts</label>
+                <input type="text" id="scriptSearch" name="scriptSearch" class="search-box" placeholder="🔍 Search scripts...">
+            </div>
             <div class="scripts-container">
                 <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
                 <div id="scriptListContainer"></div>
