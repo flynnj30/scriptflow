@@ -585,46 +585,6 @@ body {
 .appointment-item-draggable:active { cursor: grabbing; }
 .appointment-item-draggable.dragging { opacity: 0.5; }
 
-/* Enhanced Compact Appointment Modal */
-.compact-modal-card {
-    background: var(--bg-secondary);
-    border-radius: 24px;
-    max-width: 90%;
-    max-height: 85vh;
-    overflow-y: auto;
-    padding: 20px;
-    width: 520px;
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-lg);
-}
-
-.compact-form-group {
-    margin-bottom: 14px;
-}
-.compact-form-group label {
-    font-weight: 600;
-    font-size: 0.7rem;
-    margin-bottom: 4px;
-    display: block;
-    color: var(--text-secondary);
-}
-.compact-form-group input, 
-.compact-form-group textarea, 
-.compact-form-group select {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-size: 0.8rem;
-}
-.compact-form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
 /* Tag Selector */
 .tag-selector {
     display: flex;
@@ -981,6 +941,46 @@ body {
     font-size: 3rem;
     margin-bottom: 16px;
     opacity: 0.5;
+}
+
+/* Compact Appointment Modal */
+.compact-modal-card {
+    background: var(--bg-secondary);
+    border-radius: 24px;
+    max-width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px;
+    width: 520px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.compact-form-group {
+    margin-bottom: 14px;
+}
+.compact-form-group label {
+    font-weight: 600;
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+    display: block;
+    color: var(--text-secondary);
+}
+.compact-form-group input, 
+.compact-form-group textarea, 
+.compact-form-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+}
+.compact-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
 
 /* Reports & Insights */
