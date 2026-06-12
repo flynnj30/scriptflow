@@ -21,6 +21,7 @@
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
+    --info: #3b82f6;
     --accent-gradient: linear-gradient(135deg, #3b82f6, #8b5cf6);
     --sidebar-text: #e2e8f0;
     --sidebar-text-secondary: #7c8ba0;
@@ -32,8 +33,12 @@
     --scrollbar-track: #1e293b;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #1e293b;
-    --status-warm-booked: #3b82f6;
-    --status-called: #8b5cf6;
+    --tag-qualified-warm-call: #10b981;
+    --tag-unqualified-warm-callback: #f59e0b;
+    --tag-vip: #3b82f6;
+    --tag-negligent-warm-callback: #ef4444;
+    --status-warm-call-booked: #3b82f6;
+    --status-meeting-booked: #8b5cf6;
     --status-canceled: #ef4444;
     --status-rescheduled: #f59e0b;
 }
@@ -57,8 +62,12 @@ body.dark {
     --scrollbar-track: #0f172a;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #334155;
-    --status-warm-booked: #60a5fa;
-    --status-called: #a78bfa;
+    --tag-qualified-warm-call: #34d399;
+    --tag-unqualified-warm-callback: #fbbf24;
+    --tag-vip: #60a5fa;
+    --tag-negligent-warm-callback: #f87171;
+    --status-warm-call-booked: #60a5fa;
+    --status-meeting-booked: #a78bfa;
     --status-canceled: #f87171;
     --status-rescheduled: #fbbf24;
 }
@@ -575,6 +584,73 @@ body {
 .appointment-item-draggable:active { cursor: grabbing; }
 .appointment-item-draggable.dragging { opacity: 0.5; }
 
+/* Tag Selector Modal */
+.tag-selector {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--bg-primary);
+    border-radius: 20px;
+}
+
+.tag-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-color);
+}
+
+.tag-option.selected {
+    border: 2px solid currentColor;
+    box-shadow: 0 0 0 1px currentColor;
+}
+
+.tag-option input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.tag-color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.tag-qualified-warm-call { background: var(--tag-qualified-warm-call); }
+.tag-unqualified-warm-callback { background: var(--tag-unqualified-warm-callback); }
+.tag-vip { background: var(--tag-vip); }
+.tag-negligent-warm-callback { background: var(--tag-negligent-warm-callback); }
+
+/* Tags Display */
+.appointment-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.appointment-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 500;
+}
+
+.tag-qualified-warm-call-bg { background: var(--tag-qualified-warm-call); color: white; }
+.tag-unqualified-warm-callback-bg { background: var(--tag-unqualified-warm-callback); color: #1e293b; }
+.tag-vip-bg { background: var(--tag-vip); color: white; }
+.tag-negligent-warm-callback-bg { background: var(--tag-negligent-warm-callback); color: white; }
+
 /* List View */
 .appointments-list-view {
     display: flex;
@@ -761,8 +837,8 @@ body {
     font-weight: 600;
 }
 
-.status-warm-booked-sm { background: var(--status-warm-booked); color: white; }
-.status-called-sm { background: var(--status-called); color: white; }
+.status-warm-call-booked-sm { background: var(--status-warm-call-booked); color: white; }
+.status-meeting-booked-sm { background: var(--status-meeting-booked); color: white; }
 .status-canceled-sm { background: var(--status-canceled); color: white; }
 .status-rescheduled-sm { background: var(--status-rescheduled); color: #1e293b; }
 
@@ -822,7 +898,10 @@ body {
 .status-filter-container {
     margin-bottom: 20px;
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .status-filter-dropdown {
@@ -834,7 +913,19 @@ body {
     font-size: 0.85rem;
     cursor: pointer;
     font-weight: 500;
-    min-width: 160px;
+    min-width: 180px;
+}
+
+.tag-filter-dropdown {
+    padding: 10px 20px;
+    border-radius: 40px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 500;
+    min-width: 200px;
 }
 
 .empty-state {
@@ -1095,4 +1186,5 @@ body {
     .conversion-funnel { flex-direction: column; }
     .funnel-arrow { transform: rotate(90deg); }
     .report-metrics { grid-template-columns: 1fr; }
+    .status-filter-container { flex-direction: column; align-items: stretch; }
 }
