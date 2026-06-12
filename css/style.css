@@ -32,12 +32,10 @@
     --scrollbar-track: #1e293b;
     --scrollbar-thumb: #334155;
     --tooltip-bg: #1e293b;
-    /* Tag Colors */
     --tag-qualified: #10b981;
     --tag-unqualified: #f59e0b;
     --tag-vip: #3b82f6;
     --tag-negligent: #ef4444;
-    /* Status Colors */
     --status-warm-call-booked: #3b82f6;
     --status-meeting-booked: #8b5cf6;
     --status-canceled: #ef4444;
@@ -87,7 +85,6 @@ body {
     position: relative;
 }
 
-/* Sidebar */
 .sidebar {
     width: 320px;
     background: var(--bg-sidebar);
@@ -118,7 +115,6 @@ body {
 
 .main-content.expanded { margin-left: 0; }
 
-/* Sidebar Header */
 .sidebar-header {
     padding: 28px 24px 20px 24px;
     border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -146,7 +142,6 @@ body {
 .logo-text h2 { font-size: 1.2rem; font-weight: 700; color: white; }
 .logo-text p { font-size: 0.7rem; color: var(--sidebar-text-secondary); }
 
-/* Menu Toggle */
 .menu-toggle {
     position: fixed;
     top: 20px;
@@ -169,7 +164,6 @@ body {
 
 .menu-toggle:hover { background: var(--primary); color: white; transform: scale(1.02); }
 
-/* Search Area */
 .search-area { padding: 20px 20px 12px 20px; }
 .search-box {
     width: 100%;
@@ -183,7 +177,6 @@ body {
 }
 .search-box:focus { border-color: var(--primary); background: rgba(255,255,255,0.06); }
 
-/* Scripts Section */
 .scripts-list-section { flex: 1; overflow-y: auto; }
 .scripts-container { padding: 0 16px 20px 16px; }
 
@@ -254,7 +247,6 @@ body {
 }
 .add-script-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
-/* Tools Section */
 .tools-section {
     margin-top: auto;
     padding: 20px 16px 24px;
@@ -310,7 +302,6 @@ body {
     text-align: center;
 }
 
-/* Top Bar */
 .top-bar {
     display: flex;
     justify-content: space-between;
@@ -360,7 +351,6 @@ body {
     font-size: 0.75rem;
 }
 
-/* Priority Indicator */
 .priority-indicator {
     display: inline-flex;
     align-items: center;
@@ -426,7 +416,6 @@ body {
     border-color: var(--tooltip-bg) transparent transparent transparent;
 }
 
-/* Script Card */
 .script-card {
     background: var(--bg-secondary);
     border-radius: 28px;
@@ -473,7 +462,6 @@ body {
     color: var(--text-primary);
 }
 
-/* Feature Panel */
 .feature-panel {
     background: var(--bg-secondary);
     border-radius: 28px;
@@ -545,7 +533,6 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Calendar Grid */
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -585,7 +572,6 @@ body {
 .appointment-item-draggable:active { cursor: grabbing; }
 .appointment-item-draggable.dragging { opacity: 0.5; }
 
-/* Tag Selector */
 .tag-selector {
     display: flex;
     gap: 10px;
@@ -631,7 +617,6 @@ body {
 .tag-vip { background: var(--tag-vip); }
 .tag-negligent { background: var(--tag-negligent); }
 
-/* Tags Display */
 .appointment-tags {
     display: flex;
     gap: 6px;
@@ -654,7 +639,6 @@ body {
 .tag-vip-bg { background: var(--tag-vip); color: white; }
 .tag-negligent-bg { background: var(--tag-negligent); color: white; }
 
-/* List View */
 .appointments-list-view {
     display: flex;
     flex-direction: column;
@@ -893,7 +877,6 @@ body {
     color: white;
 }
 
-/* Filter Containers */
 .status-filter-container {
     margin-bottom: 20px;
     display: flex;
@@ -943,7 +926,6 @@ body {
     opacity: 0.5;
 }
 
-/* Compact Appointment Modal */
 .compact-modal-card {
     background: var(--bg-secondary);
     border-radius: 24px;
@@ -983,7 +965,6 @@ body {
     gap: 12px;
 }
 
-/* Reports & Insights */
 .reports-container {
     display: flex;
     flex-direction: column;
@@ -1141,7 +1122,6 @@ body {
     font-size: 0.8rem;
 }
 
-/* Toast */
 .toast {
     position: fixed;
     bottom: 24px;
@@ -1176,7 +1156,6 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .sidebar { width: 280px; }
     .main-content { margin-left: 0; padding: 20px; }
