@@ -14,7 +14,8 @@ let currentVersionIndex = {};
 
 // Calendar State
 let currentCalDate = new Date();
-let selectedCalDate = new Date().toISOString().split('T')[0];
+let selectedDate = getTodayStr();
+let draggedAppointment = null;
 
 // Dashboard State
 let dashboardDatePreset = 'today';
@@ -26,9 +27,8 @@ let currentListSearchTerm = '';
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
-let draggedItem = null;
 
-// Status Options (Updated)
+// Status Options
 const STATUS_OPTIONS = ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'];
 
 // Tag Options
@@ -39,13 +39,28 @@ const TAG_OPTIONS = [
     { id: 'negligent_warm_callback', name: 'Negligent Warm Callback', color: 'var(--tag-negligent-warm-callback)', colorClass: 'tag-negligent-warm-callback-bg' }
 ];
 
+// ==================== UTILITIES ====================
+function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+function formatDate(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function formatDateShort(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+function escapeHtml(s) { return s ? String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])) : ''; }
+function replaceNameInScript(content) { return content; }
+
 function getStatusClass(status) {
+    switch(status) {
+        case 'Warm Call Booked': return 'status-warm';
+        case 'Meeting Booked': return 'status-meeting';
+        case 'Canceled': return 'status-canceled';
+        default: return 'status-rescheduled';
+    }
+}
+
+function getStatusClassSmall(status) {
     switch(status) {
         case 'Warm Call Booked': return 'status-warm-call-booked-sm';
         case 'Meeting Booked': return 'status-meeting-booked-sm';
         case 'Canceled': return 'status-canceled-sm';
-        case 'Rescheduled': return 'status-rescheduled-sm';
-        default: return 'status-warm-call-booked-sm';
+        default: return 'status-rescheduled-sm';
     }
 }
 
@@ -55,16 +70,6 @@ function getStatus(appt) {
     if (appt.status === 'Warm-Booked') return 'Warm Call Booked';
     if (appt.status === 'Called') return 'Meeting Booked';
     return appt.status;
-}
-
-function getStatusClassSmall(status) {
-    switch(status) {
-        case 'Warm Call Booked': return 'status-warm-call-booked-sm';
-        case 'Meeting Booked': return 'status-meeting-booked-sm';
-        case 'Canceled': return 'status-canceled-sm';
-        case 'Rescheduled': return 'status-rescheduled-sm';
-        default: return 'status-warm-call-booked-sm';
-    }
 }
 
 function getTagDisplay(tags) {
@@ -113,14 +118,293 @@ function copyToClipboard(text) {
     });
 }
 
-function escapeHtml(s) {
-    return s ? String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])) : '';
+// ==================== APPOINTMENT CRUD ====================
+function getAppointmentsForDate(dateStr) {
+    return appointments[dateStr]?.reports || [];
 }
 
-function getTodayStr() { return new Date().toISOString().split('T')[0]; }
-function formatDate(dateStr) { if (!dateStr) return 'No date'; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
-function formatDateShort(dateStr) { if (!dateStr) return ''; const d = new Date(dateStr); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-function replaceNameInScript(content) { return content; }
+function getAppointmentCountForDate(dateStr) {
+    return appointments[dateStr]?.reports?.length || 0;
+}
+
+function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm Call Booked', crmLink = '', tags = []) {
+    if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
+    const newAppt = { 
+        id: editId || Date.now(), 
+        business, contactName, role, phone, time, notes, assigned: assigned || 'Daniel',
+        status: status || 'Warm Call Booked', 
+        crmLink: crmLink || '', 
+        tags: tags || [],
+        createdAt: new Date().toISOString(), 
+        fullText: `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned: ${assigned || 'Daniel'}\nDate: ${dateStr}` 
+    };
+    if (editId) { 
+        const idx = appointments[dateStr].reports.findIndex(r => r.id === editId); 
+        if (idx !== -1) appointments[dateStr].reports[idx] = newAppt; 
+        else appointments[dateStr].reports.unshift(newAppt); 
+    } else { 
+        appointments[dateStr].reports.unshift(newAppt); 
+    }
+    appointments[dateStr].count = appointments[dateStr].reports.length;
+    saveAppointments();
+    return newAppt;
+}
+
+function deleteAppointment(dateStr, id) {
+    if (appointments[dateStr]?.reports) {
+        appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
+        if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
+        else appointments[dateStr].count = appointments[dateStr].reports.length;
+        saveAppointments();
+        return true;
+    }
+    return false;
+}
+
+function moveAppointment(oldDate, appointmentId, newDate) {
+    const appt = appointments[oldDate]?.reports?.find(r => r.id === appointmentId);
+    if (appt && oldDate !== newDate) {
+        deleteAppointment(oldDate, appointmentId);
+        addAppointment(newDate, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appointmentId, appt.status, appt.crmLink, appt.tags);
+        showToast(`Moved "${appt.business}" to ${formatDate(newDate)}`, 'success');
+        return true;
+    }
+    return false;
+}
+
+function saveAppointments() { 
+    localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); 
+    updateStats(); 
+    renderCalendarGrid();
+    renderAppointmentsPanel(selectedDate);
+}
+
+function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
+
+function loadAppointmentData() { 
+    const saved = localStorage.getItem('scriptflow_appointments_main'); 
+    if (saved) appointments = JSON.parse(saved); 
+    const savedGoals = localStorage.getItem('scriptflow_goals_main'); 
+    if (savedGoals) goals = JSON.parse(savedGoals); 
+    let needsSave = false; 
+    for (let date in appointments) { 
+        if (appointments[date].reports) { 
+            appointments[date].reports.forEach(appt => { 
+                if (!appt.status) { appt.status = 'Warm Call Booked'; needsSave = true; } 
+                else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Called') { appt.status = 'Meeting Booked'; needsSave = true; }
+                if (!appt.crmLink) appt.crmLink = '';
+                if (!appt.tags) appt.tags = [];
+            }); 
+        } 
+    } 
+    if (needsSave) saveAppointments(); 
+    updateStats(); 
+}
+
+function getTodayCount() { return getAppointmentCountForDate(getTodayStr()); }
+function getWeekCount() { 
+    const now = new Date(); 
+    const start = new Date(now); 
+    start.setDate(now.getDate() - now.getDay()); 
+    let total = 0; 
+    for (let d in appointments) { 
+        const date = new Date(d); 
+        if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) 
+            total += appointments[d].reports.length; 
+    } 
+    return total; 
+}
+function getMonthCount() { 
+    const now = new Date(); 
+    const start = new Date(now.getFullYear(), now.getMonth(), 1); 
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); 
+    let total = 0; 
+    for (let d in appointments) { 
+        const date = new Date(d); 
+        if (date >= start && date <= end && appointments[d].reports) 
+            total += appointments[d].reports.length; 
+    } 
+    return total; 
+}
+
+function updateStats() { 
+    document.getElementById('statToday').innerText = getTodayCount(); 
+    document.getElementById('statWeek').innerText = getWeekCount(); 
+    document.getElementById('statMonth').innerText = getMonthCount(); 
+    document.getElementById('goalDaily').innerText = goals.daily; 
+    document.getElementById('goalWeekly').innerText = goals.weekly; 
+    document.getElementById('goalMonthly').innerText = goals.monthly; 
+}
+
+// ==================== CALENDAR GRID RENDERING ====================
+function renderCalendarGrid() {
+    const year = currentCalDate.getFullYear();
+    const month = currentCalDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayStr = getTodayStr();
+    
+    let daysHtml = '';
+    for (let i = 0; i < firstDay; i++) {
+        daysHtml += `<div class="cal-day" style="opacity: 0.3; background: transparent; border-color: transparent;"></div>`;
+    }
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const apptCount = getAppointmentCountForDate(dateStr);
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedDate;
+        
+        let indicatorsHtml = '';
+        if (apptCount > 0) {
+            if (apptCount <= 3) {
+                for (let i = 0; i < Math.min(apptCount, 3); i++) {
+                    indicatorsHtml += `<div class="indicator-dot"></div>`;
+                }
+            } else {
+                indicatorsHtml = `<span class="indicator-badge">${apptCount}</span>`;
+            }
+        }
+        
+        daysHtml += `
+            <div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}" data-date="${dateStr}">
+                <div class="day-number">${d}</div>
+                <div class="day-indicators">${indicatorsHtml}</div>
+            </div>
+        `;
+    }
+    
+    const calendarGrid = document.getElementById('calendarGrid');
+    if (calendarGrid) {
+        calendarGrid.innerHTML = daysHtml;
+        document.getElementById('currentMonthBtn').innerHTML = `${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`;
+        
+        // Attach click and drag events
+        document.querySelectorAll('.cal-day[data-date]').forEach(day => {
+            day.addEventListener('click', () => {
+                selectedDate = day.getAttribute('data-date');
+                renderCalendarGrid();
+                renderAppointmentsPanel(selectedDate);
+            });
+            day.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                day.classList.add('drag-over');
+            });
+            day.addEventListener('dragleave', () => {
+                day.classList.remove('drag-over');
+            });
+            day.addEventListener('drop', (e) => {
+                e.preventDefault();
+                day.classList.remove('drag-over');
+                const targetDate = day.getAttribute('data-date');
+                if (draggedAppointment && draggedAppointment.oldDate !== targetDate) {
+                    moveAppointment(draggedAppointment.oldDate, draggedAppointment.id, targetDate);
+                    renderCalendarGrid();
+                    renderAppointmentsPanel(selectedDate);
+                }
+                draggedAppointment = null;
+            });
+        });
+    }
+}
+
+// ==================== APPOINTMENTS PANEL (LEFT SIDE) ====================
+function renderAppointmentsPanel(dateStr) {
+    const container = document.getElementById('appointmentsListContainer');
+    const dateDisplay = document.getElementById('selectedDateDisplay');
+    const appointmentsList = getAppointmentsForDate(dateStr);
+    
+    if (!container) return;
+    
+    dateDisplay.innerHTML = `<i class="fas fa-calendar-day"></i> ${formatDate(dateStr)}`;
+    
+    if (appointmentsList.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-calendar-check"></i>
+                <p>No appointments for ${formatDate(dateStr)}</p>
+                <p style="font-size: 0.7rem; margin-top: 8px;">Click "New Appointment" to add one</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = appointmentsList.map(appt => `
+        <div class="appointment-card" draggable="true" data-id="${appt.id}" data-date="${dateStr}">
+            <div class="appointment-business">
+                <span><i class="fas fa-building"></i> ${escapeHtml(appt.business)}</span>
+                <span class="status-badge ${getStatusClass(appt.status)}">${escapeHtml(appt.status)}</span>
+            </div>
+            <div class="appointment-details">
+                <span><i class="fas fa-user"></i> ${escapeHtml(appt.contactName)}</span>
+                ${appt.role ? `<span><i class="fas fa-briefcase"></i> ${escapeHtml(appt.role)}</span>` : ''}
+                ${appt.phone ? `<span><i class="fas fa-phone"></i> ${escapeHtml(appt.phone)}</span>` : ''}
+                ${appt.time ? `<span><i class="fas fa-clock"></i> ${escapeHtml(appt.time)}</span>` : ''}
+            </div>
+            ${appt.notes ? `<div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 6px;"><i class="fas fa-sticky-note"></i> ${escapeHtml(appt.notes.substring(0, 80))}${appt.notes.length > 80 ? '...' : ''}</div>` : ''}
+            ${appt.tags?.length ? `<div class="appointment-tags">${appt.tags.map(t => `<span class="appointment-tag ${TAG_OPTIONS.find(opt => opt.id === t)?.colorClass || ''}">${TAG_OPTIONS.find(opt => opt.id === t)?.name || t}</span>`).join('')}</div>` : ''}
+            <div class="action-icons">
+                <button class="action-icon edit-appt" data-id="${appt.id}" data-date="${dateStr}"><i class="fas fa-edit"></i> Edit</button>
+                <button class="action-icon copy-appt" data-id="${appt.id}" data-date="${dateStr}"><i class="fas fa-copy"></i> Copy</button>
+                <button class="action-icon danger delete-appt" data-id="${appt.id}" data-date="${dateStr}"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+            ${appt.crmLink ? `<div style="margin-top: 8px;"><a href="${escapeHtml(appt.crmLink)}" target="_blank" class="action-icon" style="background: var(--primary); color: white; padding: 4px 10px; border-radius: 8px; text-decoration: none; font-size: 0.65rem;"><i class="fas fa-external-link-alt"></i> CRM Link</a></div>` : ''}
+        </div>
+    `).join('');
+    
+    // Make appointments draggable
+    document.querySelectorAll('.appointment-card[draggable="true"]').forEach(el => {
+        el.addEventListener('dragstart', (e) => {
+            draggedAppointment = {
+                id: parseInt(el.getAttribute('data-id')),
+                oldDate: el.getAttribute('data-date')
+            };
+            el.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify(draggedAppointment));
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        el.addEventListener('dragend', (e) => {
+            el.classList.remove('dragging');
+            draggedAppointment = null;
+        });
+    });
+    
+    // Attach edit/delete/copy handlers
+    document.querySelectorAll('.edit-appt').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = parseInt(btn.getAttribute('data-id'));
+            const date = btn.getAttribute('data-date');
+            const appt = appointments[date]?.reports?.find(r => r.id === id);
+            if (appt) openEditAppointmentModal(date, appt);
+        });
+    });
+    
+    document.querySelectorAll('.copy-appt').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = parseInt(btn.getAttribute('data-id'));
+            const date = btn.getAttribute('data-date');
+            const appt = appointments[date]?.reports?.find(r => r.id === id);
+            if (appt) copyToClipboard(appt.fullText);
+        });
+    });
+    
+    document.querySelectorAll('.delete-appt').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = parseInt(btn.getAttribute('data-id'));
+            const date = btn.getAttribute('data-date');
+            if (confirm('Delete this appointment?')) {
+                deleteAppointment(date, id);
+                showToast('Deleted', 'info');
+            }
+        });
+    });
+}
 
 // ==================== SMART IMPORT ====================
 function parseAppointmentFromText(text, defaultDate) {
@@ -129,7 +413,7 @@ function parseAppointmentFromText(text, defaultDate) {
         notes: '', assigned: 'Daniel', status: 'Warm Call Booked', parsedDate: null, tags: []
     };
     
-    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY))/im);
+    const businessMatch = text.match(/(?:Business name|Business)[:\s]+([^\n]+)/i) || text.match(/^([A-Z][A-Z\s&]+(?:ELECTRIC|SERVICES|SOLUTIONS|INC|LLC|CORP|COMPANY|Plumbing))/im);
     if (businessMatch) result.business = businessMatch[1].trim();
     
     const nameMatch = text.match(/(?:Name|Contact)[:\s]+([^\n]+)/i) || text.match(/Name:\s*([^\n]+)/i);
@@ -174,7 +458,7 @@ function openSmartAddModal() {
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-magic"></i> Smart Appointment Import</h3><p style="margin:12px 0; font-size:0.8rem; color:var(--text-muted);">Fill in the CRM link below, select tags, then paste appointment details.</p>
         <div class="form-group"><label>🔗 CRM Link (Optional)</label><input type="url" id="crmLinkInput" class="crm-link-input" placeholder="https://yourcrm.com/lead/..."></div>
         <div class="form-group"><label>🏷️ Select Tags (Optional)</label><div class="tag-selector" id="tagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
+        <div class="form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${selectedDate}"></div>
         <div class="form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
         <div id="smartPreview" style="background:var(--bg-primary); border-radius:16px; padding:16px; margin:16px 0; display:none;"><strong><i class="fas fa-eye"></i> Preview:</strong><div id="smartPreviewContent"></div></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save</button><button id="smartCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button></div></div>`;
@@ -204,66 +488,98 @@ function openSmartAddModal() {
             currentParsed.assigned, null, 'Warm Call Booked', crmLink, selectedTags);
         modal.remove();
         showToast(`Saved for ${currentParsed.finalDate}!`, 'success');
-        refreshCurrentView();
+        renderCalendarGrid();
+        renderAppointmentsPanel(selectedDate);
     });
     document.getElementById('smartCancelBtn').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
-// ==================== APPOINTMENT CRUD ====================
-function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm Call Booked', crmLink = '', tags = []) {
-    if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
-    const newAppt = { 
-        id: editId || Date.now(), business, contactName, role, phone, time, notes, assigned, 
-        status: status || 'Warm Call Booked', crmLink: crmLink || '', tags: tags || [],
-        createdAt: new Date().toISOString(), 
-        fullText: `Business: ${business}\nContact: ${contactName}\nRole: ${role}\nPhone: ${phone}\nTime: ${time}\nNotes: ${notes}\nAssigned: ${assigned}\nDate: ${dateStr}` 
-    };
-    if (editId) { const idx = appointments[dateStr].reports.findIndex(r => r.id === editId); if (idx !== -1) appointments[dateStr].reports[idx] = newAppt; else appointments[dateStr].reports.unshift(newAppt); }
-    else { appointments[dateStr].reports.unshift(newAppt); }
-    appointments[dateStr].count = appointments[dateStr].reports.length;
-    saveAppointments();
-    return newAppt.fullText;
+// ==================== MODALS ====================
+function openQuickReportWithDate(defaultDate) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="quick-tag-checkbox">
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    modal.innerHTML = `<div class="modal-card"><h3>Quick Add Appointment</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
+        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div>
+        <div class="form-group"><label>Contact *</label><input id="reportName"></div>
+        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
+        <div class="form-group"><label>Phone</label><input id="reportPhone"></div>
+        <div class="form-group"><label>Time</label><input id="reportTime"></div>
+        <div class="form-group"><label>Status</label><select id="reportStatus">${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="quickTagSelector">${tagOptionsHtml}</div></div>
+        <div class="form-group"><label>CRM Link</label><input id="reportCrmLink" placeholder="https://..."></div>
+        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
+        <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('submitReportBtn').addEventListener('click', () => { 
+        const bus = document.getElementById('reportBusiness').value, name = document.getElementById('reportName').value; 
+        if (!bus || !name) { showToast('Required fields', 'error'); return; } 
+        const selectedTags = Array.from(document.querySelectorAll('.quick-tag-checkbox:checked')).map(cb => cb.value);
+        addAppointment(document.getElementById('reportDate').value, bus, name, document.getElementById('reportRole').value, 
+            document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value, 
+            document.getElementById('reportAssigned').value, null, document.getElementById('reportStatus').value, 
+            document.getElementById('reportCrmLink').value, selectedTags); 
+        modal.remove(); 
+        showToast('Saved!', 'success'); 
+        renderCalendarGrid();
+        renderAppointmentsPanel(selectedDate);
+    });
+    document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
-function deleteAppointment(dateStr, id) {
-    if (appointments[dateStr]?.reports) {
-        appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
-        if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
-        else appointments[dateStr].count = appointments[dateStr].reports.length;
-        saveAppointments();
-        return true;
-    }
-    return false;
+function openEditAppointmentModal(dateStr, appt) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
+        <label class="tag-option" style="border-color: ${tag.color};">
+            <input type="checkbox" value="${tag.id}" class="edit-tag-checkbox" ${(appt.tags || []).includes(tag.id) ? 'checked' : ''}>
+            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
+            <span>${tag.name}</span>
+        </label>
+    `).join('');
+    
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
+        <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div>
+        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
+        <div class="form-group"><label>Contact *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
+        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role || '')}"></div>
+        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone || '')}"></div>
+        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time || '')}"></div>
+        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(appt) === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="editTagSelector">${tagOptionsHtml}</div></div>
+        <div class="form-group"><label>CRM Link</label><input id="editCrmLink" value="${escapeHtml(appt.crmLink || '')}" placeholder="https://..."></div>
+        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
+        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
+        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelEditBtn" class="btn-icon">Cancel</button></div></div>`;
+    document.body.appendChild(modal);
+    document.getElementById('saveEditBtn').addEventListener('click', () => { 
+        const newDate = document.getElementById('editDate').value; 
+        if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) { showToast('Business and Contact required', 'error'); return; } 
+        const selectedTags = Array.from(document.querySelectorAll('.edit-tag-checkbox:checked')).map(cb => cb.value);
+        deleteAppointment(dateStr, appt.id); 
+        addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value, 
+            document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, 
+            document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id, 
+            document.getElementById('editStatus').value, document.getElementById('editCrmLink').value, selectedTags); 
+        modal.remove(); 
+        showToast(`Updated`, 'success'); 
+        renderCalendarGrid();
+        renderAppointmentsPanel(selectedDate);
+    });
+    document.getElementById('cancelEditBtn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
-
-function saveAppointments() { localStorage.setItem('scriptflow_appointments_main', JSON.stringify(appointments)); updateStats(); }
-function saveGoals() { localStorage.setItem('scriptflow_goals_main', JSON.stringify(goals)); updateStats(); }
-function loadAppointmentData() { 
-    const saved = localStorage.getItem('scriptflow_appointments_main'); 
-    if (saved) appointments = JSON.parse(saved); 
-    const savedGoals = localStorage.getItem('scriptflow_goals_main'); 
-    if (savedGoals) goals = JSON.parse(savedGoals); 
-    let needsSave = false; 
-    for (let date in appointments) { 
-        if (appointments[date].reports) { 
-            appointments[date].reports.forEach(appt => { 
-                if (!appt.status) { appt.status = 'Warm Call Booked'; needsSave = true; } 
-                else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
-                else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
-                else if (appt.status === 'Called') { appt.status = 'Meeting Booked'; needsSave = true; }
-                if (!appt.crmLink) appt.crmLink = '';
-                if (!appt.tags) appt.tags = [];
-            }); 
-        } 
-    } 
-    if (needsSave) saveAppointments(); 
-    updateStats(); 
-}
-function getTodayCount() { return appointments[getTodayStr()]?.reports?.length || 0; }
-function getWeekCount() { const now = new Date(); const start = new Date(now); start.setDate(now.getDate() - now.getDay()); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= new Date(start.getTime() + 6*86400000) && appointments[d].reports) total += appointments[d].reports.length; } return total; }
-function getMonthCount() { const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); let total = 0; for (let d in appointments) { const date = new Date(d); if (date >= start && date <= end && appointments[d].reports) total += appointments[d].reports.length; } return total; }
-function updateStats() { document.getElementById('statToday').innerText = getTodayCount(); document.getElementById('statWeek').innerText = getWeekCount(); document.getElementById('statMonth').innerText = getMonthCount(); document.getElementById('goalDaily').innerText = goals.daily; document.getElementById('goalWeekly').innerText = goals.weekly; document.getElementById('goalMonthly').innerText = goals.monthly; }
 
 // ==================== ADVANCED REPORTS ====================
 function renderAdvancedReports(container) {
@@ -318,12 +634,12 @@ function renderInsightsPanel(container) {
     }
     const total = appointmentsInRange.length;
     const unique = new Set(appointmentsInRange.map(a => a.business)).size;
-    const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
+    const todayCount = getAppointmentCountForDate(getTodayStr());
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
     const startDate = new Date(dashboardDateRange.start), endDate = new Date(dashboardDateRange.end);
     const daysDiff = Math.ceil((endDate - startDate) / (1000*60*60*24)) + 1;
     const chartLabels = [], chartData = [];
-    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dateStr = d.toISOString().split('T')[0]; chartLabels.push(formatDateShort(dateStr)); chartData.push(appointments[dateStr]?.reports?.length || 0); }
+    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dateStr = d.toISOString().split('T')[0]; chartLabels.push(formatDateShort(dateStr)); chartData.push(getAppointmentCountForDate(dateStr)); }
     const assignedStats = {}, roleStats = {}, statusStats = {}, tagStats = {};
     appointmentsInRange.forEach(a => { const assigned = a.assigned || 'Unassigned'; assignedStats[assigned] = (assignedStats[assigned] || 0) + 1; });
     appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
@@ -337,26 +653,24 @@ function renderInsightsPanel(container) {
     if (applyBtn) applyBtn.addEventListener('click', () => { if (dashboardDatePreset === 'custom') { const s = document.getElementById('customStartDate')?.value, e = document.getElementById('customEndDate')?.value; if (s && e) { dashboardDateRange = { start: s, end: e }; renderInsightsPanel(container); } } else { dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); } });
 }
 
-// ==================== CALENDAR VIEW ====================
+// ==================== CALENDAR VIEW (Legacy) ====================
 function renderCalendarPanel(container) {
     const year = currentCalDate.getFullYear(), month = currentCalDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
     let daysHtml = '';
     for (let i = 0; i < firstDay; i++) daysHtml += `<div class="calendar-day"></div>`;
-    for (let d = 1; d <= daysInMonth; d++) { const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const apptCount = appointments[dateStr]?.reports?.length || 0; daysHtml += `<div class="calendar-day ${selectedCalDate === dateStr ? 'selected' : ''}" data-date="${dateStr}"><span>${d}</span>${apptCount > 0 ? `<span class="appt-badge">${apptCount}</span>` : ''}</div>`; }
-    container.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGrid">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" value="${selectedCalDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedCalDate)}</h4><div id="appointmentsList" class="appointments-list-view">${renderAppointmentsList(selectedCalDate)}</div></div>`;
-    document.querySelectorAll('.calendar-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedCalDate = el.getAttribute('data-date'); renderCalendarPanel(container); }); });
+    for (let d = 1; d <= daysInMonth; d++) { const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`; const apptCount = getAppointmentCountForDate(dateStr); daysHtml += `<div class="calendar-day ${selectedDate === dateStr ? 'selected' : ''}" data-date="${dateStr}"><span>${d}</span>${apptCount > 0 ? `<span class="appt-badge">${apptCount}</span>` : ''}</div>`; }
+    container.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;"><h4>${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}</h4><div style="display:flex; gap:8px;"><button id="calPrevBtn" class="btn-icon" style="padding:6px 12px;">◀ Prev</button><button id="calNextBtn" class="btn-icon" style="padding:6px 12px;">Next ▶</button><button id="calTodayBtn" class="btn-icon" style="padding:6px 12px;">Today</button></div></div><div class="calendar-grid" id="calendarGridLegacy">${daysHtml}</div><div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center;"><label><strong>Quick Jump:</strong></label><input type="date" id="quickDatePicker" value="${selectedDate}" style="padding:8px 12px; border-radius:20px; border:1px solid var(--border-color); background:var(--bg-primary);"><button id="quickAddFromCalendar" class="btn-icon" style="background:var(--primary); color:white;"><i class="fas fa-plus"></i> Add</button><button id="smartAddFromCalendar" class="btn-icon" style="background:var(--secondary); color:white;"><i class="fas fa-magic"></i> Smart Import</button></div><div style="margin-top:24px;"><h4>Appointments for ${formatDate(selectedDate)}</h4><div id="appointmentsListLegacy" class="appointments-list-view">${renderLegacyAppointmentsList(selectedDate)}</div></div>`;
+    document.querySelectorAll('#calendarGridLegacy .calendar-day[data-date]').forEach(el => { el.addEventListener('click', () => { selectedDate = el.getAttribute('data-date'); renderCalendarPanel(container); }); });
     document.getElementById('calPrevBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() - 1); renderCalendarPanel(container); });
     document.getElementById('calNextBtn')?.addEventListener('click', () => { currentCalDate.setMonth(currentCalDate.getMonth() + 1); renderCalendarPanel(container); });
-    document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedCalDate = getTodayStr(); renderCalendarPanel(container); });
-    document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedCalDate = e.target.value; renderCalendarPanel(container); });
-    document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openQuickReportWithDate(selectedCalDate), 100); });
+    document.getElementById('calTodayBtn')?.addEventListener('click', () => { currentCalDate = new Date(); selectedDate = getTodayStr(); renderCalendarPanel(container); });
+    document.getElementById('quickDatePicker')?.addEventListener('change', (e) => { selectedDate = e.target.value; renderCalendarPanel(container); });
+    document.getElementById('quickAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openQuickReportWithDate(selectedDate), 100); });
     document.getElementById('smartAddFromCalendar')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(() => openSmartAddModal(), 100); });
-    setupDragAndDrop();
-    bindCalendarActions();
 }
 
-function renderAppointmentsList(dateStr) {
+function renderLegacyAppointmentsList(dateStr) {
     const apptData = appointments[dateStr]?.reports || [];
     if (!apptData.length) return '<div style="padding:20px; text-align:center; color:var(--text-muted);">No appointments</div>';
     return apptData.map(r => {
@@ -384,26 +698,6 @@ function renderAppointmentsList(dateStr) {
             </div>
         </div>`;
     }).join('');
-}
-
-function setupDragAndDrop() {
-    document.querySelectorAll('.appointment-item-draggable').forEach(el => {
-        el.setAttribute('draggable', 'true');
-        el.addEventListener('dragstart', (e) => { draggedItem = el; e.dataTransfer.setData('text/plain', JSON.stringify({ id: el.getAttribute('data-id'), oldDate: el.getAttribute('data-date') })); e.dataTransfer.effectAllowed = 'move'; });
-        el.addEventListener('dragend', () => { draggedItem = null; document.querySelectorAll('.calendar-day').forEach(zone => zone.classList.remove('drag-over')); });
-    });
-    document.querySelectorAll('.calendar-day').forEach(zone => {
-        zone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zone.classList.add('drag-over'); });
-        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-        zone.addEventListener('drop', (e) => { e.preventDefault(); zone.classList.remove('drag-over'); const newDate = zone.getAttribute('data-date'); if (!newDate) return; const data = JSON.parse(e.dataTransfer.getData('text/plain')); const apptId = parseInt(data.id), oldDate = data.oldDate; if (oldDate === newDate) return; const appt = appointments[oldDate]?.reports?.find(r => r.id === apptId); if (appt) { deleteAppointment(oldDate, apptId); addAppointment(newDate, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appt.id, appt.status, appt.crmLink, appt.tags); showToast(`Moved "${appt.business}" to ${newDate}`, 'success'); refreshCurrentView(); } });
-    });
-}
-
-function bindCalendarActions() {
-    document.querySelectorAll('.status-select-calendar').forEach(select => { select.removeEventListener('change', handleStatusChange); select.addEventListener('change', handleStatusChange); });
-    document.querySelectorAll('.copy-calendar').forEach(btn => { btn.removeEventListener('click', handleCopy); btn.addEventListener('click', handleCopy); });
-    document.querySelectorAll('.edit-calendar').forEach(btn => { btn.removeEventListener('click', handleEdit); btn.addEventListener('click', handleEdit); });
-    document.querySelectorAll('.delete-calendar').forEach(btn => { btn.removeEventListener('click', handleDelete); btn.addEventListener('click', handleDelete); });
 }
 
 // ==================== LIST VIEW ====================
@@ -440,97 +734,13 @@ function bindListActions() {
     document.querySelectorAll('.delete-list').forEach(btn => { btn.removeEventListener('click', handleDelete); btn.addEventListener('click', handleDelete); });
 }
 
-function handleStatusChange(e) { const select = e.target; const id = parseInt(select.getAttribute('data-id')), date = select.getAttribute('data-date'), newStatus = select.value; const idx = appointments[date]?.reports?.findIndex(r => r.id === id); if (idx !== -1 && appointments[date]) { appointments[date].reports[idx].status = newStatus; saveAppointments(); showToast(`Status updated to ${newStatus}`, 'info'); refreshCurrentView(); } }
+function handleStatusChange(e) { const select = e.target; const id = parseInt(select.getAttribute('data-id')), date = select.getAttribute('data-date'), newStatus = select.value; const idx = appointments[date]?.reports?.findIndex(r => r.id === id); if (idx !== -1 && appointments[date]) { appointments[date].reports[idx].status = newStatus; saveAppointments(); showToast(`Status updated to ${newStatus}`, 'info'); } }
 function handleCopy(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')); for (let d in appointments) { const appt = appointments[d]?.reports?.find(r => r.id === id); if (appt) { copyToClipboard(appt.fullText); showToast('Copied!', 'success'); break; } } }
 function handleEdit(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); const appt = appointments[date]?.reports?.find(r => r.id === id); if (appt) openEditAppointmentModal(date, appt); }
-function handleDelete(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); showToast('Deleted', 'info'); refreshCurrentView(); } }
+function handleDelete(e) { const id = parseInt(e.currentTarget.getAttribute('data-id')), date = e.currentTarget.getAttribute('data-date'); if (confirm('Delete this appointment?')) { deleteAppointment(date, id); showToast('Deleted', 'info'); } }
 function handleListStatus(e) { handleStatusChange(e); }
 
-function openEditAppointmentModal(dateStr, appt) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
-        <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="edit-tag-checkbox" ${(appt.tags || []).includes(tag.id) ? 'checked' : ''}>
-            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
-            <span>${tag.name}</span>
-        </label>
-    `).join('');
-    
-    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
-        <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div>
-        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
-        <div class="form-group"><label>Contact *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
-        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role || '')}"></div>
-        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone || '')}"></div>
-        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time || '')}"></div>
-        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(appt) === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="editTagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>CRM Link</label><input id="editCrmLink" value="${escapeHtml(appt.crmLink || '')}" placeholder="https://..."></div>
-        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
-        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
-        <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelEditBtn" class="btn-icon">Cancel</button></div></div>`;
-    document.body.appendChild(modal);
-    document.getElementById('saveEditBtn').addEventListener('click', () => { 
-        const newDate = document.getElementById('editDate').value; 
-        if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) { showToast('Business and Contact required', 'error'); return; } 
-        const selectedTags = Array.from(document.querySelectorAll('.edit-tag-checkbox:checked')).map(cb => cb.value);
-        deleteAppointment(dateStr, appt.id); 
-        addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value, 
-            document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value, 
-            document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id, 
-            document.getElementById('editStatus').value, document.getElementById('editCrmLink').value, selectedTags); 
-        modal.remove(); 
-        showToast(`Updated`, 'success'); 
-        refreshCurrentView(); 
-    });
-    document.getElementById('cancelEditBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function openQuickReportWithDate(defaultDate) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    const tagOptionsHtml = TAG_OPTIONS.map(tag => `
-        <label class="tag-option" style="border-color: ${tag.color};">
-            <input type="checkbox" value="${tag.id}" class="quick-tag-checkbox">
-            <span class="tag-color-indicator" style="background: ${tag.color};"></span>
-            <span>${tag.name}</span>
-        </label>
-    `).join('');
-    
-    modal.innerHTML = `<div class="modal-card"><h3>Quick Add</h3>
-        <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
-        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div>
-        <div class="form-group"><label>Contact *</label><input id="reportName"></div>
-        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
-        <div class="form-group"><label>Phone</label><input id="reportPhone"></div>
-        <div class="form-group"><label>Time</label><input id="reportTime"></div>
-        <div class="form-group"><label>Status</label><select id="reportStatus">${STATUS_OPTIONS.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="quickTagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>CRM Link</label><input id="reportCrmLink" placeholder="https://..."></div>
-        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
-        <div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
-        <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
-    document.body.appendChild(modal);
-    document.getElementById('submitReportBtn').addEventListener('click', () => { 
-        const bus = document.getElementById('reportBusiness').value, name = document.getElementById('reportName').value; 
-        if (!bus || !name) { showToast('Required fields', 'error'); return; } 
-        const selectedTags = Array.from(document.querySelectorAll('.quick-tag-checkbox:checked')).map(cb => cb.value);
-        addAppointment(document.getElementById('reportDate').value, bus, name, document.getElementById('reportRole').value, 
-            document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value, 
-            document.getElementById('reportAssigned').value, null, document.getElementById('reportStatus').value, 
-            document.getElementById('reportCrmLink').value, selectedTags); 
-        modal.remove(); 
-        showToast('Saved!', 'success'); 
-        refreshCurrentView(); 
-    });
-    document.getElementById('closeReportBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function refreshCurrentView() { const container = document.getElementById('featurePanelBody'); if (!container) return; if (currentView === 'calendar') renderCalendarPanel(container); else renderListView(container); }
-
+// ==================== FEATURE PANEL ====================
 function showFeaturePanel(featureType, title) {
     const scriptPanel = document.getElementById('scriptPanel'), featurePanel = document.getElementById('featurePanel'), featureTitle = document.getElementById('featurePanelTitle'), featureBody = document.getElementById('featurePanelBody'), viewToggle = document.getElementById('viewToggleContainer');
     if (!scriptPanel || !featurePanel) return;
@@ -581,21 +791,122 @@ function showVersionHistoryModal(){ if(!versionHistory[currentScriptId]){ showTo
 function toggleTheme(){ document.body.classList.toggle('dark'); localStorage.setItem('scriptflow_theme_main',document.body.classList.contains('dark')?'dark':'light'); showToast(`${document.body.classList.contains('dark')?'Dark':'Light'} mode`,'info'); }
 function exportToCSV(){ let rows=[['Date','Business','Contact','Role','Phone','Time','Status','Tags','CRM Link','Notes','Assigned']]; for(let date in appointments){ if(appointments[date].reports){ appointments[date].reports.forEach(a=>{ rows.push([date,a.business,a.contactName,a.role,a.phone,a.time,getStatus(a),(a.tags || []).map(t=>TAG_OPTIONS.find(opt=>opt.id===t)?.name||t).join(', '),a.crmLink || '',a.notes,a.assigned]); }); } } const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=`appointments_${getTodayStr()}.csv`; link.click(); URL.revokeObjectURL(link.href); showToast('Exported','success'); }
 function openPriorityModal(){ const now=new Date(); const zones=[{name:'Eastern (ET) ★',zone:'America/New_York'},{name:'Central (CT)',zone:'America/Chicago'},{name:'Mountain (MT)',zone:'America/Denver'},{name:'Pacific (PT)',zone:'America/Los_Angeles'}]; let zHtml='', active=[]; for(let tz of zones){ const tzTime=new Date(now.toLocaleString('en-US',{timeZone:tz.zone})); const hour=tzTime.getHours(), min=tzTime.getMinutes(); const isPrime=(hour>=10&&hour<=11)||(hour>=14&&hour<=15)||(hour===16&&min===0); if(isPrime) active.push(tz.name); zHtml+=`<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime?'var(--success)':'var(--primary)'}"><div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})}</span></div><div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime?'var(--success)':'var(--warning)'}; color:${isPrime?'white':'#1e293b'};">${isPrime?'🔥 PRIME TIME':'Awaiting Prime'}</span></div><div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`; } const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card" style="width:550px;"><div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:20px; border-radius:24px; text-align:center;"><h2><i class="fas fa-chart-line"></i> Call Priority</h2></div>${active.length?`<div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin:16px 0; text-align:center;"><strong>ACTIVE:</strong> ${active.join(', ')}</div>`:`<div style="background:var(--warning); padding:12px; border-radius:16px; margin:16px 0; text-align:center;">No active prime windows</div>`}${zHtml}<div style="padding:16px; background:var(--bg-primary); border-radius:16px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div><button id="closePrioBtn" class="btn-icon" style="margin-top:20px; width:100%;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closePrioBtn').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
-function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div><div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div><div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter by status and tags, hover tooltips, CRM links</div><div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>CRM link field, tag selection, auto-extracts all fields</div><div style="margin:16px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div><div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm Call Booked, Meeting Booked, Canceled, Rescheduled</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
+function showHelpModal(){ const modal=document.createElement('div'); modal.className='modal-overlay'; modal.innerHTML=`<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div><div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments from left panel to reschedule on calendar</div><div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter by status and tags, hover tooltips, CRM links</div><div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>CRM link field, tag selection, auto-extracts all fields</div><div style="margin:16px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div><div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm Call Booked, Meeting Booked, Canceled, Rescheduled</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`; document.body.appendChild(modal); document.getElementById('closeHelp').addEventListener('click',()=>modal.remove()); modal.addEventListener('click',(e)=>{if(e.target===modal) modal.remove();}); }
 function updateRealTimePriorityDashboard(){ const now=new Date(); const et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'})); const h=et.getHours(), m=et.getMinutes(); const isPrime=((h===10)||(h===11&&m<=30)||(h>=14&&h<=15)||(h===16&&m===0))&&et.getDay()>=1&&et.getDay()<=5; const txt=document.getElementById('priorityTimeText'); const tt=document.getElementById('tooltipPrimeStatus'); if(txt){ if(isPrime){ txt.innerHTML=`<i class="fas fa-fire"></i> PRIME TIME (${et.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'})} ET)`; if(tt) tt.innerHTML='🔥 ACTIVE PRIME WINDOW'; } else { let next=''; if(h<10) next='Next: 10-11:30 AM ET'; else if(h<14) next='Next: 2-4 PM ET'; else next='Tomorrow 10-11:30 AM ET'; txt.innerHTML=`<i class="fas fa-clock"></i> ${next}`; if(tt) tt.innerHTML=`⏳ ${next}`; } } }
 function toggleToolsMenu(){ toolsOpen=!toolsOpen; const m=document.getElementById('toolsMenu'); const c=document.getElementById('toolsChevron'); if(toolsOpen){ if(m) m.classList.add('open'); if(c) c.classList.add('rotated'); } else { if(m) m.classList.remove('open'); if(c) c.classList.remove('rotated'); } localStorage.setItem('toolsMenuOpen',toolsOpen); }
 
+// ==================== RENDER MODERN CALENDAR DASHBOARD ====================
+function renderModernCalendar() {
+    const rightPanel = document.getElementById('rightPanel');
+    if (!rightPanel) return;
+    
+    // Create the modern calendar layout
+    rightPanel.innerHTML = `
+        <div class="calendar-dashboard">
+            <!-- LEFT PANEL: Appointments List (Draggable) -->
+            <div class="appointments-panel">
+                <div class="panel-header">
+                    <h3><i class="fas fa-list-check"></i> Appointments</h3>
+                    <div class="selected-date-badge" id="selectedDateDisplay">Select a date to view</div>
+                </div>
+                <div class="appointments-scroll" id="appointmentsListContainer">
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-day"></i>
+                        <p>Click on any date to see appointments</p>
+                    </div>
+                </div>
+                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                    <button class="quick-add-btn" id="quickAddBtn"><i class="fas fa-plus"></i> New Appointment</button>
+                </div>
+            </div>
+            
+            <!-- RIGHT PANEL: Calendar -->
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <div class="calendar-title">
+                        <h2><i class="fas fa-calendar-alt" style="color: var(--primary);"></i> Calendar</h2>
+                    </div>
+                    <div class="calendar-nav">
+                        <button class="nav-btn" id="prevMonthBtn"><i class="fas fa-chevron-left"></i> Prev</button>
+                        <button class="nav-btn" id="currentMonthBtn">Today</button>
+                        <button class="nav-btn" id="nextMonthBtn">Next <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="calendar-grid-wrapper">
+                    <div class="weekdays">
+                        <div class="weekday">Sun</div>
+                        <div class="weekday">Mon</div>
+                        <div class="weekday">Tue</div>
+                        <div class="weekday">Wed</div>
+                        <div class="weekday">Thu</div>
+                        <div class="weekday">Fri</div>
+                        <div class="weekday">Sat</div>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                </div>
+                <div style="padding: 12px 20px 20px; text-align: center; font-size: 0.7rem; color: var(--text-muted); border-top: 1px solid var(--border-color);">
+                    <i class="fas fa-arrows-alt"></i> Drag any appointment from left panel and drop on a date to reschedule
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Attach event listeners
+    document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+        currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+        renderCalendarGrid();
+    });
+    document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+        currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+        renderCalendarGrid();
+    });
+    document.getElementById('currentMonthBtn')?.addEventListener('click', () => {
+        currentCalDate = new Date();
+        selectedDate = getTodayStr();
+        renderCalendarGrid();
+        renderAppointmentsPanel(selectedDate);
+    });
+    document.getElementById('quickAddBtn')?.addEventListener('click', () => openQuickReportWithDate(selectedDate));
+    
+    // Initial render
+    renderCalendarGrid();
+    renderAppointmentsPanel(selectedDate);
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
+    // Load data
+    loadAppointmentData();
+    loadScripts();
+    
+    // Render modern calendar dashboard
+    renderModernCalendar();
+    
+    // Sidebar and tools
     document.getElementById('toolsHeader')?.addEventListener('click', toggleToolsMenu);
     if (toolsOpen) { document.getElementById('toolsMenu')?.classList.add('open'); document.getElementById('toolsChevron')?.classList.add('rotated'); }
+    
+    // Tool items
     document.querySelectorAll('.tool-item').forEach(item => { item.addEventListener('click', (e) => { e.stopPropagation(); const text = item.querySelector('span')?.innerText || item.innerText; if (text.includes('Insights')) showFeaturePanel('insights', 'Insights Dashboard'); else if (text.includes('Advanced Reports')) showFeaturePanel('reports', 'Advanced Reports'); else if (text.includes('Appointment Calendar')) showFeaturePanel('calendar', 'Appointment Calendar'); else if (text.includes('Call Priority')) openPriorityModal(); else if (text.includes('Export')) exportToCSV(); else if (text.includes('Dark/Light')) toggleTheme(); else if (text.includes('Help')) showHelpModal(); else if (text.includes('Factory Reset')) { if (confirm('ERASE ALL DATA?')) { localStorage.clear(); location.reload(); } } }); });
+    
     document.getElementById('closeFeaturePanelBtn')?.addEventListener('click', hideFeaturePanel);
     document.getElementById('calendarViewBtn')?.addEventListener('click', () => { currentView = 'calendar'; refreshCurrentView(); document.getElementById('calendarViewBtn').classList.add('active'); document.getElementById('listViewBtn').classList.remove('active'); currentListSearchTerm = ''; });
     document.getElementById('listViewBtn')?.addEventListener('click', () => { currentView = 'list'; refreshCurrentView(); document.getElementById('listViewBtn').classList.add('active'); document.getElementById('calendarViewBtn').classList.remove('active'); });
+    
+    // Menu toggle
     const menuToggle = document.getElementById('menuToggleBtn'), sidebar = document.getElementById('mainSidebar'), main = document.getElementById('mainContent'); if (menuToggle) menuToggle.addEventListener('click', () => { sidebar.classList.toggle('closed'); main.classList.toggle('expanded'); localStorage.setItem('sidebarClosed', sidebar.classList.contains('closed')); }); if (sidebar && localStorage.getItem('sidebarClosed') === 'true') { sidebar.classList.add('closed'); main.classList.add('expanded'); }
-    loadAppointmentData(); loadScripts(); renderSidebar(); loadScript('opening'); if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
+    
+    // Script buttons
     document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript); document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit); document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit); document.getElementById('cancelEditBtn')?.addEventListener('click', cancelEdit); document.getElementById('copyScriptBtn')?.addEventListener('click', copyScript); document.getElementById('resetScriptBtn')?.addEventListener('click', resetScript); document.getElementById('undoBtn')?.addEventListener('click', () => undoScript(currentScriptId)); document.getElementById('redoBtn')?.addEventListener('click', () => redoScript(currentScriptId)); document.getElementById('quickReportBtn')?.addEventListener('click', openSmartAddModal); document.getElementById('historyBtn')?.addEventListener('click', showVersionHistoryModal); document.getElementById('scriptSearch')?.addEventListener('input', (e) => { searchTerm = e.target.value.toLowerCase(); renderSidebar(); });
+    
+    // Keyboard shortcuts
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const fp = document.getElementById('featurePanel'); if (fp && fp.style.display === 'block') { hideFeaturePanel(); e.preventDefault(); } } if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input')) { const fp = document.getElementById('featurePanel'); if (fp && fp.style.display === 'block') return; e.preventDefault(); const t = getKeyMapping().get(e.key); if (t && scripts[t]) { loadScript(t); showToast(`Switched to: ${scripts[t].name}`, 'info'); } } if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault(); undoScript(currentScriptId); } if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault(); redoScript(currentScriptId); } if (e.key === 'Escape' && isEditing) { cancelEdit(); showToast('Edit cancelled', 'info'); } });
+    
+    // Priority updater
     updateRealTimePriorityDashboard(); setInterval(updateRealTimePriorityDashboard, 1000); setInterval(() => updateStats(), 5000);
+    
+    // Theme
+    if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
 });
+
+function refreshCurrentView() { const container = document.getElementById('featurePanelBody'); if (!container) return; if (currentView === 'calendar') renderCalendarPanel(container); else renderListView(container); }
