@@ -474,6 +474,22 @@ body {
     transform: translateY(-1px);
 }
 
+/* CSV Upload Button */
+.csv-upload-btn {
+    position: relative;
+    cursor: pointer;
+}
+
+.csv-upload-btn input[type="file"] {
+    display: none;
+}
+
+.csv-upload-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
 .badge-auto {
     background: var(--success);
     color: white;

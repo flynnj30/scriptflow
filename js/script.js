@@ -111,6 +111,133 @@ function copyToClipboard(text) {
     });
 }
 
+// ---- CSV IMPORT ----
+function importCSV(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                showToast('CSV must contain headers and at least one row', 'error');
+                return;
+            }
+
+            // Parse headers
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const expectedHeaders = ['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Status', 'Tags', 'CRM Link', 'Notes', 'Assigned'];
+            
+            // Validate headers (flexible matching)
+            const headerMap = {};
+            headers.forEach((h, idx) => {
+                const lower = h.toLowerCase();
+                if (lower.includes('date')) headerMap.date = idx;
+                else if (lower.includes('business') || lower.includes('company')) headerMap.business = idx;
+                else if (lower.includes('contact') || lower.includes('name')) headerMap.contact = idx;
+                else if (lower.includes('role') || lower.includes('position')) headerMap.role = idx;
+                else if (lower.includes('phone') || lower.includes('tel')) headerMap.phone = idx;
+                else if (lower.includes('time')) headerMap.time = idx;
+                else if (lower.includes('status')) headerMap.status = idx;
+                else if (lower.includes('tag')) headerMap.tags = idx;
+                else if (lower.includes('crm') || lower.includes('link')) headerMap.crm = idx;
+                else if (lower.includes('note')) headerMap.notes = idx;
+                else if (lower.includes('assigned')) headerMap.assigned = idx;
+            });
+
+            // Check minimum required fields
+            if (headerMap.date === undefined || headerMap.business === undefined || headerMap.contact === undefined) {
+                showToast('CSV must contain Date, Business, and Contact columns', 'error');
+                return;
+            }
+
+            let importedCount = 0;
+            let errorCount = 0;
+
+            // Process each row
+            for (let i = 1; i < lines.length; i++) {
+                try {
+                    const values = parseCSVRow(lines[i]);
+                    if (values.length < Math.max(headerMap.date, headerMap.business, headerMap.contact) + 1) continue;
+
+                    const date = values[headerMap.date]?.trim() || '';
+                    const business = values[headerMap.business]?.trim() || '';
+                    const contact = values[headerMap.contact]?.trim() || '';
+
+                    if (!date || !business || !contact) {
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Validate date format
+                    const dateObj = new Date(date);
+                    if (isNaN(dateObj.getTime())) {
+                        errorCount++;
+                        continue;
+                    }
+                    const formattedDate = dateObj.toISOString().split('T')[0];
+
+                    const role = values[headerMap.role]?.trim() || 'Owner';
+                    const phone = values[headerMap.phone]?.trim() || '';
+                    const time = values[headerMap.time]?.trim() || '';
+                    const status = values[headerMap.status]?.trim() || 'Warm Call Booked';
+                    const tagsStr = values[headerMap.tags]?.trim() || '';
+                    const crmLink = values[headerMap.crm]?.trim() || '';
+                    const notes = values[headerMap.notes]?.trim() || '';
+                    const assigned = values[headerMap.assigned]?.trim() || 'Daniel';
+
+                    // Parse tags
+                    const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => {
+                        return TAG_OPTIONS.some(opt => opt.name.toLowerCase() === t.toLowerCase() || opt.id === t);
+                    }).map(t => {
+                        const match = TAG_OPTIONS.find(opt => opt.name.toLowerCase() === t.toLowerCase() || opt.id === t);
+                        return match ? match.id : t;
+                    }) : [];
+
+                    addAppointment(formattedDate, business, contact, role, phone, time, notes, assigned, null, status, crmLink, tags);
+                    importedCount++;
+                } catch (err) {
+                    errorCount++;
+                    console.warn('Error importing row:', err);
+                }
+            }
+
+            saveAppointments();
+            refreshCurrentView();
+            updateStats();
+
+            if (errorCount > 0) {
+                showToast(`Imported ${importedCount} appointments (${errorCount} rows skipped)`, 'info');
+            } else {
+                showToast(`Successfully imported ${importedCount} appointments!`, 'success');
+            }
+        } catch (err) {
+            console.error('CSV Import Error:', err);
+            showToast('Error reading CSV file. Please check the format.', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function parseCSVRow(row) {
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    values.push(current.trim());
+    return values;
+}
+
 // ---- APPOINTMENT CRUD ----
 function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm Call Booked', crmLink = '', tags = []) {
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
@@ -1507,6 +1634,32 @@ function toggleToolsMenu() {
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
+    // CSV Upload Handler
+    const csvFileInput = document.getElementById('csvFileInput');
+    const csvUploadBtn = document.getElementById('csvUploadBtn');
+    
+    if (csvUploadBtn && csvFileInput) {
+        csvUploadBtn.addEventListener('click', (e) => {
+            // Only trigger file input if the click wasn't on the input itself
+            if (e.target.tagName !== 'INPUT') {
+                csvFileInput.click();
+            }
+        });
+        
+        csvFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                    importCSV(file);
+                } else {
+                    showToast('Please select a CSV file', 'error');
+                }
+            }
+            // Reset input so the same file can be uploaded again
+            csvFileInput.value = '';
+        });
+    }
+
     // Tools toggle
     document.getElementById('toolsHeader')?.addEventListener('click', toggleToolsMenu);
     if (toolsOpen) {
