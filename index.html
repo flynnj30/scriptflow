@@ -1,123 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>ScriptFlow Pro | Smart Call Scripts + Priority Predictor + Insights + Drag & Drop Calendar</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ScriptFlow Pro · Smart CRM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="css/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
-<div class="app-wrapper">
-    <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
-    
-    <aside class="sidebar" id="mainSidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <div class="logo-icon"><i class="fas fa-microphone-alt"></i></div>
-                <div class="logo-text"><h2>ScriptFlow Pro</h2><p>Smart Call Scripts</p></div>
-            </div>
-        </div>
-        
-        <div id="scriptsListSection" class="scripts-list-section">
-            <div class="search-area"><input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..."></div>
-            <div class="scripts-container">
-                <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
-                <div id="scriptListContainer"></div>
-                <button id="addScriptBtnSide" class="add-script-btn"><i class="fas fa-plus"></i> New Script</button>
-            </div>
-        </div>
-        
-        <div class="tools-section">
-            <div class="tools-header" id="toolsHeader">
-                <div class="section-title"><i class="fas fa-tools"></i> TOOLS & SETTINGS</div>
-                <i class="fas fa-chevron-right tools-chevron" id="toolsChevron"></i>
-            </div>
-            <div class="tools-menu" id="toolsMenu">
-                <div class="tool-item" data-tool="insights"><i class="fas fa-chart-pie"></i> <span>Insights Dashboard</span></div>
-                <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> <span>Appointment Calendar</span></div>
-                <div class="tool-item" data-tool="reports"><i class="fas fa-chart-line"></i> <span>Advanced Reports</span></div>
-                <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> <span>Call Priority Predictor</span></div>
-                <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> <span>Export to CSV</span></div>
-                <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> <span>Dark/Light Mode</span></div>
-                <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> <span>Help Guide</span></div>
-                <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> <span>Factory Reset</span></div>
-            </div>
-        </div>
-        <div class="sidebar-footer"><i class="fas fa-crown"></i> Press 1-9 to switch scripts</div>
-    </aside>
-    
-    <div class="main-content" id="mainContent">
-        <div class="top-bar">
-            <div class="stats-row">
-                <div class="stat"><span class="stat-label"><i class="fas fa-calendar-day"></i> Today</span><span class="stat-number" id="statToday">0</span><span class="stat-label">/<span id="goalDaily">3</span></span></div>
-                <div class="stat"><span class="stat-label"><i class="fas fa-calendar-week"></i> Week</span><span class="stat-number" id="statWeek">0</span><span class="stat-label">/<span id="goalWeekly">15</span></span></div>
-                <div class="stat"><span class="stat-label"><i class="fas fa-calendar-alt"></i> Month</span><span class="stat-number" id="statMonth">0</span><span class="stat-label">/<span id="goalMonthly">60</span></span></div>
-            </div>
-            <div class="action-buttons">
-                <button class="btn-icon" id="quickReportBtn"><i class="fas fa-magic"></i> Smart Import</button>
-                <div class="priority-indicator" id="priorityLiveIndicator">
-                    <span class="live-dot"></span>
-                    <span id="priorityTimeText">Loading...</span>
-                    <div class="tooltip-text">
-                        <strong>📞 Real-Time Call Priority</strong><br><br>
-                        <strong>🎯 Eastern Time (ET) is PRIORITY</strong><br>
-                        Most US business owners operate on ET.<br><br>
-                        <strong>✅ Prime Window NOW:</strong> <span id="tooltipPrimeStatus">Checking...</span><br>
-                        <strong>Best hours:</strong> 10-11:30 AM & 2-4 PM ET<br>
-                        <strong>Best days:</strong> Tuesday, Wednesday, Thursday<br>
-                        <strong>Avoid:</strong> Monday mornings & Friday afternoons
+    <div class="app-wrapper">
+        <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"><i class="fas fa-microphone-alt"></i></div>
+                    <div class="logo-text">
+                        <h2>ScriptFlow Pro</h2>
+                        <p>Smart Call Scripts</p>
                     </div>
                 </div>
-                <button class="btn-icon" id="historyBtn"><i class="fas fa-history"></i> History</button>
-                <span class="badge-auto" id="saveStatus"><i class="fas fa-save"></i> Auto</span>
             </div>
-        </div>
-        
-        <div id="rightPanel">
-            <div id="scriptPanel" class="script-card">
-                <div class="script-header-bar">
-                    <div class="script-title-area">
-                        <i class="fas fa-scroll" style="color: var(--primary); font-size: 1.3rem;"></i>
-                        <h2 id="currentScriptName">Opening Script</h2>
-                        <span class="version-chip" id="versionIndicator"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
-                        <span class="version-chip" id="activeShortcutHint"><i class="fas fa-key"></i> Key: —</span>
+
+            <div id="scriptsListSection" class="scripts-list-section">
+                <div class="search-area">
+                    <input type="text" id="scriptSearch" class="search-box" placeholder="🔍 Search scripts..." />
+                </div>
+                <div class="scripts-container">
+                    <div class="section-title"><i class="fas fa-scroll"></i> CALL SCRIPTS</div>
+                    <div id="scriptListContainer"></div>
+                    <button id="addScriptBtnSide" class="add-script-btn"><i class="fas fa-plus"></i> New Script</button>
+                </div>
+            </div>
+
+            <div class="tools-section">
+                <div class="tools-header" id="toolsHeader">
+                    <div class="section-title"><i class="fas fa-tools"></i> TOOLS &amp; SETTINGS</div>
+                    <i class="fas fa-chevron-right tools-chevron" id="toolsChevron"></i>
+                </div>
+                <div class="tools-menu" id="toolsMenu">
+                    <div class="tool-item" data-tool="analytics"><i class="fas fa-chart-pie"></i> <span>Analytics Hub</span></div>
+                    <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> <span>Appointment Calendar</span></div>
+                    <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> <span>Call Priority Predictor</span></div>
+                    <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> <span>Export to CSV</span></div>
+                    <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> <span>Dark/Light Mode</span></div>
+                    <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> <span>Help Guide</span></div>
+                    <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> <span>Factory Reset</span></div>
+                </div>
+            </div>
+            <div class="sidebar-footer"><i class="fas fa-crown"></i> Press 1-9 to switch scripts</div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content" id="mainContent">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="stats-row">
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-day"></i> Today</span>
+                        <span class="stat-number" id="statToday">0</span>
+                        <span class="stat-label">/<span id="goalDaily">3</span></span>
                     </div>
-                    <div class="action-buttons">
-                        <button class="btn-icon" id="editScriptBtn"><i class="fas fa-pen"></i> Edit</button>
-                        <button class="btn-icon" id="saveScriptBtn" style="display:none; background: var(--success);"><i class="fas fa-save"></i> Save</button>
-                        <button class="btn-icon" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
-                        <button class="btn-icon" id="copyScriptBtn"><i class="fas fa-copy"></i> Copy</button>
-                        <button class="btn-icon" id="resetScriptBtn"><i class="fas fa-undo-alt"></i> Reset</button>
-                        <button class="btn-icon" id="undoBtn"><i class="fas fa-undo"></i> Undo</button>
-                        <button class="btn-icon" id="redoBtn"><i class="fas fa-redo"></i> Redo</button>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-week"></i> Week</span>
+                        <span class="stat-number" id="statWeek">0</span>
+                        <span class="stat-label">/<span id="goalWeekly">15</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-alt"></i> Month</span>
+                        <span class="stat-number" id="statMonth">0</span>
+                        <span class="stat-label">/<span id="goalMonthly">60</span></span>
                     </div>
                 </div>
-                <div class="script-body" id="scriptBody"><div id="scriptContent"></div></div>
-            </div>
-            
-            <div id="featurePanel" class="feature-panel" style="display: none;">
-                <div class="feature-panel-header">
-                    <h2 id="featurePanelTitle">Feature</h2>
-                    <div id="viewToggleContainer" style="display: none;">
-                        <div class="view-toggle">
-                            <button id="calendarViewBtn" class="view-btn"><i class="fas fa-calendar-alt"></i> Calendar</button>
-                            <button id="listViewBtn" class="view-btn"><i class="fas fa-list"></i> List</button>
+                <div class="action-buttons">
+                    <button class="btn-icon" id="quickReportBtn"><i class="fas fa-magic"></i> Smart Import</button>
+                    <div class="priority-indicator" id="priorityLiveIndicator">
+                        <span class="live-dot"></span>
+                        <span id="priorityTimeText">Loading...</span>
+                        <div class="tooltip-text">
+                            <strong>📞 Real-Time Call Priority</strong><br /><br />
+                            <strong>🎯 Eastern Time (ET) is PRIORITY</strong><br />
+                            Most US business owners operate on ET.<br /><br />
+                            <strong>✅ Prime Window NOW:</strong> <span id="tooltipPrimeStatus">Checking...</span><br />
+                            <strong>Best hours:</strong> 10-11:30 AM &amp; 2-4 PM ET<br />
+                            <strong>Best days:</strong> Tuesday, Wednesday, Thursday<br />
+                            <strong>Avoid:</strong> Monday mornings &amp; Friday afternoons
                         </div>
                     </div>
-                    <button id="closeFeaturePanelBtn" class="btn-icon"><i class="fas fa-times"></i> Close</button>
+                    <button class="btn-icon" id="historyBtn"><i class="fas fa-history"></i> History</button>
+                    <span class="badge-auto" id="saveStatus"><i class="fas fa-save"></i> Auto</span>
                 </div>
-                <div class="feature-panel-body" id="featurePanelBody"></div>
+            </div>
+
+            <!-- Right Panel -->
+            <div id="rightPanel">
+                <!-- Script Panel -->
+                <div id="scriptPanel" class="script-card">
+                    <div class="script-header-bar">
+                        <div class="script-title-area">
+                            <i class="fas fa-scroll" style="color:var(--primary); font-size:1.3rem;"></i>
+                            <h2 id="currentScriptName">Opening Script</h2>
+                            <span class="version-chip"><i class="fas fa-clock"></i> v<span id="versionNumber">1</span></span>
+                            <span class="version-chip"><i class="fas fa-key"></i> Key: <span id="activeShortcutHint">—</span></span>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-icon" id="editScriptBtn"><i class="fas fa-pen"></i> Edit</button>
+                            <button class="btn-icon" id="saveScriptBtn" style="display:none; background:var(--success);"><i class="fas fa-save"></i> Save</button>
+                            <button class="btn-icon" id="cancelEditBtn" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
+                            <button class="btn-icon" id="copyScriptBtn"><i class="fas fa-copy"></i> Copy</button>
+                            <button class="btn-icon" id="resetScriptBtn"><i class="fas fa-undo-alt"></i> Reset</button>
+                            <button class="btn-icon" id="undoBtn"><i class="fas fa-undo"></i> Undo</button>
+                            <button class="btn-icon" id="redoBtn"><i class="fas fa-redo"></i> Redo</button>
+                        </div>
+                    </div>
+                    <div class="script-body" id="scriptBody">
+                        <div id="scriptContent"></div>
+                    </div>
+                </div>
+
+                <!-- Feature Panel -->
+                <div id="featurePanel" class="feature-panel" style="display:none;">
+                    <div class="feature-panel-header">
+                        <h2 id="featurePanelTitle">Feature</h2>
+                        <div id="viewToggleContainer" style="display:flex; gap:8px; align-items:center;">
+                            <div class="view-toggle" id="analyticsTabContainer" style="display:none;">
+                                <button id="insightsTabBtn" class="view-btn active"><i class="fas fa-chart-pie"></i> Insights</button>
+                                <button id="reportsTabBtn" class="view-btn"><i class="fas fa-chart-line"></i> Reports</button>
+                            </div>
+                            <div class="view-toggle" id="calendarViewToggle" style="display:none;">
+                                <button id="calendarViewBtn" class="view-btn active"><i class="fas fa-calendar-alt"></i> Calendar</button>
+                                <button id="listViewBtn" class="view-btn"><i class="fas fa-list"></i> List</button>
+                            </div>
+                        </div>
+                        <button id="closeFeaturePanelBtn" class="btn-icon"><i class="fas fa-times"></i> Close</button>
+                    </div>
+                    <div class="feature-panel-body" id="featurePanelBody">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                <i class="fas fa-chart-line"></i> Full-featured CRM · Drag appointments to reschedule · Export reports as PDF · Smart Import with Tags
             </div>
         </div>
-        
-        <div class="footer-note"><i class="fas fa-chart-line"></i> Full-featured CRM · Drag appointments to reschedule · Export reports as PDF · Smart Import with Tags</div>
     </div>
-</div>
 
-<script src="js/script.js"></script>
+    <script src="js/script.js"></script>
 </body>
 </html>
