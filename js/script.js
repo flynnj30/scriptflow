@@ -28,7 +28,6 @@ let currentAnalyticsTab = 'insights';
 
 let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
-let reportsChartInstance = null;
 let draggedItem = null;
 
 const STATUS_OPTIONS = ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'];
@@ -50,16 +49,11 @@ function getStatus(appt) {
 
 function getStatusClassSmall(status) {
     switch (status) {
-        case 'Warm Call Booked':
-            return 'status-warm-call-booked-sm';
-        case 'Meeting Booked':
-            return 'status-meeting-booked-sm';
-        case 'Canceled':
-            return 'status-canceled-sm';
-        case 'Rescheduled':
-            return 'status-rescheduled-sm';
-        default:
-            return 'status-warm-call-booked-sm';
+        case 'Warm Call Booked': return 'status-warm-call-booked-sm';
+        case 'Meeting Booked': return 'status-meeting-booked-sm';
+        case 'Canceled': return 'status-canceled-sm';
+        case 'Rescheduled': return 'status-rescheduled-sm';
+        default: return 'status-warm-call-booked-sm';
     }
 }
 
@@ -123,11 +117,7 @@ function importCSV(file) {
                 return;
             }
 
-            // Parse headers
             const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-            const expectedHeaders = ['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Status', 'Tags', 'CRM Link', 'Notes', 'Assigned'];
-            
-            // Validate headers (flexible matching)
             const headerMap = {};
             headers.forEach((h, idx) => {
                 const lower = h.toLowerCase();
@@ -144,7 +134,6 @@ function importCSV(file) {
                 else if (lower.includes('assigned')) headerMap.assigned = idx;
             });
 
-            // Check minimum required fields
             if (headerMap.date === undefined || headerMap.business === undefined || headerMap.contact === undefined) {
                 showToast('CSV must contain Date, Business, and Contact columns', 'error');
                 return;
@@ -153,7 +142,6 @@ function importCSV(file) {
             let importedCount = 0;
             let errorCount = 0;
 
-            // Process each row
             for (let i = 1; i < lines.length; i++) {
                 try {
                     const values = parseCSVRow(lines[i]);
@@ -168,7 +156,6 @@ function importCSV(file) {
                         continue;
                     }
 
-                    // Validate date format
                     const dateObj = new Date(date);
                     if (isNaN(dateObj.getTime())) {
                         errorCount++;
@@ -185,7 +172,6 @@ function importCSV(file) {
                     const notes = values[headerMap.notes]?.trim() || '';
                     const assigned = values[headerMap.assigned]?.trim() || 'Daniel';
 
-                    // Parse tags
                     const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(t => {
                         return TAG_OPTIONS.some(opt => opt.name.toLowerCase() === t.toLowerCase() || opt.id === t);
                     }).map(t => {
@@ -298,11 +284,10 @@ function loadAppointmentData() {
     for (let date in appointments) {
         if (appointments[date].reports) {
             appointments[date].reports.forEach(appt => {
-                if (!appt.status) { appt.status = 'Warm Call Booked';
-                    needsSave = true; } else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked';
-                    needsSave = true; } else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked';
-                    needsSave = true; } else if (appt.status === 'Called') { appt.status = 'Meeting Booked';
-                    needsSave = true; }
+                if (!appt.status) { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
+                else if (appt.status === 'Called') { appt.status = 'Meeting Booked'; needsSave = true; }
                 if (!appt.crmLink) appt.crmLink = '';
                 if (!appt.tags) appt.tags = [];
             });
@@ -361,9 +346,8 @@ function parseAppointmentFromText(text, defaultDate) {
     const timeMatch = text.match(/(?:Time|Call back|Callback)[:\s]+([^\n]+)/i) || text.match(/(?:tomorrow|today|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[^.\n]*?(?:\d{1,2}(?::\d{2})?\s*(?:AM|PM|am|pm))/i);
     if (timeMatch) result.time = timeMatch[1] || timeMatch[0];
     if (result.time) {
-        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            result.parsedDate = tomorrow.toISOString().split('T')[0]; } else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
+        if (result.time.toLowerCase().includes('tomorrow')) { const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); result.parsedDate = tomorrow.toISOString().split('T')[0]; }
+        else if (result.time.toLowerCase().includes('today')) { result.parsedDate = getTodayStr(); }
     }
     const noteMatch = text.match(/(?:Note|Notes)[:\s]+([^\n]+)/i);
     if (noteMatch) result.notes = noteMatch[1].trim();
@@ -429,7 +413,6 @@ function renderCalendarPanel(container) {
         month = currentCalDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const todayStr = getTodayStr();
 
     let daysHtml = '';
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -534,7 +517,7 @@ function renderCalendarPanel(container) {
                 </div>
             `;
 
-    // Event bindings
+    // Event bindings - Calendar day clicks
     document.querySelectorAll('.calendar-day[data-date]').forEach(el => {
         el.addEventListener('click', () => {
             selectedCalDate = el.getAttribute('data-date');
@@ -583,7 +566,7 @@ function renderCalendarPanel(container) {
     });
 
     setupDragAndDrop();
-    bindListActions();
+    setupDelegatedEventListeners();
 }
 
 function filterAndSortAppointments(appts) {
@@ -679,9 +662,7 @@ function setupDragAndDrop() {
     });
 
     document.querySelectorAll('.calendar-day[data-date]').forEach(zone => {
-        zone.addEventListener('dragover', (e) => { e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            zone.classList.add('drag-over'); });
+        zone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zone.classList.add('drag-over'); });
         zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
         zone.addEventListener('drop', (e) => {
             e.preventDefault();
@@ -689,8 +670,7 @@ function setupDragAndDrop() {
             const newDate = zone.getAttribute('data-date');
             if (!newDate) return;
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-            const apptId = parseInt(data.id),
-                oldDate = data.oldDate;
+            const apptId = parseInt(data.id), oldDate = data.oldDate;
             if (oldDate === newDate) return;
             const appt = appointments[oldDate]?.reports?.find(r => r.id === apptId);
             if (appt) {
@@ -703,83 +683,86 @@ function setupDragAndDrop() {
     });
 }
 
-function bindListActions() {
+// ---- DELEGATED EVENT LISTENERS ----
+function setupDelegatedEventListeners() {
     const container = document.getElementById('appointmentsListContainer');
     if (!container) return;
 
-    container.querySelectorAll('.status-select-calendar').forEach(select => {
-        select.removeEventListener('change', handleStatusChange);
-        select.addEventListener('change', handleStatusChange);
-    });
+    // Remove any existing listeners to avoid duplicates
+    container.removeEventListener('click', handleDelegatedClick);
+    container.removeEventListener('change', handleDelegatedChange);
+    
+    // Add delegated listeners
+    container.addEventListener('click', handleDelegatedClick);
+    container.addEventListener('change', handleDelegatedChange);
+}
 
-    container.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.removeEventListener('click', handleCopy);
-        btn.addEventListener('click', handleCopy);
-    });
+function handleDelegatedClick(e) {
+    const target = e.target.closest('button');
+    if (!target) return;
 
-    container.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.removeEventListener('click', handleEdit);
-        btn.addEventListener('click', handleEdit);
-    });
+    // Copy button
+    if (target.classList.contains('copy-btn')) {
+        e.preventDefault();
+        const id = parseInt(target.getAttribute('data-id'));
+        for (let d in appointments) {
+            const appt = appointments[d]?.reports?.find(r => r.id === id);
+            if (appt) {
+                copyToClipboard(appt.fullText);
+                showToast('Copied!', 'success');
+                break;
+            }
+        }
+        return;
+    }
 
-    container.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.removeEventListener('click', handleDelete);
-        btn.addEventListener('click', handleDelete);
-    });
+    // Edit button
+    if (target.classList.contains('edit-btn')) {
+        e.preventDefault();
+        const id = parseInt(target.getAttribute('data-id'));
+        const date = target.getAttribute('data-date');
+        const appt = appointments[date]?.reports?.find(r => r.id === id);
+        if (appt) openEditAppointmentModal(date, appt);
+        return;
+    }
 
-    const emptyAdd = document.getElementById('emptyAddBtn');
-    if (emptyAdd) {
-        emptyAdd.removeEventListener('click', () => {});
-        emptyAdd.addEventListener('click', () => {
-            hideFeaturePanel();
-            setTimeout(() => openQuickReportWithDate(selectedCalDate), 100);
-        });
+    // Delete button
+    if (target.classList.contains('delete-btn')) {
+        e.preventDefault();
+        const id = parseInt(target.getAttribute('data-id'));
+        const date = target.getAttribute('data-date');
+        if (confirm('Delete this appointment?')) {
+            deleteAppointment(date, id);
+            showToast('Deleted', 'info');
+            refreshCurrentView();
+        }
+        return;
+    }
+
+    // Empty state add button
+    if (target.id === 'emptyAddBtn') {
+        hideFeaturePanel();
+        setTimeout(() => openQuickReportWithDate(selectedCalDate), 100);
     }
 }
 
-function handleStatusChange(e) {
-    const select = e.target;
-    const id = parseInt(select.getAttribute('data-id'));
-    const date = select.getAttribute('data-date');
-    const newStatus = select.value;
-    const idx = appointments[date]?.reports?.findIndex(r => r.id === id);
-    if (idx !== -1 && appointments[date]) {
-        appointments[date].reports[idx].status = newStatus;
-        saveAppointments();
-        showToast(`Status updated to ${newStatus}`, 'info');
-        refreshCurrentView();
-    }
-}
-
-function handleCopy(e) {
-    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-    for (let d in appointments) {
-        const appt = appointments[d]?.reports?.find(r => r.id === id);
-        if (appt) {
-            copyToClipboard(appt.fullText);
-            showToast('Copied!', 'success');
-            break;
+function handleDelegatedChange(e) {
+    const target = e.target;
+    if (target.classList.contains('status-select-calendar')) {
+        const id = parseInt(target.getAttribute('data-id'));
+        const date = target.getAttribute('data-date');
+        const newStatus = target.value;
+        const idx = appointments[date]?.reports?.findIndex(r => r.id === id);
+        if (idx !== -1 && appointments[date]) {
+            appointments[date].reports[idx].status = newStatus;
+            saveAppointments();
+            showToast(`Status updated to ${newStatus}`, 'info');
+            refreshCurrentView();
         }
     }
 }
 
-function handleEdit(e) {
-    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-    const date = e.currentTarget.getAttribute('data-date');
-    const appt = appointments[date]?.reports?.find(r => r.id === id);
-    if (appt) openEditAppointmentModal(date, appt);
-}
-
-function handleDelete(e) {
-    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-    const date = e.currentTarget.getAttribute('data-date');
-    if (confirm('Delete this appointment?')) {
-        deleteAppointment(date, id);
-        showToast('Deleted', 'info');
-        refreshCurrentView();
-    }
-}
-
+// ---- EDIT MODAL ----
 function openEditAppointmentModal(dateStr, appt) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
@@ -846,8 +829,7 @@ function openQuickReportWithDate(defaultDate) {
                 <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     document.getElementById('submitReportBtn').addEventListener('click', () => {
-        const bus = document.getElementById('reportBusiness').value,
-            name = document.getElementById('reportName').value;
+        const bus = document.getElementById('reportBusiness').value, name = document.getElementById('reportName').value;
         if (!bus || !name) { showToast('Required fields', 'error'); return; }
         const selectedTags = Array.from(document.querySelectorAll('.quick-tag-checkbox:checked')).map(cb => cb.value);
         addAppointment(document.getElementById('reportDate').value, bus, name, document.getElementById('reportRole').value,
@@ -904,7 +886,7 @@ function renderListView(container) {
                     <select id="listTagFilter"><option value="all" ${currentTagFilter === 'all' ? 'selected' : ''}>All Tags</option>${TAG_OPTIONS.map(t => `<option value="${t.id}" ${currentTagFilter === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}</select>
                     <button class="action-icon-btn" id="listSmartImport"><i class="fas fa-magic"></i> Import</button>
                 </div>
-                <div class="appointments-list">
+                <div class="appointments-list" id="appointmentsListContainer">
                     ${filtered.length === 0 ? `<div class="empty-state"><i class="fas fa-calendar-plus"></i><p>No appointments found</p></div>` :
                     filtered.map(a => `
                             <div class="appointment-card">
@@ -931,15 +913,13 @@ function renderListView(container) {
                         `).join('')}
                 </div>
             `;
-    document.getElementById('listSearchInput')?.addEventListener('input', (e) => { currentListSearchTerm = e.target.value;
-        renderListView(container); });
-    document.getElementById('listStatusFilter')?.addEventListener('change', (e) => { currentStatusFilter = e.target.value;
-        renderListView(container); });
-    document.getElementById('listTagFilter')?.addEventListener('change', (e) => { currentTagFilter = e.target.value;
-        renderListView(container); });
-    document.getElementById('listSmartImport')?.addEventListener('click', () => { hideFeaturePanel();
-        setTimeout(openSmartAddModal, 100); });
-    bindListActions();
+    
+    document.getElementById('listSearchInput')?.addEventListener('input', (e) => { currentListSearchTerm = e.target.value; renderListView(container); });
+    document.getElementById('listStatusFilter')?.addEventListener('change', (e) => { currentStatusFilter = e.target.value; renderListView(container); });
+    document.getElementById('listTagFilter')?.addEventListener('change', (e) => { currentTagFilter = e.target.value; renderListView(container); });
+    document.getElementById('listSmartImport')?.addEventListener('click', () => { hideFeaturePanel(); setTimeout(openSmartAddModal, 100); });
+    
+    setupDelegatedEventListeners();
 }
 
 // ---- ANALYTICS HUB ----
@@ -966,7 +946,6 @@ function renderAnalyticsHub(container) {
             `;
     container.innerHTML = tabHtml;
 
-    // Tab switching
     document.querySelectorAll('.analytics-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             currentAnalyticsTab = tab.getAttribute('data-tab');
@@ -974,7 +953,6 @@ function renderAnalyticsHub(container) {
         });
     });
 
-    // Render active panel
     if (currentAnalyticsTab === 'insights') {
         renderInsightsPanel(document.getElementById('insightsPanel'));
     } else {
@@ -987,33 +965,13 @@ function getDateRange(preset) {
     const start = new Date();
     const end = new Date();
     switch (preset) {
-        case 'today':
-            return { start: getTodayStr(), end: getTodayStr() };
-        case 'yesterday':
-            start.setDate(today.getDate() - 1);
-            end.setDate(today.getDate() - 1);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        case 'this_week':
-            start.setDate(today.getDate() - today.getDay());
-            end.setDate(start.getDate() + 6);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        case 'last_week':
-            start.setDate(today.getDate() - today.getDay() - 7);
-            end.setDate(start.getDate() + 6);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        case 'this_month':
-            start.setDate(1);
-            end.setMonth(today.getMonth() + 1);
-            end.setDate(0);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        case 'last_month':
-            start.setMonth(today.getMonth() - 1);
-            start.setDate(1);
-            end.setMonth(today.getMonth());
-            end.setDate(0);
-            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
-        default:
-            return { start: getTodayStr(), end: getTodayStr() };
+        case 'today': return { start: getTodayStr(), end: getTodayStr() };
+        case 'yesterday': start.setDate(today.getDate() - 1); end.setDate(today.getDate() - 1); return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'this_week': start.setDate(today.getDate() - today.getDay()); end.setDate(start.getDate() + 6); return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'last_week': start.setDate(today.getDate() - today.getDay() - 7); end.setDate(start.getDate() + 6); return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'this_month': start.setDate(1); end.setMonth(today.getMonth() + 1); end.setDate(0); return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        case 'last_month': start.setMonth(today.getMonth() - 1); start.setDate(1); end.setMonth(today.getMonth()); end.setDate(0); return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        default: return { start: getTodayStr(), end: getTodayStr() };
     }
 }
 
@@ -1030,26 +988,14 @@ function renderInsightsPanel(container) {
     const unique = new Set(appointmentsInRange.map(a => a.business)).size;
     const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
-    const startDate = new Date(dashboardDateRange.start),
-        endDate = new Date(dashboardDateRange.end);
+    const startDate = new Date(dashboardDateRange.start), endDate = new Date(dashboardDateRange.end);
     const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-    const chartLabels = [],
-        chartData = [];
-    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
-        const dateStr = d.toISOString().split('T')[0];
-        chartLabels.push(formatDateShort(dateStr));
-        chartData.push(appointments[dateStr]?.reports?.length || 0); }
-    const assignedStats = {},
-        roleStats = {},
-        statusStats = {},
-        tagStats = {};
-    appointmentsInRange.forEach(a => { const assigned = a.assigned || 'Unassigned';
-        assignedStats[assigned] = (assignedStats[assigned] || 0) + 1; });
-    appointmentsInRange.forEach(a => { const role = a.role || 'Other';
-        roleStats[role] = (roleStats[role] || 0) + 1; });
-    appointmentsInRange.forEach(a => { const s = getStatus(a);
-        statusStats[s] = (statusStats[s] || 0) + 1; });
+    const chartLabels = [], chartData = [];
+    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dateStr = d.toISOString().split('T')[0]; chartLabels.push(formatDateShort(dateStr)); chartData.push(appointments[dateStr]?.reports?.length || 0); }
+    const assignedStats = {}, roleStats = {}, statusStats = {}, tagStats = {};
+    appointmentsInRange.forEach(a => { const assigned = a.assigned || 'Unassigned'; assignedStats[assigned] = (assignedStats[assigned] || 0) + 1; });
+    appointmentsInRange.forEach(a => { const role = a.role || 'Other'; roleStats[role] = (roleStats[role] || 0) + 1; });
+    appointmentsInRange.forEach(a => { const s = getStatus(a); statusStats[s] = (statusStats[s] || 0) + 1; });
     appointmentsInRange.forEach(a => { if (a.tags) { a.tags.forEach(tag => { tagStats[tag] = (tagStats[tag] || 0) + 1; }); } });
 
     container.innerHTML = `
@@ -1107,24 +1053,17 @@ function renderInsightsPanel(container) {
         });
     }
 
-    const presetSelect = document.getElementById('datePresetSelect'),
-        customDiv = document.getElementById('customDateRange'),
-        applyBtn = document.getElementById('applyDateRange');
+    const presetSelect = document.getElementById('datePresetSelect'), customDiv = document.getElementById('customDateRange'), applyBtn = document.getElementById('applyDateRange');
     if (presetSelect) presetSelect.addEventListener('change', (e) => {
         dashboardDatePreset = e.target.value;
         if (dashboardDatePreset === 'custom') customDiv.style.display = 'flex';
-        else { customDiv.style.display = 'none';
-            dashboardDateRange = getDateRange(dashboardDatePreset);
-            renderInsightsPanel(container); }
+        else { customDiv.style.display = 'none'; dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); }
     });
     if (applyBtn) applyBtn.addEventListener('click', () => {
         if (dashboardDatePreset === 'custom') {
-            const s = document.getElementById('customStartDate')?.value,
-                e = document.getElementById('customEndDate')?.value;
-            if (s && e) { dashboardDateRange = { start: s, end: e };
-                renderInsightsPanel(container); }
-        } else { dashboardDateRange = getDateRange(dashboardDatePreset);
-            renderInsightsPanel(container); }
+            const s = document.getElementById('customStartDate')?.value, e = document.getElementById('customEndDate')?.value;
+            if (s && e) { dashboardDateRange = { start: s, end: e }; renderInsightsPanel(container); }
+        } else { dashboardDateRange = getDateRange(dashboardDatePreset); renderInsightsPanel(container); }
     });
 }
 
@@ -1146,13 +1085,8 @@ function renderAdvancedReports(container) {
     const rescheduled = appointmentsInRange.filter(a => getStatus(a) === 'Rescheduled').length;
     const conversionRate = warmCallBooked > 0 ? Math.round((meetingBooked / warmCallBooked) * 100) : 0;
     const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
-    const last7Days = [],
-        trendData = [];
-    for (let i = 6; i >= 0; i--) { const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        last7Days.push(formatDateShort(dateStr));
-        trendData.push(appointments[dateStr]?.reports?.length || 0); }
+    const last7Days = [], trendData = [];
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
 
     container.innerHTML = `
                 <div class="reports-container">
@@ -1227,7 +1161,6 @@ function showFeaturePanel(featureType, title) {
 
     if (!scriptPanel || !featurePanel) return;
 
-    // Reset all toggle containers
     analyticsTabs.style.display = 'none';
     calendarTabs.style.display = 'none';
 
@@ -1237,7 +1170,6 @@ function showFeaturePanel(featureType, title) {
         analyticsTabs.style.display = 'flex';
         currentView = 'analytics';
         renderAnalyticsHub(featureBody);
-        // Set active tab state
         document.getElementById('insightsTabBtn').classList.add('active');
         document.getElementById('reportsTabBtn').classList.remove('active');
     } else if (featureType === 'calendar') {
@@ -1259,10 +1191,7 @@ function hideFeaturePanel() {
     if (scriptPanel && featurePanel) {
         featurePanel.style.display = 'none';
         scriptPanel.style.display = 'block';
-        if (featureChartInstance) { featureChartInstance.destroy();
-            featureChartInstance = null; }
-        if (reportsChartInstance) { reportsChartInstance.destroy();
-            reportsChartInstance = null; }
+        if (featureChartInstance) { featureChartInstance.destroy(); featureChartInstance = null; }
         currentListSearchTerm = '';
     }
 }
@@ -1549,9 +1478,7 @@ function toggleTheme() {
 }
 
 function exportToCSV() {
-    let rows = [
-        ['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Status', 'Tags', 'CRM Link', 'Notes', 'Assigned']
-    ];
+    let rows = [['Date', 'Business', 'Contact', 'Role', 'Phone', 'Time', 'Status', 'Tags', 'CRM Link', 'Notes', 'Assigned']];
     for (let date in appointments) {
         if (appointments[date].reports) {
             appointments[date].reports.forEach(a => {
@@ -1572,12 +1499,10 @@ function exportToCSV() {
 function openPriorityModal() {
     const now = new Date();
     const zones = [{ name: 'Eastern (ET) ★', zone: 'America/New_York' }, { name: 'Central (CT)', zone: 'America/Chicago' }, { name: 'Mountain (MT)', zone: 'America/Denver' }, { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }];
-    let zHtml = '',
-        active = [];
+    let zHtml = '', active = [];
     for (let tz of zones) {
         const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
-        const hour = tzTime.getHours(),
-            min = tzTime.getMinutes();
+        const hour = tzTime.getHours(), min = tzTime.getMinutes();
         const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 15) || (hour === 16 && min === 0);
         if (isPrime) active.push(tz.name);
         zHtml += `<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime ? 'var(--success)' : 'var(--primary)'}"><div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div><div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime ? 'var(--success)' : 'var(--warning)'}; color:${isPrime ? 'white' : '#1e293b'};">${isPrime ? '🔥 PRIME TIME' : 'Awaiting Prime'}</span></div><div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`;
@@ -1602,8 +1527,7 @@ function showHelpModal() {
 function updateRealTimePriorityDashboard() {
     const now = new Date();
     const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const h = et.getHours(),
-        m = et.getMinutes();
+    const h = et.getHours(), m = et.getMinutes();
     const isPrime = ((h === 10) || (h === 11 && m <= 30) || (h >= 14 && h <= 15) || (h === 16 && m === 0)) && et.getDay() >= 1 && et.getDay() <= 5;
     const txt = document.getElementById('priorityTimeText');
     const tt = document.getElementById('tooltipPrimeStatus');
@@ -1626,9 +1550,8 @@ function toggleToolsMenu() {
     toolsOpen = !toolsOpen;
     const m = document.getElementById('toolsMenu');
     const c = document.getElementById('toolsChevron');
-    if (toolsOpen) { if (m) m.classList.add('open');
-        if (c) c.classList.add('rotated'); } else { if (m) m.classList.remove('open');
-        if (c) c.classList.remove('rotated'); }
+    if (toolsOpen) { if (m) m.classList.add('open'); if (c) c.classList.add('rotated'); }
+    else { if (m) m.classList.remove('open'); if (c) c.classList.remove('rotated'); }
     localStorage.setItem('toolsMenuOpen', toolsOpen);
 }
 
@@ -1640,7 +1563,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (csvUploadBtn && csvFileInput) {
         csvUploadBtn.addEventListener('click', (e) => {
-            // Only trigger file input if the click wasn't on the input itself
             if (e.target.tagName !== 'INPUT') {
                 csvFileInput.click();
             }
@@ -1655,19 +1577,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Please select a CSV file', 'error');
                 }
             }
-            // Reset input so the same file can be uploaded again
             csvFileInput.value = '';
         });
     }
 
-    // Tools toggle
     document.getElementById('toolsHeader')?.addEventListener('click', toggleToolsMenu);
     if (toolsOpen) {
         document.getElementById('toolsMenu')?.classList.add('open');
         document.getElementById('toolsChevron')?.classList.add('rotated');
     }
 
-    // Tool items
     document.querySelectorAll('.tool-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1685,16 +1604,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (text.includes('Help')) {
                 showHelpModal();
             } else if (text.includes('Factory Reset')) {
-                if (confirm('ERASE ALL DATA?')) { localStorage.clear();
-                    location.reload(); }
+                if (confirm('ERASE ALL DATA?')) { localStorage.clear(); location.reload(); }
             }
         });
     });
 
-    // Feature panel close
     document.getElementById('closeFeaturePanelBtn')?.addEventListener('click', hideFeaturePanel);
 
-    // Analytics tabs
     document.getElementById('insightsTabBtn')?.addEventListener('click', () => {
         currentAnalyticsTab = 'insights';
         const container = document.getElementById('featurePanelBody');
@@ -1706,7 +1622,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (container) renderAnalyticsHub(container);
     });
 
-    // Calendar/List toggle
     document.getElementById('calendarViewBtn')?.addEventListener('click', () => {
         currentView = 'calendar';
         refreshCurrentView();
@@ -1721,10 +1636,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('calendarViewBtn').classList.remove('active');
     });
 
-    // Sidebar toggle
-    const menuToggle = document.getElementById('menuToggleBtn'),
-        sidebar = document.getElementById('mainSidebar'),
-        main = document.getElementById('mainContent');
+    const menuToggle = document.getElementById('menuToggleBtn'), sidebar = document.getElementById('mainSidebar'), main = document.getElementById('mainContent');
     if (menuToggle) menuToggle.addEventListener('click', () => {
         sidebar.classList.toggle('closed');
         main.classList.toggle('expanded');
@@ -1735,14 +1647,12 @@ document.addEventListener('DOMContentLoaded', () => {
         main.classList.add('expanded');
     }
 
-    // Load data
     loadAppointmentData();
     loadScripts();
     renderSidebar();
     loadScript('opening');
     if (localStorage.getItem('scriptflow_theme_main') === 'dark') document.body.classList.add('dark');
 
-    // Script actions
     document.getElementById('addScriptBtnSide')?.addEventListener('click', addNewScript);
     document.getElementById('editScriptBtn')?.addEventListener('click', enterEdit);
     document.getElementById('saveScriptBtn')?.addEventListener('click', saveEdit);
@@ -1758,30 +1668,23 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSidebar();
     });
 
-    // Keyboard shortcuts
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const fp = document.getElementById('featurePanel');
-            if (fp && fp.style.display === 'block') { hideFeaturePanel();
-                e.preventDefault(); }
+            if (fp && fp.style.display === 'block') { hideFeaturePanel(); e.preventDefault(); }
         }
         if (e.key >= '1' && e.key <= '9' && !isEditing && !e.target.matches('textarea,input')) {
             const fp = document.getElementById('featurePanel');
             if (fp && fp.style.display === 'block') return;
             e.preventDefault();
             const t = getKeyMapping().get(e.key);
-            if (t && scripts[t]) { loadScript(t);
-                showToast(`Switched to: ${scripts[t].name}`, 'info'); }
+            if (t && scripts[t]) { loadScript(t); showToast(`Switched to: ${scripts[t].name}`, 'info'); }
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault();
-            undoScript(currentScriptId); }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault();
-            redoScript(currentScriptId); }
-        if (e.key === 'Escape' && isEditing) { cancelEdit();
-            showToast('Edit cancelled', 'info'); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isEditing) { e.preventDefault(); undoScript(currentScriptId); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y' && !isEditing) { e.preventDefault(); redoScript(currentScriptId); }
+        if (e.key === 'Escape' && isEditing) { cancelEdit(); showToast('Edit cancelled', 'info'); }
     });
 
-    // Real-time updates
     updateRealTimePriorityDashboard();
     setInterval(updateRealTimePriorityDashboard, 1000);
     setInterval(() => updateStats(), 5000);
