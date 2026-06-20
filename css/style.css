@@ -45,6 +45,7 @@
     --status-meeting-booked: #8b5cf6;
     --status-canceled: #ef4444;
     --status-rescheduled: #f59e0b;
+    --status-held: #f97316;
     --radius-card: 24px;
     --radius-sm: 12px;
     --radius-full: 9999px;
@@ -79,6 +80,7 @@ body.dark {
     --status-meeting-booked: #a78bfa;
     --status-canceled: #f87171;
     --status-rescheduled: #fbbf24;
+    --status-held: #fb923c;
 }
 
 body {
@@ -474,6 +476,18 @@ body {
     transform: translateY(-1px);
 }
 
+.priority-btn {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border-color: var(--primary);
+}
+
+.priority-btn:hover {
+    background: linear-gradient(135deg, var(--secondary), var(--primary));
+    color: white;
+    border-color: var(--secondary);
+}
+
 .csv-upload-btn {
     position: relative;
     cursor: pointer;
@@ -498,89 +512,181 @@ body {
 }
 
 /* ============================================================
-   PRIORITY INDICATOR
+   PRIORITY MODAL
    ============================================================ */
-.priority-indicator {
-    display: inline-flex;
+.priority-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.priority-modal {
+    background: var(--bg-secondary);
+    border-radius: 28px;
+    max-width: 550px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.priority-modal-header {
+    padding: 24px 28px;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
-    padding: 6px 16px;
-    border-radius: 40px;
     color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: help;
-    position: relative;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.priority-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.priority-close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: var(--transition);
 }
 
-.priority-indicator:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+.priority-close-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
 }
 
-.live-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #10b981;
-    border-radius: 50%;
-    animation: pulse 1.5s infinite;
+.priority-modal-body {
+    padding: 28px;
+    max-height: calc(85vh - 80px);
+    overflow-y: auto;
 }
 
-@keyframes pulse {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.5;
-        transform: scale(1.2);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.tooltip-text {
-    visibility: hidden;
-    width: 280px;
-    background-color: var(--tooltip-bg);
-    color: white;
-    text-align: left;
+.priority-modal-body .active-summary {
+    background: var(--success);
+    padding: 12px 20px;
     border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.priority-modal-body .no-active-summary {
+    background: var(--warning);
+    padding: 12px 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #1e293b;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.priority-modal-body .timezone-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.priority-modal-body .timezone-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 12px 16px;
-    position: absolute;
-    z-index: 100;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 0.7rem;
-    white-space: normal;
-    box-shadow: var(--shadow-lg);
-    pointer-events: none;
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
 }
 
-.priority-indicator:hover .tooltip-text {
-    visibility: visible;
-    opacity: 1;
+.priority-modal-body .timezone-row:hover {
+    border-color: var(--primary);
+    transform: translateX(4px);
 }
 
-.tooltip-text::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -6px;
-    border-width: 6px;
-    border-style: solid;
-    border-color: var(--tooltip-bg) transparent transparent transparent;
+.priority-modal-body .timezone-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.priority-modal-body .timezone-time {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.priority-modal-body .timezone-status {
+    font-size: 0.65rem;
+    padding: 4px 14px;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.priority-modal-body .status-prime {
+    background: var(--success);
+    color: white;
+}
+
+.priority-modal-body .status-awaiting {
+    background: var(--warning);
+    color: #1e293b;
+}
+
+.priority-modal-body .best-practices {
+    background: var(--bg-primary);
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    font-size: 0.8rem;
+    line-height: 1.8;
+}
+
+.priority-modal-body .best-practices strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
 }
 
 /* ============================================================
@@ -1106,6 +1212,10 @@ body {
 .status-rescheduled-sm {
     background: var(--status-rescheduled);
     color: #1e293b;
+}
+.status-held-sm {
+    background: var(--status-held);
+    color: white;
 }
 
 .appointment-card .tag-pills {
@@ -1650,6 +1760,13 @@ body {
         flex-direction: column;
         align-items: stretch;
     }
+    .priority-modal {
+        max-width: 95%;
+        width: 95%;
+    }
+    .priority-modal-body {
+        padding: 20px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1668,5 +1785,30 @@ body {
     }
     .analytics-tabs {
         flex-wrap: wrap;
+    }
+    .priority-modal {
+        max-width: 98%;
+        width: 98%;
+        border-radius: 20px;
+    }
+    .priority-modal-header {
+        padding: 16px 20px;
+    }
+    .priority-modal-header h2 {
+        font-size: 1rem;
+    }
+    .priority-modal-body {
+        padding: 16px;
+    }
+    .priority-modal-body .timezone-row {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 10px 12px;
+    }
+    .priority-modal-body .timezone-name {
+        font-size: 0.8rem;
+    }
+    .priority-modal-body .timezone-time {
+        font-size: 0.9rem;
     }
 }

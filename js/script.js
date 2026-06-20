@@ -30,7 +30,9 @@ let toolsOpen = localStorage.getItem('toolsMenuOpen') === 'true';
 let featureChartInstance = null;
 let draggedItem = null;
 
-const STATUS_OPTIONS = ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'];
+// Updated STATUS_OPTIONS with "Held"
+const STATUS_OPTIONS = ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled', 'Held'];
+
 const TAG_OPTIONS = [
     { id: 'qualified_warm_call', name: 'Qualified Warm Call', color: 'var(--tag-qualified-warm-call)', colorClass: 'tag-qualified-warm-call-bg' },
     { id: 'unqualified_warm_callback', name: 'Unqualified Warm Callback', color: 'var(--tag-unqualified-warm-callback)', colorClass: 'tag-unqualified-warm-callback-bg' },
@@ -53,6 +55,7 @@ function getStatusClassSmall(status) {
         case 'Meeting Booked': return 'status-meeting-booked-sm';
         case 'Canceled': return 'status-canceled-sm';
         case 'Rescheduled': return 'status-rescheduled-sm';
+        case 'Held': return 'status-held-sm';
         default: return 'status-warm-call-booked-sm';
     }
 }
@@ -166,7 +169,10 @@ function importCSV(file) {
                     const role = values[headerMap.role]?.trim() || 'Owner';
                     const phone = values[headerMap.phone]?.trim() || '';
                     const time = values[headerMap.time]?.trim() || '';
-                    const status = values[headerMap.status]?.trim() || 'Warm Call Booked';
+                    let status = values[headerMap.status]?.trim() || 'Warm Call Booked';
+                    if (!STATUS_OPTIONS.includes(status)) {
+                        status = 'Warm Call Booked';
+                    }
                     const tagsStr = values[headerMap.tags]?.trim() || '';
                     const crmLink = values[headerMap.crm]?.trim() || '';
                     const notes = values[headerMap.notes]?.trim() || '';
@@ -227,6 +233,9 @@ function parseCSVRow(row) {
 // ---- APPOINTMENT CRUD ----
 function addAppointment(dateStr, business, contactName, role, phone, time, notes, assigned, editId = null, status = 'Warm Call Booked', crmLink = '', tags = []) {
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
+    if (!STATUS_OPTIONS.includes(status)) {
+        status = 'Warm Call Booked';
+    }
     const newAppt = {
         id: editId || Date.now(),
         business,
@@ -288,6 +297,10 @@ function loadAppointmentData() {
                 else if (appt.status === 'Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
                 else if (appt.status === 'Warm-Booked') { appt.status = 'Warm Call Booked'; needsSave = true; }
                 else if (appt.status === 'Called') { appt.status = 'Meeting Booked'; needsSave = true; }
+                if (appt.status && !STATUS_OPTIONS.includes(appt.status)) {
+                    appt.status = 'Warm Call Booked';
+                    needsSave = true;
+                }
                 if (!appt.crmLink) appt.crmLink = '';
                 if (!appt.tags) appt.tags = [];
             });
@@ -436,6 +449,7 @@ function renderCalendarPanel(container) {
                 else if (s === 'Meeting Booked') color = 'var(--status-meeting-booked)';
                 else if (s === 'Canceled') color = 'var(--status-canceled)';
                 else if (s === 'Rescheduled') color = 'var(--status-rescheduled)';
+                else if (s === 'Held') color = 'var(--status-held)';
                 return `<span class="appt-dot" style="background:${color};"></span>`;
             }).join('');
             indicatorHtml = `<div class="appt-indicator">${dots}</div>`;
@@ -462,6 +476,7 @@ function renderCalendarPanel(container) {
                     <div class="kpi-card"><div class="kpi-value">${statusCounts['Meeting Booked'] || 0}</div><div class="kpi-label">Meeting</div></div>
                     <div class="kpi-card"><div class="kpi-value">${statusCounts['Canceled'] || 0}</div><div class="kpi-label">Canceled</div></div>
                     <div class="kpi-card"><div class="kpi-value">${statusCounts['Rescheduled'] || 0}</div><div class="kpi-label">Rescheduled</div></div>
+                    <div class="kpi-card"><div class="kpi-value">${statusCounts['Held'] || 0}</div><div class="kpi-label">Held</div></div>
                 </div>
             `;
 
@@ -688,11 +703,9 @@ function setupDelegatedEventListeners() {
     const container = document.getElementById('appointmentsListContainer');
     if (!container) return;
 
-    // Remove any existing listeners to avoid duplicates
     container.removeEventListener('click', handleDelegatedClick);
     container.removeEventListener('change', handleDelegatedChange);
     
-    // Add delegated listeners
     container.addEventListener('click', handleDelegatedClick);
     container.addEventListener('change', handleDelegatedChange);
 }
@@ -701,7 +714,6 @@ function handleDelegatedClick(e) {
     const target = e.target.closest('button');
     if (!target) return;
 
-    // Copy button
     if (target.classList.contains('copy-btn')) {
         e.preventDefault();
         const id = parseInt(target.getAttribute('data-id'));
@@ -716,7 +728,6 @@ function handleDelegatedClick(e) {
         return;
     }
 
-    // Edit button
     if (target.classList.contains('edit-btn')) {
         e.preventDefault();
         const id = parseInt(target.getAttribute('data-id'));
@@ -726,7 +737,6 @@ function handleDelegatedClick(e) {
         return;
     }
 
-    // Delete button
     if (target.classList.contains('delete-btn')) {
         e.preventDefault();
         const id = parseInt(target.getAttribute('data-id'));
@@ -739,7 +749,6 @@ function handleDelegatedClick(e) {
         return;
     }
 
-    // Empty state add button
     if (target.id === 'emptyAddBtn') {
         hideFeaturePanel();
         setTimeout(() => openQuickReportWithDate(selectedCalDate), 100);
@@ -922,6 +931,116 @@ function renderListView(container) {
     setupDelegatedEventListeners();
 }
 
+// ---- PRIORITY MODAL ----
+function openPriorityModal() {
+    const modal = document.getElementById('priorityModal');
+    const body = document.getElementById('priorityModalBody');
+    if (!modal || !body) return;
+
+    const now = new Date();
+    const zones = [
+        { name: 'Eastern (ET) ★', zone: 'America/New_York' },
+        { name: 'Central (CT)', zone: 'America/Chicago' },
+        { name: 'Mountain (MT)', zone: 'America/Denver' },
+        { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }
+    ];
+
+    let html = '';
+    let activeZones = [];
+
+    zones.forEach(tz => {
+        const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
+        const hour = tzTime.getHours();
+        const min = tzTime.getMinutes();
+        const day = tzTime.getDay();
+        
+        const isPrime = ((hour === 10) || (hour === 11 && min <= 30) || (hour >= 14 && hour <= 15) || (hour === 16 && min === 0)) && day >= 1 && day <= 5;
+        
+        if (isPrime) {
+            activeZones.push(tz.name);
+        }
+
+        const timeStr = tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const statusClass = isPrime ? 'status-prime' : 'status-awaiting';
+        const statusText = isPrime ? '🔥 PRIME' : '⏳ Awaiting';
+
+        html += `
+            <div class="timezone-row">
+                <span class="timezone-name">${tz.name}</span>
+                <span class="timezone-time">${timeStr}</span>
+                <span class="timezone-status ${statusClass}">${statusText}</span>
+            </div>
+        `;
+    });
+
+    let summaryHtml = '';
+    if (activeZones.length > 0) {
+        summaryHtml = `<div class="active-summary">
+            ✅ ACTIVE PRIME WINDOWS: ${activeZones.join(', ')}
+        </div>`;
+    } else {
+        summaryHtml = `<div class="no-active-summary">
+            ⏳ No active prime windows currently
+        </div>`;
+    }
+
+    body.innerHTML = `
+        ${summaryHtml}
+        <div style="margin-bottom:14px; font-weight:600; font-size:0.95rem;">
+            <i class="fas fa-clock"></i> Current Time by Zone
+        </div>
+        <div class="timezone-grid">
+            ${html}
+        </div>
+        <div class="best-practices">
+            <strong>💡 Best Practices for Calling:</strong>
+            • Best days: Tuesday, Wednesday, Thursday<br />
+            • Avoid: Monday mornings &amp; Friday afternoons<br />
+            • Prime windows: 10-11:30 AM &amp; 2-4 PM ET<br />
+            • Always confirm the prospect's time zone before scheduling
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePriorityModal() {
+    const modal = document.getElementById('priorityModal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+function setupPriorityModal() {
+    const modal = document.getElementById('priorityModal');
+    const closeBtn = document.getElementById('closePriorityModal');
+    const priorityBtn = document.getElementById('priorityBtn');
+
+    if (priorityBtn) {
+        priorityBtn.addEventListener('click', openPriorityModal);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closePriorityModal);
+    }
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closePriorityModal();
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                closePriorityModal();
+            }
+        });
+    }
+}
+
 // ---- ANALYTICS HUB ----
 function renderAnalyticsHub(container) {
     const tabHtml = `
@@ -947,9 +1066,24 @@ function renderAnalyticsHub(container) {
     container.innerHTML = tabHtml;
 
     document.querySelectorAll('.analytics-tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            currentAnalyticsTab = tab.getAttribute('data-tab');
-            renderAnalyticsHub(container);
+        tab.addEventListener('click', function() {
+            currentAnalyticsTab = this.getAttribute('data-tab');
+            
+            document.querySelectorAll('.analytics-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const insightsPanel = document.getElementById('insightsPanel');
+            const reportsPanel = document.getElementById('reportsPanel');
+            
+            if (currentAnalyticsTab === 'insights') {
+                insightsPanel.classList.add('active');
+                reportsPanel.classList.remove('active');
+                renderInsightsPanel(insightsPanel);
+            } else {
+                reportsPanel.classList.add('active');
+                insightsPanel.classList.remove('active');
+                renderAdvancedReports(reportsPanel);
+            }
         });
     });
 
@@ -1083,6 +1217,7 @@ function renderAdvancedReports(container) {
     const meetingBooked = appointmentsInRange.filter(a => getStatus(a) === 'Meeting Booked').length;
     const canceled = appointmentsInRange.filter(a => getStatus(a) === 'Canceled').length;
     const rescheduled = appointmentsInRange.filter(a => getStatus(a) === 'Rescheduled').length;
+    const held = appointmentsInRange.filter(a => getStatus(a) === 'Held').length;
     const conversionRate = warmCallBooked > 0 ? Math.round((meetingBooked / warmCallBooked) * 100) : 0;
     const uniqueBusinesses = new Set(appointmentsInRange.map(a => a.business)).size;
     const last7Days = [], trendData = [];
@@ -1108,6 +1243,8 @@ function renderAdvancedReports(container) {
                                 <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
                                 <div class="funnel-step"><div class="count">${meetingBooked}</div><div class="label">Meeting Booked</div></div>
                                 <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
+                                <div class="funnel-step"><div class="count">${held}</div><div class="label">Held</div></div>
+                                <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
                                 <div class="funnel-step"><div class="count">${canceled}</div><div class="label">Canceled</div></div>
                                 <div class="funnel-arrow"><i class="fas fa-arrow-right"></i></div>
                                 <div class="funnel-step"><div class="count">${rescheduled}</div><div class="label">Rescheduled</div></div>
@@ -1132,8 +1269,8 @@ function renderAdvancedReports(container) {
     new Chart(document.getElementById('reportStatusChart'), {
         type: 'pie',
         data: {
-            labels: ['Warm Call Booked', 'Meeting Booked', 'Canceled', 'Rescheduled'],
-            datasets: [{ data: [warmCallBooked, meetingBooked, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'] }]
+            labels: ['Warm Call Booked', 'Meeting Booked', 'Held', 'Canceled', 'Rescheduled'],
+            datasets: [{ data: [warmCallBooked, meetingBooked, held, canceled, rescheduled], backgroundColor: ['#3b82f6', '#8b5cf6', '#f97316', '#ef4444', '#f59e0b'] }]
         },
         options: { responsive: true, maintainAspectRatio: true }
     });
@@ -1170,8 +1307,6 @@ function showFeaturePanel(featureType, title) {
         analyticsTabs.style.display = 'flex';
         currentView = 'analytics';
         renderAnalyticsHub(featureBody);
-        document.getElementById('insightsTabBtn').classList.add('active');
-        document.getElementById('reportsTabBtn').classList.remove('active');
     } else if (featureType === 'calendar') {
         calendarTabs.style.display = 'flex';
         currentView = 'calendar';
@@ -1496,54 +1631,13 @@ function exportToCSV() {
     showToast('Exported', 'success');
 }
 
-function openPriorityModal() {
-    const now = new Date();
-    const zones = [{ name: 'Eastern (ET) ★', zone: 'America/New_York' }, { name: 'Central (CT)', zone: 'America/Chicago' }, { name: 'Mountain (MT)', zone: 'America/Denver' }, { name: 'Pacific (PT)', zone: 'America/Los_Angeles' }];
-    let zHtml = '', active = [];
-    for (let tz of zones) {
-        const tzTime = new Date(now.toLocaleString('en-US', { timeZone: tz.zone }));
-        const hour = tzTime.getHours(), min = tzTime.getMinutes();
-        const isPrime = (hour >= 10 && hour <= 11) || (hour >= 14 && hour <= 15) || (hour === 16 && min === 0);
-        if (isPrime) active.push(tz.name);
-        zHtml += `<div style="background:var(--bg-primary); border-radius:20px; padding:16px; margin-bottom:12px; border-left:4px solid ${isPrime ? 'var(--success)' : 'var(--primary)'}"><div style="display:flex; justify-content:space-between;"><strong>${tz.name}</strong><span style="font-size:1.3rem; font-weight:700;">${tzTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span></div><div style="margin-top:8px;"><span style="display:inline-block; padding:4px 12px; border-radius:20px; background:${isPrime ? 'var(--success)' : 'var(--warning)'}; color:${isPrime ? 'white' : '#1e293b'};">${isPrime ? '🔥 PRIME TIME' : 'Awaiting Prime'}</span></div><div style="font-size:0.7rem; margin-top:6px;">Best: 10-11:30 AM & 2-4 PM local</div></div>`;
-    }
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card" style="width:550px;"><div style="background:linear-gradient(135deg,var(--primary),var(--secondary)); color:white; padding:20px; border-radius:24px; text-align:center;"><h2><i class="fas fa-chart-line"></i> Call Priority</h2></div>${active.length ? `<div style="background:var(--success); color:white; padding:12px; border-radius:16px; margin:16px 0; text-align:center;"><strong>ACTIVE:</strong> ${active.join(', ')}</div>` : `<div style="background:var(--warning); padding:12px; border-radius:16px; margin:16px 0; text-align:center;">No active prime windows</div>`}${zHtml}<div style="padding:16px; background:var(--bg-primary); border-radius:16px;"><strong>💡 Tips:</strong><br>Best days: Tue-Thu · Avoid Mon mornings & Fri afternoons</div><button id="closePrioBtn" class="btn-icon" style="margin-top:20px; width:100%;">Got it</button></div>`;
-    document.body.appendChild(modal);
-    document.getElementById('closePrioBtn').addEventListener('click', () => modal.remove());
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
 function showHelpModal() {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div><div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div><div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter by status and tags, hover tooltips, CRM links</div><div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>CRM link field, tag selection, auto-extracts all fields</div><div style="margin:16px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div><div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm Call Booked, Meeting Booked, Canceled, Rescheduled</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
+    modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-question-circle"></i> ScriptFlow Pro Guide</h3><div style="margin:16px 0;"><strong>📊 Insights Dashboard</strong><br>Analytics and trends</div><div style="margin:16px 0;"><strong>📋 Advanced Reports</strong><br>PDF export, conversion funnel, performance metrics</div><div style="margin:16px 0;"><strong>📅 Drag & Drop Calendar</strong><br>Drag appointments to reschedule</div><div style="margin:16px 0;"><strong>📋 Clean List View</strong><br>Search, filter by status and tags, hover tooltips, CRM links</div><div style="margin:16px 0;"><strong>✨ Smart Import</strong><br>CRM link field, tag selection, auto-extracts all fields</div><div style="margin:16px 0;"><strong>🏷️ Tags System</strong><br>Qualified Warm Call (Green), Unqualified Warm Callback (Yellow), VIP (Blue), Negligent Warm Callback (Red)</div><div style="margin:16px 0;"><strong>🎯 Priority Predictor</strong><br>Real-time best calling times across US time zones</div><div style="margin:16px 0;"><strong>📌 Status Tracking</strong><br>Warm Call Booked, Meeting Booked, Held, Canceled, Rescheduled</div><button id="closeHelp" class="btn-icon" style="margin-top:16px;">Got it</button></div>`;
     document.body.appendChild(modal);
     document.getElementById('closeHelp').addEventListener('click', () => modal.remove());
     modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-}
-
-function updateRealTimePriorityDashboard() {
-    const now = new Date();
-    const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const h = et.getHours(), m = et.getMinutes();
-    const isPrime = ((h === 10) || (h === 11 && m <= 30) || (h >= 14 && h <= 15) || (h === 16 && m === 0)) && et.getDay() >= 1 && et.getDay() <= 5;
-    const txt = document.getElementById('priorityTimeText');
-    const tt = document.getElementById('tooltipPrimeStatus');
-    if (txt) {
-        if (isPrime) {
-            txt.innerHTML = `<i class="fas fa-fire"></i> PRIME TIME (${et.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} ET)`;
-            if (tt) tt.innerHTML = '🔥 ACTIVE PRIME WINDOW';
-        } else {
-            let next = '';
-            if (h < 10) next = 'Next: 10-11:30 AM ET';
-            else if (h < 14) next = 'Next: 2-4 PM ET';
-            else next = 'Tomorrow 10-11:30 AM ET';
-            txt.innerHTML = `<i class="fas fa-clock"></i> ${next}`;
-            if (tt) tt.innerHTML = `⏳ ${next}`;
-        }
-    }
 }
 
 function toggleToolsMenu() {
@@ -1581,6 +1675,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Setup Priority Modal
+    setupPriorityModal();
+
     document.getElementById('toolsHeader')?.addEventListener('click', toggleToolsMenu);
     if (toolsOpen) {
         document.getElementById('toolsMenu')?.classList.add('open');
@@ -1592,6 +1689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             const text = item.querySelector('span')?.innerText || item.innerText;
             if (text.includes('Analytics Hub')) {
+                currentAnalyticsTab = 'insights';
                 showFeaturePanel('analytics', 'Analytics Hub');
             } else if (text.includes('Appointment Calendar')) {
                 showFeaturePanel('calendar', 'Appointment Calendar');
@@ -1685,7 +1783,5 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Escape' && isEditing) { cancelEdit(); showToast('Edit cancelled', 'info'); }
     });
 
-    updateRealTimePriorityDashboard();
-    setInterval(updateRealTimePriorityDashboard, 1000);
     setInterval(() => updateStats(), 5000);
 });

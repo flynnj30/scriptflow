@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>ScriptFlow Pro · Smart CRM</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='Arial'%3E🎯%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAADMklEQVR4nO2dzW5TQRCFZ+6NaKtsWSEWLDGwY8GKP2IFP7wgQdiw7PkDdixYwZIsCItuKABJ5F7P7cOZSSakAw0F3U+6p6ukEZf2zNmzM3PPzM3WNE3DDRVIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCsg1+A4mD9jQf42VzAAAAAElFTkSuQmCC" />
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="css/style.css" />
@@ -78,19 +83,9 @@
                 </div>
                 <div class="action-buttons">
                     <button class="btn-icon" id="quickReportBtn"><i class="fas fa-magic"></i> Smart Import</button>
-                    <div class="priority-indicator" id="priorityLiveIndicator">
-                        <span class="live-dot"></span>
-                        <span id="priorityTimeText">Loading...</span>
-                        <div class="tooltip-text">
-                            <strong>📞 Real-Time Call Priority</strong><br /><br />
-                            <strong>🎯 Eastern Time (ET) is PRIORITY</strong><br />
-                            Most US business owners operate on ET.<br /><br />
-                            <strong>✅ Prime Window NOW:</strong> <span id="tooltipPrimeStatus">Checking...</span><br />
-                            <strong>Best hours:</strong> 10-11:30 AM &amp; 2-4 PM ET<br />
-                            <strong>Best days:</strong> Tuesday, Wednesday, Thursday<br />
-                            <strong>Avoid:</strong> Monday mornings &amp; Friday afternoons
-                        </div>
-                    </div>
+                    <button class="btn-icon priority-btn" id="priorityBtn">
+                        <i class="fas fa-chart-line"></i> Priority
+                    </button>
                     <label class="btn-icon csv-upload-btn" id="csvUploadBtn" title="Upload CSV to import appointments">
                         <i class="fas fa-file-upload"></i> CSV
                         <input type="file" id="csvFileInput" accept=".csv" style="display:none;" />
@@ -150,6 +145,19 @@
 
             <div class="footer-note">
                 <i class="fas fa-chart-line"></i> Full-featured CRM · Drag appointments to reschedule · Export reports as PDF · Smart Import with Tags
+            </div>
+        </div>
+    </div>
+
+    <!-- Priority Modal -->
+    <div id="priorityModal" class="priority-modal-overlay" style="display:none;">
+        <div class="priority-modal">
+            <div class="priority-modal-header">
+                <h2><i class="fas fa-chart-line"></i> Call Priority Predictor</h2>
+                <button id="closePriorityModal" class="priority-close-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="priority-modal-body" id="priorityModalBody">
+                <!-- Populated dynamically -->
             </div>
         </div>
     </div>
