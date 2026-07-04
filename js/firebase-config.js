@@ -15,29 +15,41 @@ const FIREBASE_CONFIG = {
 // Initialize Firebase
 firebase.initializeApp(FIREBASE_CONFIG);
 
-// Initialize Firestore with new cache settings (fixes the warning)
+// Initialize Firestore
 const db = firebase.firestore();
 
-// Use the new cache setting instead of deprecated enablePersistence
-const settings = {
-  cache: {
-    sizeBytes: 104857600 // 100 MB cache
-  }
-};
-db.settings(settings);
+// Apply settings with proper configuration
+// Fixed: Using merge: true to avoid overriding errors
+try {
+  db.settings({
+    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+    merge: true
+  });
+} catch (error) {
+  console.warn('Firestore settings already applied:', error);
+}
 
-// Enable offline persistence with the new method
+// Enable offline persistence with proper error handling
 try {
   db.enablePersistence({ synchronizeTabs: true })
     .catch(err => {
-      console.warn('Firebase persistence warning:', err);
+      // This error is expected if persistence is already enabled
+      if (err.code !== 'failed-precondition' && err.code !== 'unavailable') {
+        console.warn('Firebase persistence error:', err);
+      }
     });
 } catch (err) {
-  console.warn('Firebase persistence error:', err);
+  console.warn('Firebase persistence setup:', err);
 }
 
 // Initialize Auth
 const auth = firebase.auth();
+
+// Enable persistence for auth
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .catch(err => {
+    console.warn('Auth persistence error:', err);
+  });
 
 // Make available globally
 window.db = db;
