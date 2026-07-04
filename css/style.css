@@ -1927,3 +1927,97 @@ body.dark #googleSignInBtn:active {
         height: 16px;
     }
 }
+/* ============================================================
+   USER PROFILE IMAGE
+   ============================================================ */
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  margin-top: 8px;
+  transition: var(--transition);
+}
+
+.user-profile:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.user-email {
+  font-size: 0.75rem;
+  color: var(--sidebar-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+/* ============================================================
+   SIGN OUT BUTTON - FIXED
+   ============================================================ */
+
+#signOutBtn {
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--sidebar-text);
+}
+
+#signOutBtn:hover {
+  background: var(--sidebar-hover);
+  color: #ef4444;
+}
+
+#signOutBtn i {
+  color: var(--sidebar-text-secondary);
+  transition: var(--transition);
+}
+
+#signOutBtn:hover i {
+  color: #ef4444;
+}
+
+/* ============================================================
+   RESPONSIVE UPDATES
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .user-email {
+    max-width: 100px;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .user-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+}

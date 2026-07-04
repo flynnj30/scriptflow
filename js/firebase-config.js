@@ -15,14 +15,26 @@ const FIREBASE_CONFIG = {
 // Initialize Firebase
 firebase.initializeApp(FIREBASE_CONFIG);
 
-// Initialize Firestore
+// Initialize Firestore with new cache settings (fixes the warning)
 const db = firebase.firestore();
 
-// Enable offline persistence
-db.enablePersistence({ synchronizeTabs: true })
-  .catch(err => {
-    console.warn('Firebase persistence error:', err);
-  });
+// Use the new cache setting instead of deprecated enablePersistence
+const settings = {
+  cache: {
+    sizeBytes: 104857600 // 100 MB cache
+  }
+};
+db.settings(settings);
+
+// Enable offline persistence with the new method
+try {
+  db.enablePersistence({ synchronizeTabs: true })
+    .catch(err => {
+      console.warn('Firebase persistence warning:', err);
+    });
+} catch (err) {
+  console.warn('Firebase persistence error:', err);
+}
 
 // Initialize Auth
 const auth = firebase.auth();
@@ -31,3 +43,5 @@ const auth = firebase.auth();
 window.db = db;
 window.auth = auth;
 window.firebase = firebase;
+
+console.log('✅ Firebase initialized successfully');
