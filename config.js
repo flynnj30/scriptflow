@@ -14,10 +14,8 @@ const SUPABASE_CONFIG = {
   
   // Google OAuth Settings
   google: {
-    // Enable Google Sign-In
     enabled: true,
-    // Optional: Redirect URL after sign in (leave empty for default)
-    redirectTo: window.location.origin + '/index.html'
+    redirectTo: window.location.origin + window.location.pathname
   }
 };
 
