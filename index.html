@@ -25,7 +25,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body class="dark">
     <div class="app-wrapper">
         <button class="menu-toggle" id="menuToggleBtn"><i class="fas fa-bars"></i></button>
 
@@ -113,7 +113,12 @@
                         <input type="file" id="csvFileInput" accept=".csv" style="display:none;" />
                     </label>
                     <button class="btn-icon" id="historyBtn"><i class="fas fa-history"></i> History</button>
-                    <span class="badge-auto" id="saveStatus"><i class="fas fa-save"></i> Auto</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button class="btn-icon" id="refreshBtn" title="Refresh data from server" style="padding:8px 12px;">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <span class="badge-auto" id="saveStatus"><i class="fas fa-save"></i> Auto</span>
+                    </div>
                 </div>
             </div>
 

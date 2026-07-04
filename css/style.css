@@ -2021,3 +2021,111 @@ body.dark #googleSignInBtn:active {
     font-size: 0.8rem;
   }
 }
+/* ============================================================
+   REFRESH BUTTON STYLES
+   ============================================================ */
+
+#refreshBtn {
+  transition: all 0.3s ease;
+  padding: 8px 12px;
+}
+
+#refreshBtn:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  transform: rotate(180deg);
+}
+
+#refreshBtn.spinning {
+  animation: spin 0.8s ease-in-out;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   ERROR HANDLING STYLES
+   ============================================================ */
+
+.error-boundary {
+  padding: 20px;
+  margin: 16px 0;
+  border-radius: 12px;
+  background: var(--danger);
+  color: white;
+  border-left: 4px solid #b91c1c;
+}
+
+.error-boundary i {
+  margin-right: 10px;
+}
+
+.error-boundary .error-details {
+  font-size: 0.8rem;
+  margin-top: 8px;
+  opacity: 0.8;
+  font-family: monospace;
+}
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--warning);
+  color: #1e293b;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 9999;
+  display: none;
+  animation: slideDown 0.3s ease;
+}
+
+.offline-indicator.show {
+  display: block;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   LOADING STATES
+   ============================================================ */
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+.loading-spinner i {
+  font-size: 2rem;
+  margin-right: 12px;
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================================
+   RESPONSIVE UPDATES
+   ============================================================ */
+
+@media (max-width: 768px) {
+  #refreshBtn {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+}
