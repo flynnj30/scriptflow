@@ -7,13 +7,21 @@
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='Arial'%3E🎯%3C/text%3E%3C/svg%3E" />
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAACXBIWXMAAAsTAAALEwEAmpwYAAADMklEQVR4nO2dzW5TQRCFZ+6NaKtsWSEWLDGwY8GKP2IFP7wgQdiw7PkDdixYwZIsCItuKABJ5F7P7cOZSSakAw0F3U+6p6ukEZf2zNmzM3PPzM3WNE3DDRVIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCUgGpgFRAKiAVkApIBaQCsg1+A4mD9jQf42VzAAAAAElFTkSuQmCC" />
     
+    <!-- External Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link rel="stylesheet" href="css/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Config -->
+    <script src="config.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
     <div class="app-wrapper">
@@ -28,6 +36,9 @@
                         <h2>ScriptFlow Pro</h2>
                         <p>Smart Call Scripts</p>
                     </div>
+                </div>
+                <div id="userInfo" style="color:var(--sidebar-text-secondary); font-size:0.8rem; padding:8px 0; display:none;">
+                    <i class="fas fa-user-circle"></i> <span id="userEmail"></span>
                 </div>
             </div>
 
@@ -50,11 +61,14 @@
                 <div class="tools-menu" id="toolsMenu">
                     <div class="tool-item" data-tool="analytics"><i class="fas fa-chart-pie"></i> <span>Analytics Hub</span></div>
                     <div class="tool-item" data-tool="calendar"><i class="fas fa-calendar-alt"></i> <span>Appointment Calendar</span></div>
-                    <div class="tool-item" data-tool="priority"><i class="fas fa-chart-line"></i> <span>Call Priority Predictor</span></div>
+                    <div class="tool-item" data-tool="tasks"><i class="fas fa-tasks"></i> <span>Follow-up Tasks</span></div>
                     <div class="tool-item" data-tool="export"><i class="fas fa-file-csv"></i> <span>Export to CSV</span></div>
                     <div class="tool-item" data-tool="theme"><i class="fas fa-moon"></i> <span>Dark/Light Mode</span></div>
                     <div class="tool-item" data-tool="help"><i class="fas fa-question-circle"></i> <span>Help Guide</span></div>
                     <div class="tool-item" data-tool="reset"><i class="fas fa-trash-alt"></i> <span>Factory Reset</span></div>
+                    <div class="tool-item" id="signOutBtn" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:12px;">
+                        <i class="fas fa-sign-out-alt"></i> <span>Sign Out</span>
+                    </div>
                 </div>
             </div>
             <div class="sidebar-footer"><i class="fas fa-crown"></i> Press 1-9 to switch scripts</div>
@@ -80,12 +94,18 @@
                         <span class="stat-number" id="statMonth">0</span>
                         <span class="stat-label">/<span id="goalMonthly">60</span></span>
                     </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-star"></i> Avg Score</span>
+                        <span class="stat-number" id="avgScore">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-tasks"></i> Tasks</span>
+                        <span class="stat-number" id="pendingTasks">0</span>
+                    </div>
                 </div>
                 <div class="action-buttons">
                     <button class="btn-icon" id="quickReportBtn"><i class="fas fa-magic"></i> Smart Import</button>
-                    <button class="btn-icon priority-btn" id="priorityBtn">
-                        <i class="fas fa-chart-line"></i> Priority
-                    </button>
+                    <button class="btn-icon" id="bulkActionsBtn"><i class="fas fa-check-double"></i> Bulk Actions</button>
                     <label class="btn-icon csv-upload-btn" id="csvUploadBtn" title="Upload CSV to import appointments">
                         <i class="fas fa-file-upload"></i> CSV
                         <input type="file" id="csvFileInput" accept=".csv" style="display:none;" />
@@ -134,6 +154,10 @@
                                 <button id="calendarViewBtn" class="view-btn active"><i class="fas fa-calendar-alt"></i> Calendar</button>
                                 <button id="listViewBtn" class="view-btn"><i class="fas fa-list"></i> List</button>
                             </div>
+                            <div class="view-toggle" id="taskViewToggle" style="display:none;">
+                                <button id="taskListViewBtn" class="view-btn active"><i class="fas fa-list"></i> All Tasks</button>
+                                <button id="taskPendingBtn" class="view-btn"><i class="fas fa-clock"></i> Pending</button>
+                            </div>
                         </div>
                         <button id="closeFeaturePanelBtn" class="btn-icon"><i class="fas fa-times"></i> Close</button>
                     </div>
@@ -144,24 +168,55 @@
             </div>
 
             <div class="footer-note">
-                <i class="fas fa-chart-line"></i> Full-featured CRM · Drag appointments to reschedule · Export reports as PDF · Smart Import with Tags
+                <i class="fas fa-chart-line"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions
             </div>
         </div>
     </div>
 
-    <!-- Priority Modal -->
-    <div id="priorityModal" class="priority-modal-overlay" style="display:none;">
-        <div class="priority-modal">
-            <div class="priority-modal-header">
-                <h2><i class="fas fa-chart-line"></i> Call Priority Predictor</h2>
-                <button id="closePriorityModal" class="priority-close-btn"><i class="fas fa-times"></i></button>
+    <!-- Bulk Actions Modal -->
+    <div id="bulkActionsModal" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <h3><i class="fas fa-check-double"></i> Bulk Actions</h3>
+            <p style="margin:12px 0; font-size:0.85rem; color:var(--text-muted);">Select appointments to perform bulk operations.</p>
+            <div id="bulkSelectionContainer" style="margin:16px 0; max-height:300px; overflow-y:auto;"></div>
+            <div class="form-group">
+                <label>Action</label>
+                <select id="bulkActionSelect">
+                    <option value="status">Change Status</option>
+                    <option value="tag">Add Tag</option>
+                    <option value="delete">Delete Selected</option>
+                    <option value="export">Export Selected</option>
+                </select>
             </div>
-            <div class="priority-modal-body" id="priorityModalBody">
-                <!-- Populated dynamically -->
+            <div id="bulkActionOptions" style="display:none;">
+                <div class="form-group" id="bulkStatusGroup">
+                    <label>New Status</label>
+                    <select id="bulkStatusSelect">
+                        <option value="Warm Call Booked">Warm Call Booked</option>
+                        <option value="Meeting Booked">Meeting Booked</option>
+                        <option value="Canceled">Canceled</option>
+                        <option value="Rescheduled">Rescheduled</option>
+                        <option value="Held">Held</option>
+                    </select>
+                </div>
+                <div class="form-group" id="bulkTagGroup" style="display:none;">
+                    <label>Tag to Add</label>
+                    <select id="bulkTagSelect">
+                        <option value="qualified_warm_call">Qualified Warm Call</option>
+                        <option value="unqualified_warm_callback">Unqualified Warm Callback</option>
+                        <option value="vip">VIP</option>
+                        <option value="negligent_warm_callback">Negligent Warm Callback</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="executeBulkActionBtn" class="btn-icon" style="background:var(--primary); color:white;">Execute</button>
+                <button id="closeBulkModalBtn" class="btn-icon">Cancel</button>
             </div>
         </div>
     </div>
 
+    <!-- JavaScript -->
     <script src="js/script.js"></script>
 </body>
 </html>
