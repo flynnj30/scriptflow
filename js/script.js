@@ -21,8 +21,11 @@ let taskFilter = 'all';
 let isAppInitialized = false;
 let isRefreshing = false;
 
+let appointmentsUnsubscribe = null;
+let tasksUnsubscribe = null;
+
 let currentCalDate = new Date();
-let selectedCalDate = new Date().toISOString().split('T')[0];
+let selectedCalDate = getTodayStr();
 
 let dashboardDatePreset = 'today';
 let dashboardDateRange = { start: getTodayStr(), end: getTodayStr() };
@@ -89,6 +92,10 @@ function showOfflineIndicator(show) {
 }
 
 // ---- HELPERS ----
+function generateUniqueId() {
+    return Date.now().toString() + '_' + Math.random().toString(36).substring(2, 11);
+}
+
 function getStatus(appt) {
     if (!appt || !appt.status) return 'Warm Call Booked';
     if (appt.status === 'Booked') return 'Warm Call Booked';
@@ -148,18 +155,53 @@ function calculateLeadScore(appt) {
     return Math.max(0, Math.min(100, score));
 }
 
-function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+function getTodayStr() {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 function formatDate(dateStr) {
     if (!dateStr) return 'No date';
-    const d = new Date(dateStr);
+    let d;
+    if (typeof dateStr === 'object' && dateStr.seconds !== undefined) {
+        d = new Date(dateStr.seconds * 1000);
+    } else if (typeof dateStr.toDate === 'function') {
+        d = dateStr.toDate();
+    } else if (typeof dateStr === 'string') {
+        d = new Date(dateStr.replace(/-/g, '/'));
+    } else {
+        d = new Date(dateStr);
+    }
+    if (isNaN(d.getTime())) return 'No date';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatDateShort(dateStr) {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
+    let d;
+    if (typeof dateStr === 'object' && dateStr.seconds !== undefined) {
+        d = new Date(dateStr.seconds * 1000);
+    } else if (typeof dateStr.toDate === 'function') {
+        d = dateStr.toDate();
+    } else if (typeof dateStr === 'string') {
+        d = new Date(dateStr.replace(/-/g, '/'));
+    } else {
+        d = new Date(dateStr);
+    }
+    if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatToLocalDateStr(dateInput) {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return null;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function escapeHtml(s) {
@@ -307,6 +349,8 @@ async function signIn(email, password) {
 
 async function signOut() {
     try {
+        if (appointmentsUnsubscribe) { appointmentsUnsubscribe(); appointmentsUnsubscribe = null; }
+        if (tasksUnsubscribe) { tasksUnsubscribe(); tasksUnsubscribe = null; }
         currentUser = null;
         appointments = {};
         tasks = [];
@@ -473,6 +517,7 @@ async function loadUserData(showLoading = true) {
             goals = { daily: userData.goals.daily || 3, weekly: userData.goals.weekly || 15, monthly: userData.goals.monthly || 60 };
         }
         scriptOrder = userData.scriptOrder || ['opening', 'owner_yes', 'owner_no', 'objection_website', 'objection_webguy', 'objection_cost', 'objection_busy', 'objection_not_interested', 'objection_info', 'objection_found_me', 'closing'];
+        
         const appointmentsSnapshot = await db.collection('users').doc(currentUser.uid).collection('appointments').orderBy('createdAt', 'desc').get();
         appointments = {};
         appointmentsSnapshot.forEach(doc => {
@@ -481,9 +526,11 @@ async function loadUserData(showLoading = true) {
             appointments[appt.date].reports.push({ ...appt, id: doc.id });
             appointments[appt.date].count = appointments[appt.date].reports.length;
         });
+
         const tasksSnapshot = await db.collection('users').doc(currentUser.uid).collection('tasks').orderBy('createdAt', 'desc').get();
         tasks = [];
         tasksSnapshot.forEach(doc => { tasks.push({ ...doc.data(), id: doc.id }); });
+
         const scriptsSnapshot = await db.collection('users').doc(currentUser.uid).collection('scripts').get();
         scripts = {};
         scriptsSnapshot.forEach(doc => {
@@ -566,9 +613,8 @@ async function syncAppointment(appointment) {
     try {
         await db.collection('users').doc(currentUser.uid).collection('appointments').doc(appointment.id.toString()).set({
             ...appointment,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
         return true;
     } catch (error) { console.error('Sync appointment error:', error); showToast('Error saving appointment', 'error'); return false; }
 }
@@ -586,9 +632,8 @@ async function syncTask(task) {
     try {
         await db.collection('users').doc(currentUser.uid).collection('tasks').doc(task.id.toString()).set({
             ...task,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
         return true;
     } catch (error) { console.error('Sync task error:', error); showToast('Error saving task', 'error'); return false; }
 }
@@ -607,7 +652,7 @@ async function syncScript(scriptId, data) {
         await db.collection('users').doc(currentUser.uid).collection('scripts').doc(scriptId).set({
             ...data,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true });
         return true;
     } catch (error) { console.error('Sync script error:', error); showToast('Error saving script', 'error'); return false; }
 }
@@ -644,12 +689,27 @@ async function syncScriptOrder() {
 
 function subscribeToChanges() {
     if (!currentUser) return;
+    if (appointmentsUnsubscribe) appointmentsUnsubscribe();
+    if (tasksUnsubscribe) tasksUnsubscribe();
+
     try {
-        db.collection('users').doc(currentUser.uid).collection('appointments').onSnapshot(() => {
-            loadUserData(); refreshCurrentView();
+        appointmentsUnsubscribe = db.collection('users').doc(currentUser.uid).collection('appointments').onSnapshot(snapshot => {
+            appointments = {};
+            snapshot.forEach(doc => {
+                const appt = doc.data();
+                if (!appointments[appt.date]) { appointments[appt.date] = { count: 0, note: '', reports: [] }; }
+                appointments[appt.date].reports.push({ ...appt, id: doc.id });
+                appointments[appt.date].count = appointments[appt.date].reports.length;
+            });
+            updateStats();
+            refreshCurrentView();
         }, (error) => { console.warn('Appointments subscription error:', error); });
-        db.collection('users').doc(currentUser.uid).collection('tasks').onSnapshot(() => {
-            loadUserData(); refreshCurrentView();
+
+        tasksUnsubscribe = db.collection('users').doc(currentUser.uid).collection('tasks').onSnapshot(snapshot => {
+            tasks = [];
+            snapshot.forEach(doc => { tasks.push({ ...doc.data(), id: doc.id }); });
+            updateTaskStats();
+            refreshCurrentView();
         }, (error) => { console.warn('Tasks subscription error:', error); });
     } catch (error) { console.warn('Realtime subscription error:', error); }
 }
@@ -663,7 +723,7 @@ function addAppointment(dateStr, business, contactName, role, phone, time, notes
     if (!appointments[dateStr]) appointments[dateStr] = { count: 0, note: '', reports: [] };
     if (!STATUS_OPTIONS.includes(status)) { status = 'Warm Call Booked'; }
     const newAppt = {
-        id: editId || Date.now().toString(),
+        id: editId || generateUniqueId(),
         business, contactName, role: role || 'Owner', phone: phone || '', time: time || '',
         notes: notes || '', assigned: assigned || 'Daniel', status: status || 'Warm Call Booked',
         crmLink: crmLink || '', tags: tags || [], date: dateStr,
@@ -683,12 +743,14 @@ function addAppointment(dateStr, business, contactName, role, phone, time, notes
     return newAppt.fullText;
 }
 
-function deleteAppointment(dateStr, id) {
+function deleteAppointment(dateStr, id, skipRemote = false) {
     if (appointments[dateStr]?.reports) {
         appointments[dateStr].reports = appointments[dateStr].reports.filter(r => r.id !== id);
         if (appointments[dateStr].reports.length === 0) delete appointments[dateStr];
         else appointments[dateStr].count = appointments[dateStr].reports.length;
-        deleteAppointmentRemote(id);
+        if (!skipRemote) {
+            deleteAppointmentRemote(id);
+        }
         updateStats();
         return true;
     }
@@ -743,13 +805,20 @@ function getAverageScore() {
 }
 
 function updateStats() {
-    document.getElementById('statToday').innerText = getTodayCount();
-    document.getElementById('statWeek').innerText = getWeekCount();
-    document.getElementById('statMonth').innerText = getMonthCount();
-    document.getElementById('goalDaily').innerText = goals.daily;
-    document.getElementById('goalWeekly').innerText = goals.weekly;
-    document.getElementById('goalMonthly').innerText = goals.monthly;
-    document.getElementById('avgScore').innerText = getAverageScore();
+    const todayElem = document.getElementById('statToday');
+    if (todayElem) todayElem.innerText = getTodayCount();
+    const weekElem = document.getElementById('statWeek');
+    if (weekElem) weekElem.innerText = getWeekCount();
+    const monthElem = document.getElementById('statMonth');
+    if (monthElem) monthElem.innerText = getMonthCount();
+    const goalDailyElem = document.getElementById('goalDaily');
+    if (goalDailyElem) goalDailyElem.innerText = goals.daily;
+    const goalWeeklyElem = document.getElementById('goalWeekly');
+    if (goalWeeklyElem) goalWeeklyElem.innerText = goals.weekly;
+    const goalMonthlyElem = document.getElementById('goalMonthly');
+    if (goalMonthlyElem) goalMonthlyElem.innerText = goals.monthly;
+    const avgScoreElem = document.getElementById('avgScore');
+    if (avgScoreElem) avgScoreElem.innerText = getAverageScore();
     updateTaskStats();
 }
 
@@ -760,7 +829,7 @@ function updateStats() {
 function addTask(description, dueDate, priority = 'medium', appointmentId = null) {
     if (!currentUser) { showToast('Please sign in first', 'error'); return; }
     const task = {
-        id: Date.now().toString(), description, dueDate: dueDate || null, priority,
+        id: generateUniqueId(), description, dueDate: dueDate || null, priority,
         appointmentId, completed: false, createdAt: new Date().toISOString()
     };
     tasks.push(task);
@@ -782,11 +851,13 @@ function toggleTaskComplete(id) {
 
 function updateTaskStats() {
     const pending = tasks.filter(t => !t.completed).length;
-    document.getElementById('pendingTasks').innerText = pending;
+    const pendingTasksElem = document.getElementById('pendingTasks');
+    if (pendingTasksElem) pendingTasksElem.innerText = pending;
 }
 
 function getTasksForAppointment(appointmentId) {
-    return tasks.filter(t => t.appointmentId === appointmentId);
+    if (!appointmentId) return [];
+    return tasks.filter(t => t.appointmentId === appointmentId.toString());
 }
 
 // ================================================================
@@ -1014,7 +1085,7 @@ function addNewScript() {
     if (isEditing) { showToast('Finish editing first', 'error'); return; }
     const name = prompt('Script name:');
     if (!name) return;
-    const id = 'custom_' + Date.now();
+    const id = 'custom_' + generateUniqueId();
     scripts[id] = { name, content: 'Write your script here...' };
     scriptOrder.push(id);
     initVersionHistory(id, scripts[id].content);
@@ -1075,7 +1146,7 @@ function parseAppointmentFromText(text, defaultDate) {
         if (result.time.toLowerCase().includes('tomorrow')) {
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            result.parsedDate = tomorrow.toISOString().split('T')[0];
+            result.parsedDate = formatToLocalDateStr(tomorrow);
         } else if (result.time.toLowerCase().includes('today')) {
             result.parsedDate = getTodayStr();
         }
@@ -1167,10 +1238,10 @@ function openBulkActionsModal() {
     let html = `<div style="margin-bottom:12px;">
         <button class="btn-icon" id="selectAllBtn" style="font-size:0.8rem;">Select All</button>
         <button class="btn-icon" id="deselectAllBtn" style="font-size:0.8rem;">Deselect All</button>
-        <span style="margin-left:12px; font-size:0.8rem; color:var(--text-muted);">${selectedAppointments.size} selected</span>
+        <span style="margin-left:12px; font-size:0.8rem; color:var(--text-muted);"><span class="bulk-count">${selectedAppointments.size} selected</span></span>
     </div>`;
     allAppointments.forEach(appt => {
-        const checked = selectedAppointments.has(appt.id) ? 'checked' : '';
+        const checked = selectedAppointments.has(appt.id.toString()) ? 'checked' : '';
         html += `<div class="bulk-item">
             <input type="checkbox" class="bulk-checkbox-item" data-id="${appt.id}" ${checked} />
             <span><strong>${escapeHtml(appt.business)}</strong> - ${escapeHtml(appt.contactName)}</span>
@@ -1181,7 +1252,7 @@ function openBulkActionsModal() {
     modal.style.display = 'flex';
     document.querySelectorAll('.bulk-checkbox-item').forEach(cb => {
         cb.addEventListener('change', (e) => {
-            const id = parseInt(e.target.getAttribute('data-id'));
+            const id = e.target.getAttribute('data-id');
             if (e.target.checked) { selectedAppointments.add(id); } else { selectedAppointments.delete(id); }
             updateBulkSelectionCount();
         });
@@ -1189,7 +1260,7 @@ function openBulkActionsModal() {
     document.getElementById('selectAllBtn')?.addEventListener('click', () => {
         document.querySelectorAll('.bulk-checkbox-item').forEach(cb => {
             cb.checked = true;
-            const id = parseInt(cb.getAttribute('data-id'));
+            const id = cb.getAttribute('data-id');
             selectedAppointments.add(id);
         });
         updateBulkSelectionCount();
@@ -1197,34 +1268,29 @@ function openBulkActionsModal() {
     document.getElementById('deselectAllBtn')?.addEventListener('click', () => {
         document.querySelectorAll('.bulk-checkbox-item').forEach(cb => {
             cb.checked = false;
-            const id = parseInt(cb.getAttribute('data-id'));
+            const id = cb.getAttribute('data-id');
             selectedAppointments.delete(id);
         });
         updateBulkSelectionCount();
     });
     const actionSelect = document.getElementById('bulkActionSelect');
-    actionSelect.addEventListener('change', () => {
-        const val = actionSelect.value;
-        document.getElementById('bulkActionOptions').style.display = 'block';
-        document.getElementById('bulkStatusGroup').style.display = val === 'status' ? 'block' : 'none';
-        document.getElementById('bulkTagGroup').style.display = val === 'tag' ? 'block' : 'none';
-    });
-    actionSelect.dispatchEvent(new Event('change'));
+    if (actionSelect) {
+        actionSelect.dispatchEvent(new Event('change'));
+    }
 }
 
 function updateBulkSelectionCount() {
     const count = selectedAppointments.size;
-    const container = document.getElementById('bulkSelectionContainer');
-    if (container) {
-        const existing = container.querySelector('.bulk-count');
-        if (existing) existing.textContent = `${count} selected`;
-    }
+    const containers = document.querySelectorAll('.bulk-count');
+    containers.forEach(el => {
+        el.textContent = `${count} selected`;
+    });
 }
 
 function executeBulkAction() {
     if (selectedAppointments.size === 0) { showToast('No appointments selected', 'error'); return; }
     const action = document.getElementById('bulkActionSelect').value;
-    const ids = Array.from(selectedAppointments);
+    const ids = Array.from(selectedAppointments).map(id => id.toString());
     let count = 0;
     switch(action) {
         case 'status': {
@@ -1232,7 +1298,7 @@ function executeBulkAction() {
             for (let date in appointments) {
                 if (appointments[date].reports) {
                     appointments[date].reports.forEach(appt => {
-                        if (ids.includes(appt.id)) {
+                        if (ids.includes(appt.id.toString())) {
                             appt.status = newStatus;
                             syncAppointment(appt);
                             count++;
@@ -1248,7 +1314,7 @@ function executeBulkAction() {
             for (let date in appointments) {
                 if (appointments[date].reports) {
                     appointments[date].reports.forEach(appt => {
-                        if (ids.includes(appt.id)) {
+                        if (ids.includes(appt.id.toString())) {
                             if (!appt.tags) appt.tags = [];
                             if (!appt.tags.includes(tag)) {
                                 appt.tags.push(tag);
@@ -1268,7 +1334,7 @@ function executeBulkAction() {
             for (let date in appointments) {
                 if (appointments[date].reports) {
                     appointments[date].reports = appointments[date].reports.filter(appt => {
-                        if (ids.includes(appt.id)) {
+                        if (ids.includes(appt.id.toString())) {
                             deleteAppointmentRemote(appt.id);
                             count++;
                             return false;
@@ -1298,7 +1364,7 @@ function exportSelectedCSV(ids) {
     for (let date in appointments) {
         if (appointments[date].reports) {
             appointments[date].reports.forEach(a => {
-                if (ids.includes(a.id)) {
+                if (ids.includes(a.id.toString())) {
                     const score = calculateLeadScore(a);
                     rows.push([date, a.business, a.contactName, a.role || '', a.phone || '', a.time || '', getStatus(a), (a.tags || []).map(t => TAG_OPTIONS.find(opt => opt.id === t)?.name || t).join(', '), a.crmLink || '', a.notes || '', a.assigned || '', score]);
                 }
@@ -1357,9 +1423,8 @@ function importCSV(file) {
                     const business = values[headerMap.business]?.trim() || '';
                     const contact = values[headerMap.contact]?.trim() || '';
                     if (!date || !business || !contact) { errorCount++; continue; }
-                    const dateObj = new Date(date);
-                    if (isNaN(dateObj.getTime())) { errorCount++; continue; }
-                    const formattedDate = dateObj.toISOString().split('T')[0];
+                    const formattedDate = formatToLocalDateStr(date);
+                    if (!formattedDate) { errorCount++; continue; }
                     const role = values[headerMap.role]?.trim() || 'Owner';
                     const phone = values[headerMap.phone]?.trim() || '';
                     const time = values[headerMap.time]?.trim() || '';
@@ -1586,7 +1651,7 @@ function renderAppointmentsList(appts, dateStr) {
         const scoreClass = getScoreColor(score);
         const tagsDisplay = getTagDisplay(a.tags);
         const hasCrmLink = a.crmLink && a.crmLink.trim() !== '';
-        const isSelected = selectedAppointments.has(a.id);
+        const isSelected = selectedAppointments.has(a.id.toString());
         return `<div class="appointment-card" draggable="true" data-id="${a.id}" data-date="${dateStr}">
             <div class="card-row">
                 <div class="business-name">
@@ -1659,11 +1724,11 @@ function setupDragAndDrop() {
             const newDate = zone.getAttribute('data-date');
             if (!newDate) return;
             const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-            const apptId = parseInt(data.id), oldDate = data.oldDate;
+            const apptId = data.id, oldDate = data.oldDate;
             if (oldDate === newDate) return;
-            const appt = appointments[oldDate]?.reports?.find(r => r.id === apptId);
+            const appt = appointments[oldDate]?.reports?.find(r => r.id.toString() === apptId.toString());
             if (appt) {
-                deleteAppointment(oldDate, apptId);
+                deleteAppointment(oldDate, apptId, true);
                 addAppointment(newDate, appt.business, appt.contactName, appt.role, appt.phone, appt.time, appt.notes, appt.assigned, appt.id, appt.status, appt.crmLink, appt.tags);
                 showToast(`Moved "${appt.business}" to ${newDate}`, 'success');
                 refreshCurrentView();
@@ -1687,7 +1752,7 @@ function setupDelegatedEventListeners() {
 
 function handleDelegatedClick(e) {
     if (e.target.classList.contains('bulk-checkbox')) {
-        const id = parseInt(e.target.getAttribute('data-id'));
+        const id = e.target.getAttribute('data-id');
         if (e.target.checked) { selectedAppointments.add(id); } else { selectedAppointments.delete(id); }
         return;
     }
@@ -1695,15 +1760,15 @@ function handleDelegatedClick(e) {
     if (!target) return;
     if (target.classList.contains('copy-btn')) {
         e.preventDefault(); e.stopPropagation();
-        const id = parseInt(target.getAttribute('data-id'));
+        const id = target.getAttribute('data-id');
         const date = target.getAttribute('data-date');
-        const appt = appointments[date]?.reports?.find(r => r.id === id);
+        const appt = appointments[date]?.reports?.find(r => r.id.toString() === id.toString());
         if (appt) {
             copyToClipboard(appt.fullText);
             showToast('Copied!', 'success');
         } else {
             for (let d in appointments) {
-                const found = appointments[d]?.reports?.find(r => r.id === id);
+                const found = appointments[d]?.reports?.find(r => r.id.toString() === id.toString());
                 if (found) { copyToClipboard(found.fullText); showToast('Copied!', 'success'); break; }
             }
         }
@@ -1711,15 +1776,15 @@ function handleDelegatedClick(e) {
     }
     if (target.classList.contains('edit-btn')) {
         e.preventDefault(); e.stopPropagation();
-        const id = parseInt(target.getAttribute('data-id'));
+        const id = target.getAttribute('data-id');
         const date = target.getAttribute('data-date');
-        const appt = appointments[date]?.reports?.find(r => r.id === id);
+        const appt = appointments[date]?.reports?.find(r => r.id.toString() === id.toString());
         if (appt) { openEditAppointmentModal(date, appt); } else { showToast('Appointment not found', 'error'); }
         return;
     }
     if (target.classList.contains('delete-btn')) {
         e.preventDefault(); e.stopPropagation();
-        const id = parseInt(target.getAttribute('data-id'));
+        const id = target.getAttribute('data-id');
         const date = target.getAttribute('data-date');
         if (confirm('Delete this appointment?')) {
             deleteAppointment(date, id);
@@ -1730,9 +1795,9 @@ function handleDelegatedClick(e) {
     }
     if (target.classList.contains('add-task-btn')) {
         e.preventDefault(); e.stopPropagation();
-        const id = parseInt(target.getAttribute('data-id'));
+        const id = target.getAttribute('data-id');
         const date = target.getAttribute('data-date');
-        const appt = appointments[date]?.reports?.find(r => r.id === id);
+        const appt = appointments[date]?.reports?.find(r => r.id.toString() === id.toString());
         if (appt) { openAddTaskModalWithAppointment(appt); }
         return;
     }
@@ -1745,10 +1810,10 @@ function handleDelegatedClick(e) {
 function handleDelegatedChange(e) {
     const target = e.target;
     if (target.classList.contains('status-select-calendar')) {
-        const id = parseInt(target.getAttribute('data-id'));
+        const id = target.getAttribute('data-id');
         const date = target.getAttribute('data-date');
         const newStatus = target.value;
-        const idx = appointments[date]?.reports?.findIndex(r => r.id === id);
+        const idx = appointments[date]?.reports?.findIndex(r => r.id.toString() === id.toString());
         if (idx !== -1 && appointments[date]) {
             appointments[date].reports[idx].status = newStatus;
             syncAppointment(appointments[date].reports[idx]);
@@ -1819,7 +1884,7 @@ function openEditAppointmentModal(dateStr, appt) {
         const newDate = document.getElementById('editDate').value;
         if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) { showToast('Business and Contact required', 'error'); return; }
         const selectedTags = Array.from(document.querySelectorAll('.edit-tag-checkbox:checked')).map(cb => cb.value);
-        deleteAppointment(dateStr, appt.id);
+        deleteAppointment(dateStr, appt.id, true);
         addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value,
             document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value,
             document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id,
@@ -1943,13 +2008,13 @@ function renderTasksPanel(container) {
 }
 
 function handleTaskComplete(e) {
-    const id = parseInt(e.currentTarget.getAttribute('data-id'));
+    const id = e.currentTarget.getAttribute('data-id');
     toggleTaskComplete(id);
     refreshCurrentView();
 }
 
 function handleTaskDelete(e) {
-    const id = parseInt(e.currentTarget.getAttribute('data-id'));
+    const id = e.currentTarget.getAttribute('data-id');
     if (confirm('Delete this task?')) { deleteTask(id); refreshCurrentView(); showToast('Task deleted', 'info'); }
 }
 
@@ -1981,7 +2046,7 @@ function openAddTaskModal() {
         if (!desc) { showToast('Please enter a description', 'error'); return; }
         const dueDate = document.getElementById('taskDueDate').value || null;
         const priority = document.getElementById('taskPriority').value;
-        const appointmentId = document.getElementById('taskAppointment').value ? parseInt(document.getElementById('taskAppointment').value) : null;
+        const appointmentId = document.getElementById('taskAppointment').value ? document.getElementById('taskAppointment').value : null;
         addTask(desc, dueDate, priority, appointmentId);
         modal.remove();
         showToast('Task added!', 'success');
@@ -2030,7 +2095,7 @@ function renderListView(container) {
         filtered.map(a => `<div class="appointment-card">
             <div class="card-row">
                 <div class="business-name">
-                    <input type="checkbox" class="bulk-checkbox" data-id="${a.id}" ${selectedAppointments.has(a.id) ? 'checked' : ''} />
+                    <input type="checkbox" class="bulk-checkbox" data-id="${a.id}" ${selectedAppointments.has(a.id.toString()) ? 'checked' : ''} />
                     <i class="fas fa-building"></i> ${escapeHtml(a.business)} 
                     <span class="status-tag ${getStatusClassSmall(getStatus(a))}">${escapeHtml(getStatus(a))}</span>
                     <span class="score-badge ${getScoreColor(calculateLeadScore(a))}">${getScoreLabel(calculateLeadScore(a))} (${calculateLeadScore(a)})</span>
@@ -2137,10 +2202,10 @@ function renderInsightsPanel(container) {
     const unique = new Set(appointmentsInRange.map(a => a.business)).size;
     const todayCount = appointments[getTodayStr()]?.reports?.length || 0;
     const todayProgress = Math.min(100, Math.round((todayCount / goals.daily) * 100));
-    const startDate = new Date(dashboardDateRange.start), endDate = new Date(dashboardDateRange.end);
+    const startDate = new Date(dashboardDateRange.start.replace(/-/g, '/')), endDate = new Date(dashboardDateRange.end.replace(/-/g, '/'));
     const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
     const chartLabels = [], chartData = [];
-    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dateStr = d.toISOString().split('T')[0]; chartLabels.push(formatDateShort(dateStr)); chartData.push(appointments[dateStr]?.reports?.length || 0); }
+    for (let i = 0; i < daysDiff; i++) { const d = new Date(startDate); d.setDate(startDate.getDate() + i); const dateStr = formatToLocalDateStr(d); chartLabels.push(formatDateShort(dateStr)); chartData.push(appointments[dateStr]?.reports?.length || 0); }
     const assignedStats = {}, roleStats = {}, statusStats = {}, tagStats = {}, scoreDistribution = { hot: 0, warm: 0, cold: 0 };
     appointmentsInRange.forEach(a => {
         const assigned = a.assigned || 'Unassigned';
@@ -2224,7 +2289,7 @@ function renderAdvancedReports(container) {
     const endDate = getTodayStr();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
-    const startDateStr = startDate.toISOString().split('T')[0];
+    const startDateStr = formatToLocalDateStr(startDate);
     let appointmentsInRange = [];
     for (let date in appointments) {
         if (date >= startDateStr && date <= endDate && appointments[date].reports) {
@@ -2242,7 +2307,7 @@ function renderAdvancedReports(container) {
     const avgScore = appointmentsInRange.reduce((sum, a) => sum + calculateLeadScore(a), 0) / (appointmentsInRange.length || 1);
     const hotLeads = appointmentsInRange.filter(a => calculateLeadScore(a) >= 70).length;
     const last7Days = [], trendData = [];
-    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = d.toISOString().split('T')[0]; last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const dateStr = formatToLocalDateStr(d); last7Days.push(formatDateShort(dateStr)); trendData.push(appointments[dateStr]?.reports?.length || 0); }
     container.innerHTML = `<div class="reports-container">
         <div class="report-section">
             <div class="report-header"><h3><i class="fas fa-chart-line"></i> Performance Summary (Last 30 Days)</h3><button id="exportPDFBtn" class="btn-icon"><i class="fas fa-file-pdf"></i> Export PDF</button></div>
@@ -2603,6 +2668,20 @@ function initializeApp() {
         searchTerm = e.target.value.toLowerCase();
         renderSidebar();
     });
+    
+    const actionSelect = document.getElementById('bulkActionSelect');
+    if (actionSelect) {
+        actionSelect.addEventListener('change', () => {
+            const val = actionSelect.value;
+            const optionsDiv = document.getElementById('bulkActionOptions');
+            const statusGrp = document.getElementById('bulkStatusGroup');
+            const tagGrp = document.getElementById('bulkTagGroup');
+            if (optionsDiv) optionsDiv.style.display = 'block';
+            if (statusGrp) statusGrp.style.display = val === 'status' ? 'block' : 'none';
+            if (tagGrp) tagGrp.style.display = val === 'tag' ? 'block' : 'none';
+        });
+    }
+
     window.addEventListener('keydown', (e) => {
         try {
             if (e.key === 'Escape') {
