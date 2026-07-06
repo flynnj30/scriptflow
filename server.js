@@ -11,42 +11,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ============================================================
-// FIX: Security Headers for Firebase Auth
-// ============================================================
-app.use((req, res, next) => {
-    // Remove any restrictive COOP headers
-    res.removeHeader('Cross-Origin-Opener-Policy');
-    res.removeHeader('Cross-Origin-Embedder-Policy');
-    
-    // Set permissive headers for Firebase Auth popups
-    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    
-    // CORS for Firebase
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    
-    // Basic security headers
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    
-    next();
-});
-
-// Handle preflight requests
-app.options('*', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.sendStatus(200);
-});
-
 // Serve static files from the current directory
 app.use(express.static(__dirname));
 
@@ -308,5 +272,4 @@ app.use(async (req, res) => {
 app.listen(PORT, () => {
     console.log('\x1b[32m%s\x1b[0m', '🚀 ScriptFlow Pro Server Started');
     console.log('\x1b[36m%s\x1b[0m', `📡 Listening on http://localhost:${PORT}`);
-    console.log('\x1b[33m%s\x1b[0m', '🔒 COOP/COEP headers configured for Firebase Auth');
 });

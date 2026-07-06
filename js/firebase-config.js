@@ -1,5 +1,5 @@
 // ============================================================
-// FIREBASE CONFIGURATION - UPDATED
+// FIREBASE CONFIGURATION
 // ============================================================
 
 // Replace with your Firebase config from the console
@@ -48,9 +48,6 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
     .catch(err => {
         console.warn('Auth persistence error:', err);
     });
-
-// FIX: Use redirect instead of popup for Google Auth to avoid COOP issues
-// This is set in the signInWithGoogle function in script.js
 
 // Make available globally
 window.db = db;
