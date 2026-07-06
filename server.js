@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from root
+// Serve static files from the current directory
 app.use(express.static(__dirname));
 
 // Cookie helper
@@ -26,11 +26,12 @@ function getCookie(req, name) {
 // Serve browser static files
 app.use('/browser', express.static(path.join(__dirname, 'public')));
 
-// Main route
+// Main route - serve index.html
 app.get('/', (req, res, next) => {
     const dest = req.headers['sec-fetch-dest'];
     if (dest === 'document' || req.query.ui === 'true' || !getCookie(req, 'proxy_target')) {
-        return res.sendFile(path.join(__dirname, 'index.html'));
+        const indexPath = path.join(__dirname, 'index.html');
+        return res.sendFile(indexPath);
     }
     next();
 });
