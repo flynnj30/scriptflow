@@ -436,14 +436,14 @@ function showAuthModal() {
                     <button id="signupTabBtn" class="view-btn" style="flex:1; justify-content:center;">Sign Up</button>
                 </div>
                 <div id="loginForm">
-                    <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" /></div>
-                    <div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="••••••••" /></div>
+                    <div class="form-group"><label for="loginEmailInput">Email</label><input type="email" id="loginEmailInput" placeholder="you@example.com" /></div>
+                    <div class="form-group"><label for="loginPasswordInput">Password</label><input type="password" id="loginPasswordInput" placeholder="••••••••" /></div>
                     <button id="loginBtn" class="btn-icon" style="width:100%; justify-content:center; background:var(--primary); color:white;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
                 </div>
                 <div id="signupForm" style="display:none;">
-                    <div class="form-group"><label>Username</label><input type="text" id="signupUsername" placeholder="Choose a username" /></div>
-                    <div class="form-group"><label>Email</label><input type="email" id="signupEmail" placeholder="you@example.com" /></div>
-                    <div class="form-group"><label>Password</label><input type="password" id="signupPassword" placeholder="•••••••• (min 6 chars)" /></div>
+                    <div class="form-group"><label for="signupUsernameInput">Username</label><input type="text" id="signupUsernameInput" placeholder="Choose a username" /></div>
+                    <div class="form-group"><label for="signupEmailInput">Email</label><input type="email" id="signupEmailInput" placeholder="you@example.com" /></div>
+                    <div class="form-group"><label for="signupPasswordInput">Password</label><input type="password" id="signupPasswordInput" placeholder="•••••••• (min 6 chars)" /></div>
                     <button id="signupBtn" class="btn-icon" style="width:100%; justify-content:center; background:var(--success); color:white;"><i class="fas fa-user-plus"></i> Create Account</button>
                 </div>
             </div>
@@ -465,15 +465,15 @@ function showAuthModal() {
         document.getElementById('signupForm').style.display = 'block';
     });
     document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+        const email = document.getElementById('loginEmailInput').value;
+        const password = document.getElementById('loginPasswordInput').value;
         if (!email || !password) { showToast('Please fill in all fields', 'error'); return; }
         await signIn(email, password);
     });
     document.getElementById('signupBtn').addEventListener('click', async () => {
-        const username = document.getElementById('signupUsername').value;
-        const email = document.getElementById('signupEmail').value;
-        const password = document.getElementById('signupPassword').value;
+        const username = document.getElementById('signupUsernameInput').value;
+        const email = document.getElementById('signupEmailInput').value;
+        const password = document.getElementById('signupPasswordInput').value;
         if (!username || !email || !password) { showToast('Please fill in all fields', 'error'); return; }
         if (password.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
         await signUp(email, password, username);
@@ -1208,17 +1208,17 @@ function openSmartAddModal() {
     `).join('');
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-magic"></i> Smart Appointment Import</h3>
         <p style="margin:12px 0; font-size:0.8rem; color:var(--text-muted);">Fill in the CRM link below, select tags, then paste appointment details.</p>
-        <div class="form-group"><label>🔗 CRM Link (Optional)</label><input type="url" id="crmLinkInput" class="crm-link-input" placeholder="https://yourcrm.com/lead/..."></div>
+        <div class="form-group"><label for="crmLinkInput">🔗 CRM Link (Optional)</label><input type="url" id="crmLinkInput" class="crm-link-input" placeholder="https://yourcrm.com/lead/..."></div>
         <div class="form-group"><label>🏷️ Select Tags (Optional)</label><div class="tag-selector" id="tagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>📅 Date</label><input type="date" id="smartDate" value="${getTodayStr()}"></div>
-        <div class="form-group"><label>📝 Paste Details</label><textarea id="smartText" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
+        <div class="form-group"><label for="smartDateInput">📅 Date</label><input type="date" id="smartDateInput" value="${getTodayStr()}"></div>
+        <div class="form-group"><label for="smartTextArea">📝 Paste Details</label><textarea id="smartTextArea" rows="5" placeholder="Example:\nBusiness name: FINAL TOUCH ELECTRIC\nName: Constance\nRole: Owner\nPhone: +18775965698\nTime: Tomorrow at 9am CT\nNote: No website yet.\n@Daniel"></textarea></div>
         <div id="smartPreview" style="background:var(--bg-primary); border-radius:16px; padding:16px; margin:16px 0; display:none;"><strong><i class="fas fa-eye"></i> Preview:</strong><div id="smartPreviewContent"></div></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="smartParseBtn" class="btn-icon"><i class="fas fa-search"></i> Parse</button><button id="smartSaveBtn" class="btn-icon" style="background:var(--success); color:white;"><i class="fas fa-save"></i> Save</button><button id="smartCancelBtn" class="btn-icon"><i class="fas fa-times"></i> Cancel</button></div></div>`;
     document.body.appendChild(modal);
     let currentParsed = null;
     document.getElementById('smartParseBtn').addEventListener('click', () => {
-        const text = document.getElementById('smartText').value;
-        const date = document.getElementById('smartDate').value;
+        const text = document.getElementById('smartTextArea').value;
+        const date = document.getElementById('smartDateInput').value;
         if (!text.trim()) { showToast('Enter details', 'error'); return; }
         currentParsed = parseAppointmentFromText(text, date);
         const crmLink = document.getElementById('crmLinkInput').value;
@@ -1868,17 +1868,17 @@ function openAddTaskModalWithAppointment(appt) {
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card">
         <h3><i class="fas fa-plus-circle"></i> Add Task for ${escapeHtml(appt.business)}</h3>
-        <div class="form-group"><label>Task Description *</label><input type="text" id="taskDescription" placeholder="What needs to be done?" value="Follow up with ${escapeHtml(appt.business)}" /></div>
-        <div class="form-group"><label>Due Date</label><input type="date" id="taskDueDate" /></div>
-        <div class="form-group"><label>Priority</label><select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+        <div class="form-group"><label for="taskDescriptionInput">Task Description *</label><input type="text" id="taskDescriptionInput" placeholder="What needs to be done?" value="Follow up with ${escapeHtml(appt.business)}" /></div>
+        <div class="form-group"><label for="taskDueDateInput">Due Date</label><input type="date" id="taskDueDateInput" /></div>
+        <div class="form-group"><label for="taskPrioritySelect">Priority</label><select id="taskPrioritySelect"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveTaskBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelTaskBtn" class="btn-icon">Cancel</button></div>
     </div>`;
     document.body.appendChild(modal);
     document.getElementById('saveTaskBtn').addEventListener('click', () => {
-        const desc = document.getElementById('taskDescription').value.trim();
+        const desc = document.getElementById('taskDescriptionInput').value.trim();
         if (!desc) { showToast('Please enter a description', 'error'); return; }
-        const dueDate = document.getElementById('taskDueDate').value || null;
-        const priority = document.getElementById('taskPriority').value;
+        const dueDate = document.getElementById('taskDueDateInput').value || null;
+        const priority = document.getElementById('taskPrioritySelect').value;
         addTask(desc, dueDate, priority, appt.id);
         modal.remove();
         showToast('Task added!', 'success');
@@ -1903,28 +1903,28 @@ function openEditAppointmentModal(dateStr, appt) {
         </label>
     `).join('');
     modal.innerHTML = `<div class="modal-card"><h3><i class="fas fa-edit"></i> Edit Appointment</h3>
-        <div class="form-group"><label>Date</label><input type="date" id="editDate" value="${dateStr}"></div>
-        <div class="form-group"><label>Business *</label><input id="editBusiness" value="${escapeHtml(appt.business)}"></div>
-        <div class="form-group"><label>Contact *</label><input id="editName" value="${escapeHtml(appt.contactName)}"></div>
-        <div class="form-group"><label>Role</label><input id="editRole" value="${escapeHtml(appt.role || '')}"></div>
-        <div class="form-group"><label>Phone</label><input id="editPhone" value="${escapeHtml(appt.phone || '')}"></div>
-        <div class="form-group"><label>Time</label><input id="editTime" value="${escapeHtml(appt.time || '')}"></div>
-        <div class="form-group"><label>Status</label><select id="editStatus">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(appt) === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label for="editDateInput">Date</label><input type="date" id="editDateInput" value="${dateStr}"></div>
+        <div class="form-group"><label for="editBusinessInput">Business *</label><input id="editBusinessInput" value="${escapeHtml(appt.business)}"></div>
+        <div class="form-group"><label for="editNameInput">Contact *</label><input id="editNameInput" value="${escapeHtml(appt.contactName)}"></div>
+        <div class="form-group"><label for="editRoleInput">Role</label><input id="editRoleInput" value="${escapeHtml(appt.role || '')}"></div>
+        <div class="form-group"><label for="editPhoneInput">Phone</label><input id="editPhoneInput" value="${escapeHtml(appt.phone || '')}"></div>
+        <div class="form-group"><label for="editTimeInput">Time</label><input id="editTimeInput" value="${escapeHtml(appt.time || '')}"></div>
+        <div class="form-group"><label for="editStatusSelect">Status</label><select id="editStatusSelect">${STATUS_OPTIONS.map(s => `<option value="${s}" ${getStatus(appt) === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="editTagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>CRM Link</label><input id="editCrmLink" value="${escapeHtml(appt.crmLink || '')}" placeholder="https://..."></div>
-        <div class="form-group"><label>Notes</label><textarea id="editNotes" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
-        <div class="form-group"><label>Assigned</label><input id="editAssigned" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
+        <div class="form-group"><label for="editCrmLinkInput">CRM Link</label><input id="editCrmLinkInput" value="${escapeHtml(appt.crmLink || '')}" placeholder="https://..."></div>
+        <div class="form-group"><label for="editNotesArea">Notes</label><textarea id="editNotesArea" rows="3">${escapeHtml(appt.notes || '')}</textarea></div>
+        <div class="form-group"><label for="editAssignedInput">Assigned</label><input id="editAssignedInput" value="${escapeHtml(appt.assigned || 'Daniel')}"></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveEditBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelEditBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     document.getElementById('saveEditBtn').addEventListener('click', () => {
-        const newDate = document.getElementById('editDate').value;
-        if (!document.getElementById('editBusiness').value || !document.getElementById('editName').value) { showToast('Business and Contact required', 'error'); return; }
+        const newDate = document.getElementById('editDateInput').value;
+        if (!document.getElementById('editBusinessInput').value || !document.getElementById('editNameInput').value) { showToast('Business and Contact required', 'error'); return; }
         const selectedTags = Array.from(document.querySelectorAll('.edit-tag-checkbox:checked')).map(cb => cb.value);
         deleteAppointment(dateStr, appt.id, true);
-        addAppointment(newDate, document.getElementById('editBusiness').value, document.getElementById('editName').value,
-            document.getElementById('editRole').value, document.getElementById('editPhone').value, document.getElementById('editTime').value,
-            document.getElementById('editNotes').value, document.getElementById('editAssigned').value, appt.id,
-            document.getElementById('editStatus').value, document.getElementById('editCrmLink').value, selectedTags);
+        addAppointment(newDate, document.getElementById('editBusinessInput').value, document.getElementById('editNameInput').value,
+            document.getElementById('editRoleInput').value, document.getElementById('editPhoneInput').value, document.getElementById('editTimeInput').value,
+            document.getElementById('editNotesArea').value, document.getElementById('editAssignedInput').value, appt.id,
+            document.getElementById('editStatusSelect').value, document.getElementById('editCrmLinkInput').value, selectedTags);
         modal.remove();
         showToast(`Updated`, 'success');
         refreshCurrentView();
@@ -1944,27 +1944,27 @@ function openQuickReportWithDate(defaultDate) {
         </label>
     `).join('');
     modal.innerHTML = `<div class="modal-card"><h3>Quick Add</h3>
-        <div class="form-group"><label>Date</label><input type="date" id="reportDate" value="${defaultDate}"></div>
-        <div class="form-group"><label>Business *</label><input id="reportBusiness"></div>
-        <div class="form-group"><label>Contact *</label><input id="reportName"></div>
-        <div class="form-group"><label>Role</label><select id="reportRole"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
-        <div class="form-group"><label>Phone</label><input id="reportPhone"></div>
-        <div class="form-group"><label>Time</label><input id="reportTime"></div>
-        <div class="form-group"><label>Status</label><select id="reportStatus">${STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label for="reportDateInput">Date</label><input type="date" id="reportDateInput" value="${defaultDate}"></div>
+        <div class="form-group"><label for="reportBusinessInput">Business *</label><input id="reportBusinessInput"></div>
+        <div class="form-group"><label for="reportNameInput">Contact *</label><input id="reportNameInput"></div>
+        <div class="form-group"><label for="reportRoleSelect">Role</label><select id="reportRoleSelect"><option>Owner</option><option>Manager</option><option>Director</option></select></div>
+        <div class="form-group"><label for="reportPhoneInput">Phone</label><input id="reportPhoneInput"></div>
+        <div class="form-group"><label for="reportTimeInput">Time</label><input id="reportTimeInput"></div>
+        <div class="form-group"><label for="reportStatusSelect">Status</label><select id="reportStatusSelect">${STATUS_OPTIONS.map(s => `<option value="${s}">${s}</option>`).join('')}</select></div>
         <div class="form-group"><label>🏷️ Tags</label><div class="tag-selector" id="quickTagSelector">${tagOptionsHtml}</div></div>
-        <div class="form-group"><label>CRM Link</label><input id="reportCrmLink" placeholder="https://..."></div>
-        <div class="form-group"><label>Notes</label><textarea id="reportNotes" rows="2"></textarea></div>
-        <div class="form-group"><label>Assigned</label><input id="reportAssigned" value="Daniel"></div>
+        <div class="form-group"><label for="reportCrmLinkInput">CRM Link</label><input id="reportCrmLinkInput" placeholder="https://..."></div>
+        <div class="form-group"><label for="reportNotesArea">Notes</label><textarea id="reportNotesArea" rows="2"></textarea></div>
+        <div class="form-group"><label for="reportAssignedInput">Assigned</label><input id="reportAssignedInput" value="Daniel"></div>
         <div style="display:flex; gap:12px;"><button id="submitReportBtn" class="btn-icon" style="background:var(--success);color:white;">Save</button><button id="closeReportBtn" class="btn-icon">Cancel</button></div></div>`;
     document.body.appendChild(modal);
     document.getElementById('submitReportBtn').addEventListener('click', () => {
-        const bus = document.getElementById('reportBusiness').value, name = document.getElementById('reportName').value;
+        const bus = document.getElementById('reportBusinessInput').value, name = document.getElementById('reportNameInput').value;
         if (!bus || !name) { showToast('Required fields', 'error'); return; }
         const selectedTags = Array.from(document.querySelectorAll('.quick-tag-checkbox:checked')).map(cb => cb.value);
-        addAppointment(document.getElementById('reportDate').value, bus, name, document.getElementById('reportRole').value,
-            document.getElementById('reportPhone').value, document.getElementById('reportTime').value, document.getElementById('reportNotes').value,
-            document.getElementById('reportAssigned').value, null, document.getElementById('reportStatus').value,
-            document.getElementById('reportCrmLink').value, selectedTags);
+        addAppointment(document.getElementById('reportDateInput').value, bus, name, document.getElementById('reportRoleSelect').value,
+            document.getElementById('reportPhoneInput').value, document.getElementById('reportTimeInput').value, document.getElementById('reportNotesArea').value,
+            document.getElementById('reportAssignedInput').value, null, document.getElementById('reportStatusSelect').value,
+            document.getElementById('reportCrmLinkInput').value, selectedTags);
         modal.remove();
         showToast('Saved!', 'success');
         refreshCurrentView();
@@ -2059,14 +2059,14 @@ function openAddTaskModal() {
     modal.className = 'modal-overlay';
     modal.innerHTML = `<div class="modal-card">
         <h3><i class="fas fa-plus-circle"></i> Add Follow-up Task</h3>
-        <div class="form-group"><label>Task Description *</label><input type="text" id="taskDescription" placeholder="What needs to be done?" /></div>
-        <div class="form-group"><label>Due Date</label><input type="date" id="taskDueDate" /></div>
-        <div class="form-group"><label>Priority</label><select id="taskPriority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
-        <div class="form-group"><label>Link to Appointment (Optional)</label><select id="taskAppointment"><option value="">None</option></select></div>
+        <div class="form-group"><label for="taskDescriptionInput">Task Description *</label><input type="text" id="taskDescriptionInput" placeholder="What needs to be done?" /></div>
+        <div class="form-group"><label for="taskDueDateInput">Due Date</label><input type="date" id="taskDueDateInput" /></div>
+        <div class="form-group"><label for="taskPrioritySelect">Priority</label><select id="taskPrioritySelect"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+        <div class="form-group"><label for="taskAppointmentSelect">Link to Appointment (Optional)</label><select id="taskAppointmentSelect"><option value="">None</option></select></div>
         <div style="display:flex; gap:12px; justify-content:flex-end;"><button id="saveTaskBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button><button id="cancelTaskBtn" class="btn-icon">Cancel</button></div>
     </div>`;
     document.body.appendChild(modal);
-    const select = document.getElementById('taskAppointment');
+    const select = document.getElementById('taskAppointmentSelect');
     for (let date in appointments) {
         if (appointments[date].reports) {
             appointments[date].reports.forEach(appt => {
@@ -2078,11 +2078,11 @@ function openAddTaskModal() {
         }
     }
     document.getElementById('saveTaskBtn').addEventListener('click', () => {
-        const desc = document.getElementById('taskDescription').value.trim();
+        const desc = document.getElementById('taskDescriptionInput').value.trim();
         if (!desc) { showToast('Please enter a description', 'error'); return; }
-        const dueDate = document.getElementById('taskDueDate').value || null;
-        const priority = document.getElementById('taskPriority').value;
-        const appointmentId = document.getElementById('taskAppointment').value ? document.getElementById('taskAppointment').value : null;
+        const dueDate = document.getElementById('taskDueDateInput').value || null;
+        const priority = document.getElementById('taskPrioritySelect').value;
+        const appointmentId = document.getElementById('taskAppointmentSelect').value ? document.getElementById('taskAppointmentSelect').value : null;
         addTask(desc, dueDate, priority, appointmentId);
         modal.remove();
         showToast('Task added!', 'success');
@@ -3251,7 +3251,7 @@ function startSplitResize(e) {
 }
 
 // ================================================================
-// QUICK COPY LIBRARY
+// QUICK COPY LIBRARY - FIXED WITH UNIQUE IDs
 // ================================================================
 
 function renderQuickCopyPanel(container) {
@@ -3353,14 +3353,14 @@ function openAddQuickCopyModal() {
     if (!modal) return;
     
     modal.style.display = 'flex';
-    document.getElementById('quickCopyName').value = '';
-    document.getElementById('quickCopyContent').value = '';
-    document.getElementById('quickCopyCategory').value = 'email';
+    document.getElementById('quickCopyNameInput').value = '';
+    document.getElementById('quickCopyContentArea').value = '';
+    document.getElementById('quickCopyCategorySelect').value = 'email';
     
     document.getElementById('saveQuickCopyBtn').onclick = () => {
-        const name = document.getElementById('quickCopyName').value.trim();
-        const content = document.getElementById('quickCopyContent').value.trim();
-        const category = document.getElementById('quickCopyCategory').value;
+        const name = document.getElementById('quickCopyNameInput').value.trim();
+        const content = document.getElementById('quickCopyContentArea').value.trim();
+        const category = document.getElementById('quickCopyCategorySelect').value;
         
         if (!name) { showToast('Please enter a name', 'error'); return; }
         if (!content) { showToast('Please enter content', 'error'); return; }
