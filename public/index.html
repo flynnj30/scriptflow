@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ScriptFlow Pro · Smart CRM</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='Arial'%3E🎯%3C/text%3E%3C/svg%3E" />
+    
+    <!-- External Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <!-- Firebase Config -->
+    <script src="js/firebase-config.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="dark">
+    <div class="app-wrapper">
+        <button class="menu-toggle" id="menuToggleBtn" aria-label="Toggle Sidebar"><i class="fas fa-bars"></i></button>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="mainSidebar" role="navigation" aria-label="Main Navigation">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"><i class="fas fa-microphone-alt" aria-hidden="true"></i></div>
+                    <div class="logo-text">
+                        <h2>ScriptFlow Pro</h2>
+                        <p>Smart Call Scripts</p>
+                    </div>
+                </div>
+                <div id="userInfo" style="color:var(--sidebar-text-secondary); font-size:0.8rem; padding:8px 0; display:none;">
+                    <i class="fas fa-user-circle" aria-hidden="true"></i> <span id="userEmail"></span>
+                </div>
+            </div>
+
+            <div id="scriptsListSection" class="scripts-list-section">
+                <div class="search-area">
+                    <label for="scriptSearch" class="sr-only">Search scripts</label>
+                    <input type="text" id="scriptSearch" name="scriptSearch" class="search-box" placeholder="🔍 Search scripts..." aria-label="Search scripts" />
+                </div>
+                <div class="scripts-container">
+                    <div class="section-title"><i class="fas fa-scroll" aria-hidden="true"></i> CALL SCRIPTS</div>
+                    <div id="scriptListContainer"></div>
+                    <button id="addScriptBtnSide" class="add-script-btn" aria-label="Add new script"><i class="fas fa-plus" aria-hidden="true"></i> New Script</button>
+                </div>
+            </div>
+
+            <div class="tools-section">
+                <div class="tools-header" id="toolsHeader" role="button" tabindex="0" aria-expanded="false">
+                    <div class="section-title"><i class="fas fa-tools" aria-hidden="true"></i> TOOLS &amp; SETTINGS</div>
+                    <i class="fas fa-chevron-right tools-chevron" id="toolsChevron" aria-hidden="true"></i>
+                </div>
+                <div class="tools-menu" id="toolsMenu" role="menu">
+                    <div class="tool-item" data-tool="analytics" role="menuitem"><i class="fas fa-chart-pie" aria-hidden="true"></i> <span>Analytics Hub</span></div>
+                    <div class="tool-item" data-tool="calendar" role="menuitem"><i class="fas fa-calendar-alt" aria-hidden="true"></i> <span>Appointment Calendar</span></div>
+                    <div class="tool-item" data-tool="tasks" role="menuitem"><i class="fas fa-tasks" aria-hidden="true"></i> <span>Follow-up Tasks</span></div>
+                    <div class="tool-item" data-tool="smartworkspace" role="menuitem"><i class="fas fa-globe" aria-hidden="true"></i> <span>CRM Smart Workspace</span></div>
+                    <div class="tool-item" data-tool="export" role="menuitem"><i class="fas fa-file-csv" aria-hidden="true"></i> <span>Export to CSV</span></div>
+                    <div class="tool-item" data-tool="theme" role="menuitem"><i class="fas fa-moon" aria-hidden="true"></i> <span>Dark/Light Mode</span></div>
+                    <div class="tool-item" data-tool="help" role="menuitem"><i class="fas fa-question-circle" aria-hidden="true"></i> <span>Help Guide</span></div>
+                    <div class="tool-item" data-tool="reset" role="menuitem"><i class="fas fa-trash-alt" aria-hidden="true"></i> <span>Factory Reset</span></div>
+                    <div class="tool-item" id="signOutBtn" role="menuitem" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:12px;">
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span>Sign Out</span>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-footer"><i class="fas fa-crown" aria-hidden="true"></i> Press 1-9 to switch scripts</div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content" id="mainContent">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="stats-row">
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-day" aria-hidden="true"></i> Today</span>
+                        <span class="stat-number" id="statToday">0</span>
+                        <span class="stat-label">/<span id="goalDaily">3</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-week" aria-hidden="true"></i> Week</span>
+                        <span class="stat-number" id="statWeek">0</span>
+                        <span class="stat-label">/<span id="goalWeekly">15</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Month</span>
+                        <span class="stat-number" id="statMonth">0</span>
+                        <span class="stat-label">/<span id="goalMonthly">60</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-star" aria-hidden="true"></i> Avg Score</span>
+                        <span class="stat-number" id="avgScore">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-tasks" aria-hidden="true"></i> Tasks</span>
+                        <span class="stat-number" id="pendingTasks">0</span>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-icon" id="quickReportBtn" aria-label="Smart Import"><i class="fas fa-magic" aria-hidden="true"></i> Smart Import</button>
+                    <button class="btn-icon" id="bulkActionsBtn" aria-label="Bulk Actions"><i class="fas fa-check-double" aria-hidden="true"></i> Bulk Actions</button>
+                    <label class="btn-icon csv-upload-btn" id="csvUploadBtn" title="Upload CSV to import appointments">
+                        <i class="fas fa-file-upload" aria-hidden="true"></i> CSV
+                        <input type="file" id="csvFileInput" name="csvFileInput" accept=".csv" aria-label="Upload CSV file" />
+                    </label>
+                    <button class="btn-icon" id="historyBtn" aria-label="Version History"><i class="fas fa-history" aria-hidden="true"></i> History</button>
+                    <button class="btn-icon" id="workspaceLauncherBtn" aria-label="Open CRM Smart Workspace" style="background:var(--primary); color:white;">
+                        <i class="fas fa-globe" aria-hidden="true"></i> Workspace
+                    </button>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button class="btn-icon" id="refreshBtn" title="Refresh data from server" aria-label="Refresh data" style="padding:8px 12px;">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <span class="badge-auto" id="saveStatus"><i class="fas fa-save" aria-hidden="true"></i> Auto</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div id="rightPanel">
+                <!-- Script Panel -->
+                <div id="scriptPanel" class="script-card">
+                    <div class="script-header-bar">
+                        <div class="script-title-area">
+                            <i class="fas fa-scroll" style="color:var(--primary); font-size:1.3rem;" aria-hidden="true"></i>
+                            <h2 id="currentScriptName">Opening Script</h2>
+                            <span class="version-chip"><i class="fas fa-clock" aria-hidden="true"></i> v<span id="versionNumber">1</span></span>
+                            <span class="version-chip"><i class="fas fa-key" aria-hidden="true"></i> Key: <span id="activeShortcutHint">—</span></span>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-icon" id="editScriptBtn" aria-label="Edit script"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
+                            <button class="btn-icon" id="saveScriptBtn" style="display:none; background:var(--success);" aria-label="Save script"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
+                            <button class="btn-icon" id="cancelEditBtn" style="display:none;" aria-label="Cancel editing"><i class="fas fa-times" aria-hidden="true"></i> Cancel</button>
+                            <button class="btn-icon" id="copyScriptBtn" aria-label="Copy script"><i class="fas fa-copy" aria-hidden="true"></i> Copy</button>
+                            <button class="btn-icon" id="resetScriptBtn" aria-label="Reset script"><i class="fas fa-undo-alt" aria-hidden="true"></i> Reset</button>
+                            <button class="btn-icon" id="undoBtn" aria-label="Undo"><i class="fas fa-undo" aria-hidden="true"></i> Undo</button>
+                            <button class="btn-icon" id="redoBtn" aria-label="Redo"><i class="fas fa-redo" aria-hidden="true"></i> Redo</button>
+                        </div>
+                    </div>
+                    <div class="script-body" id="scriptBody">
+                        <div id="scriptContent"></div>
+                    </div>
+                </div>
+
+                <!-- Feature Panel -->
+                <div id="featurePanel" class="feature-panel" style="display:none;">
+                    <div class="feature-panel-header">
+                        <h2 id="featurePanelTitle">Feature</h2>
+                        <div id="viewToggleContainer" style="display:flex; gap:8px; align-items:center;">
+                            <div class="view-toggle" id="analyticsTabContainer" style="display:none;">
+                                <button id="insightsTabBtn" class="view-btn active" aria-label="Insights Dashboard"><i class="fas fa-chart-pie" aria-hidden="true"></i> Insights</button>
+                                <button id="reportsTabBtn" class="view-btn" aria-label="Advanced Reports"><i class="fas fa-chart-line" aria-hidden="true"></i> Reports</button>
+                            </div>
+                            <div class="view-toggle" id="calendarViewToggle" style="display:none;">
+                                <button id="calendarViewBtn" class="view-btn active" aria-label="Calendar View"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Calendar</button>
+                                <button id="listViewBtn" class="view-btn" aria-label="List View"><i class="fas fa-list" aria-hidden="true"></i> List</button>
+                            </div>
+                            <div class="view-toggle" id="taskViewToggle" style="display:none;">
+                                <button id="taskListViewBtn" class="view-btn active" aria-label="All Tasks"><i class="fas fa-list" aria-hidden="true"></i> All Tasks</button>
+                                <button id="taskPendingBtn" class="view-btn" aria-label="Pending Tasks"><i class="fas fa-clock" aria-hidden="true"></i> Pending</button>
+                            </div>
+                            <div class="view-toggle" id="workspaceViewToggle" style="display:none;">
+                                <button id="browserViewBtn" class="view-btn active" aria-label="Browser"><i class="fas fa-globe" aria-hidden="true"></i> Browser</button>
+                                <button id="toolsViewBtn" class="view-btn" aria-label="Tools"><i class="fas fa-tools" aria-hidden="true"></i> Tools</button>
+                                <button id="quickCopyViewBtn" class="view-btn" aria-label="Quick Copy"><i class="fas fa-copy" aria-hidden="true"></i> Quick Copy</button>
+                            </div>
+                        </div>
+                        <button id="closeFeaturePanelBtn" class="btn-icon" aria-label="Close panel"><i class="fas fa-times" aria-hidden="true"></i> Close</button>
+                    </div>
+                    <div class="feature-panel-body" id="featurePanelBody">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-note">
+                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Modal -->
+    <div id="bulkActionsModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Bulk Actions">
+        <div class="modal-card">
+            <h3><i class="fas fa-check-double" aria-hidden="true"></i> Bulk Actions</h3>
+            <p style="margin:12px 0; font-size:0.85rem; color:var(--text-muted);">Select appointments to perform bulk operations.</p>
+            <div id="bulkSelectionContainer" style="margin:16px 0; max-height:300px; overflow-y:auto;"></div>
+            <div class="form-group">
+                <label for="bulkActionSelect">Action</label>
+                <select id="bulkActionSelect" name="bulkActionSelect">
+                    <option value="status">Change Status</option>
+                    <option value="tag">Add Tag</option>
+                    <option value="delete">Delete Selected</option>
+                    <option value="export">Export Selected</option>
+                </select>
+            </div>
+            <div id="bulkActionOptions" style="display:none;">
+                <div class="form-group" id="bulkStatusGroup">
+                    <label for="bulkStatusSelect">New Status</label>
+                    <select id="bulkStatusSelect" name="bulkStatusSelect">
+                        <option value="Warm Call Booked">Warm Call Booked</option>
+                        <option value="Meeting Booked">Meeting Booked</option>
+                        <option value="Canceled">Canceled</option>
+                        <option value="Rescheduled">Rescheduled</option>
+                        <option value="Held">Held</option>
+                    </select>
+                </div>
+                <div class="form-group" id="bulkTagGroup" style="display:none;">
+                    <label for="bulkTagSelect">Tag to Add</label>
+                    <select id="bulkTagSelect" name="bulkTagSelect">
+                        <option value="qualified_warm_call">Qualified Warm Call</option>
+                        <option value="unqualified_warm_callback">Unqualified Warm Callback</option>
+                        <option value="vip">VIP</option>
+                        <option value="negligent_warm_callback">Negligent Warm Callback</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="executeBulkActionBtn" class="btn-icon" style="background:var(--primary); color:white;" aria-label="Execute bulk action">Execute</button>
+                <button id="closeBulkModalBtn" class="btn-icon" aria-label="Close modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Palette Overlay -->
+    <div id="commandPalette" class="command-palette-overlay" style="display:none;">
+        <div class="command-palette">
+            <div class="command-palette-header">
+                <i class="fas fa-search"></i>
+                <input type="text" id="commandInput" placeholder="Type a command or search..." autofocus />
+                <span class="command-shortcut">⌘K</span>
+            </div>
+            <div id="commandResults" class="command-results"></div>
+        </div>
+    </div>
+
+    <!-- Quick Copy Modal -->
+    <div id="quickCopyModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-card" style="max-width: 600px;">
+            <h3><i class="fas fa-copy" aria-hidden="true"></i> Quick Copy Library</h3>
+            <div style="margin:12px 0;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button class="quick-copy-filter active" data-filter="all">All</button>
+                    <button class="quick-copy-filter" data-filter="email">📧 Email</button>
+                    <button class="quick-copy-filter" data-filter="sms">💬 SMS</button>
+                    <button class="quick-copy-filter" data-filter="script">📜 Script</button>
+                    <button class="quick-copy-filter" data-filter="response">💡 Response</button>
+                </div>
+                <button class="btn-icon" id="addQuickCopyBtn" style="margin-bottom:12px; background:var(--success); color:white;">
+                    <i class="fas fa-plus"></i> New Template
+                </button>
+            </div>
+            <div id="quickCopyList" style="max-height:400px; overflow-y:auto;"></div>
+            <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+                <button id="closeQuickCopyBtn" class="btn-icon">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Quick Copy Template Modal -->
+    <div id="addQuickCopyTemplateModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-card" style="max-width: 500px;">
+            <h3><i class="fas fa-plus-circle"></i> New Template</h3>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="quickCopyName" placeholder="e.g., Follow-up Email" />
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="quickCopyCategory">
+                    <option value="email">📧 Email</option>
+                    <option value="sms">💬 SMS</option>
+                    <option value="script">📜 Script</option>
+                    <option value="response">💡 Response</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Content</label>
+                <textarea id="quickCopyContent" rows="6" placeholder="Paste your template content here..."></textarea>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="saveQuickCopyBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button>
+                <button id="cancelQuickCopyBtn" class="btn-icon">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/script.js"></script>
+</body>
+</html>
