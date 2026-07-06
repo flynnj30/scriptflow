@@ -493,6 +493,17 @@ body {
     transform: translateY(-1px) scale(1.02);
 }
 
+#quickReportBtn {
+    background: var(--success);
+    color: white;
+    border-color: var(--success);
+}
+
+#quickReportBtn:hover {
+    background: #059669;
+    border-color: #059669;
+}
+
 .csv-upload-btn {
     position: relative;
     cursor: pointer;

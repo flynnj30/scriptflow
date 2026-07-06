@@ -1,7 +1,7 @@
 {
   "name": "scriptflow-pro",
-  "version": "2.0.0",
-  "description": "ScriptFlow Pro - Smart CRM with Workspace",
+  "version": "2.1.0",
+  "description": "ScriptFlow Pro - Smart CRM with Workspace & Productivity Tools",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,9 +11,10 @@
     "crm",
     "smart-workspace",
     "sales",
-    "productivity"
+    "productivity",
+    "call-scripts"
   ],
-  "author": "Your Name",
+  "author": "ScriptFlow Pro Team",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.0",

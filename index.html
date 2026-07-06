@@ -108,7 +108,7 @@
                     </div>
                 </div>
                 <div class="action-buttons">
-                    <button class="btn-icon" id="quickReportBtn" aria-label="Smart Import"><i class="fas fa-magic" aria-hidden="true"></i> Smart Import</button>
+                    <button class="btn-icon" id="quickReportBtn" aria-label="Quick Add"><i class="fas fa-bolt" aria-hidden="true"></i> Quick Add</button>
                     <button class="btn-icon" id="bulkActionsBtn" aria-label="Bulk Actions"><i class="fas fa-check-double" aria-hidden="true"></i> Bulk Actions</button>
                     <label class="btn-icon csv-upload-btn" id="csvUploadBtn" title="Upload CSV to import appointments">
                         <i class="fas fa-file-upload" aria-hidden="true"></i> CSV
@@ -184,7 +184,7 @@
             </div>
 
             <div class="footer-note">
-                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions
+                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions · Press Ctrl+Enter to Quick Add
             </div>
         </div>
     </div>
@@ -272,12 +272,12 @@
         <div class="modal-card" style="max-width: 500px;">
             <h3><i class="fas fa-plus-circle"></i> New Template</h3>
             <div class="form-group">
-                <label>Name</label>
-                <input type="text" id="quickCopyName" placeholder="e.g., Follow-up Email" />
+                <label for="quickCopyNameInput">Name</label>
+                <input type="text" id="quickCopyNameInput" placeholder="e.g., Follow-up Email" />
             </div>
             <div class="form-group">
-                <label>Category</label>
-                <select id="quickCopyCategory">
+                <label for="quickCopyCategorySelect">Category</label>
+                <select id="quickCopyCategorySelect">
                     <option value="email">📧 Email</option>
                     <option value="sms">💬 SMS</option>
                     <option value="script">📜 Script</option>
@@ -285,8 +285,8 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Content</label>
-                <textarea id="quickCopyContent" rows="6" placeholder="Paste your template content here..."></textarea>
+                <label for="quickCopyContentArea">Content</label>
+                <textarea id="quickCopyContentArea" rows="6" placeholder="Paste your template content here..."></textarea>
             </div>
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button id="saveQuickCopyBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button>
