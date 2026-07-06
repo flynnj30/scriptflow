@@ -1,180 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScriptFlow Pro</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>ScriptFlow Pro · Smart CRM</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233b82f6'/%3E%3Ctext x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='Arial'%3E🎯%3C/text%3E%3C/svg%3E" />
     
     <!-- External Libraries -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
-    <link rel="stylesheet" href="style.css">
+    <!-- Firebase Config -->
+    <script src="js/firebase-config.js"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
-    <button id="menuToggleBtn" class="menu-toggle"><i class="fas fa-bars"></i></button>
-    
+<body class="dark">
     <div class="app-wrapper">
+        <button class="menu-toggle" id="menuToggleBtn" aria-label="Toggle Sidebar"><i class="fas fa-bars"></i></button>
+
         <!-- SIDEBAR -->
-        <aside id="mainSidebar" class="sidebar">
+        <aside class="sidebar" id="mainSidebar" role="navigation" aria-label="Main Navigation">
             <div class="sidebar-header">
                 <div class="logo">
-                    <div class="logo-icon"><i class="fas fa-microphone-alt"></i></div>
+                    <div class="logo-icon"><i class="fas fa-microphone-alt" aria-hidden="true"></i></div>
                     <div class="logo-text">
                         <h2>ScriptFlow Pro</h2>
-                        <p>Dialer & CRM Manager</p>
+                        <p>Smart Call Scripts</p>
                     </div>
                 </div>
-                <div id="userInfo" style="display: none;"></div>
-            </div>
-            
-            <div class="search-area">
-                <input type="text" id="scriptSearch" class="search-box" placeholder="Search scripts...">
+                <div id="userInfo" style="color:var(--sidebar-text-secondary); font-size:0.8rem; padding:8px 0; display:none;">
+                    <i class="fas fa-user-circle" aria-hidden="true"></i> <span id="userEmail"></span>
+                </div>
             </div>
 
-            <div class="scripts-list-section">
-                <div class="section-title">Your Scripts</div>
-                <div id="scriptListContainer" class="scripts-container"></div>
-                <div style="padding: 0 16px;">
-                    <button id="addScriptBtnSide" class="add-script-btn"><i class="fas fa-plus"></i> Add Script</button>
+            <div id="scriptsListSection" class="scripts-list-section">
+                <div class="search-area">
+                    <label for="scriptSearch" class="sr-only">Search scripts</label>
+                    <input type="text" id="scriptSearch" name="scriptSearch" class="search-box" placeholder="🔍 Search scripts..." aria-label="Search scripts" />
+                </div>
+                <div class="scripts-container">
+                    <div class="section-title"><i class="fas fa-scroll" aria-hidden="true"></i> CALL SCRIPTS</div>
+                    <div id="scriptListContainer"></div>
+                    <button id="addScriptBtnSide" class="add-script-btn" aria-label="Add new script"><i class="fas fa-plus" aria-hidden="true"></i> New Script</button>
                 </div>
             </div>
 
             <div class="tools-section">
-                <div class="tools-header" id="toolsHeader">
-                    <div class="section-title">Tools</div>
-                    <i class="fas fa-chevron-right tools-chevron" id="toolsChevron"></i>
+                <div class="tools-header" id="toolsHeader" role="button" tabindex="0" aria-expanded="false">
+                    <div class="section-title"><i class="fas fa-tools" aria-hidden="true"></i> TOOLS &amp; SETTINGS</div>
+                    <i class="fas fa-chevron-right tools-chevron" id="toolsChevron" aria-hidden="true"></i>
                 </div>
-                <div class="tools-menu" id="toolsMenu">
-                    <div class="tool-item"><i class="fas fa-chart-pie"></i> Analytics Hub</div>
-                    <div class="tool-item"><i class="fas fa-calendar-alt"></i> Appointment Calendar</div>
-                    <div class="tool-item"><i class="fas fa-tasks"></i> Follow-up Tasks</div>
-                    <div class="tool-item"><i class="fas fa-file-export"></i> Export CSV</div>
-                    <div class="tool-item"><i class="fas fa-adjust"></i> Dark/Light Mode</div>
-                    <div class="tool-item"><i class="fas fa-question-circle"></i> Help</div>
-                    <div class="tool-item"><i class="fas fa-trash-alt"></i> Factory Reset</div>
+                <div class="tools-menu" id="toolsMenu" role="menu">
+                    <div class="tool-item" data-tool="analytics" role="menuitem"><i class="fas fa-chart-pie" aria-hidden="true"></i> <span>Analytics Hub</span></div>
+                    <div class="tool-item" data-tool="calendar" role="menuitem"><i class="fas fa-calendar-alt" aria-hidden="true"></i> <span>Appointment Calendar</span></div>
+                    <div class="tool-item" data-tool="tasks" role="menuitem"><i class="fas fa-tasks" aria-hidden="true"></i> <span>Follow-up Tasks</span></div>
+                    <div class="tool-item" data-tool="smartworkspace" role="menuitem"><i class="fas fa-globe" aria-hidden="true"></i> <span>CRM Smart Workspace</span></div>
+                    <div class="tool-item" data-tool="export" role="menuitem"><i class="fas fa-file-csv" aria-hidden="true"></i> <span>Export to CSV</span></div>
+                    <div class="tool-item" data-tool="theme" role="menuitem"><i class="fas fa-moon" aria-hidden="true"></i> <span>Dark/Light Mode</span></div>
+                    <div class="tool-item" data-tool="help" role="menuitem"><i class="fas fa-question-circle" aria-hidden="true"></i> <span>Help Guide</span></div>
+                    <div class="tool-item" data-tool="reset" role="menuitem"><i class="fas fa-trash-alt" aria-hidden="true"></i> <span>Factory Reset</span></div>
+                    <div class="tool-item" id="signOutBtn" role="menuitem" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:12px;">
+                        <i class="fas fa-sign-out-alt" aria-hidden="true"></i> <span>Sign Out</span>
+                    </div>
                 </div>
             </div>
-            <div class="sidebar-footer">
-                <button id="signOutBtn" style="background:none; border:none; width:100%;"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
-            </div>
+            <div class="sidebar-footer"><i class="fas fa-crown" aria-hidden="true"></i> Press 1-9 to switch scripts</div>
         </aside>
 
         <!-- MAIN CONTENT -->
-        <main id="mainContent" class="main-content">
+        <div class="main-content" id="mainContent">
+            <!-- Top Bar -->
             <div class="top-bar">
                 <div class="stats-row">
-                    <div class="stat"><span class="stat-label">Today:</span><span class="stat-number" id="statToday">0</span><span class="stat-label">/ <span id="goalDaily">0</span></span></div>
-                    <div class="stat"><span class="stat-label">Week:</span><span class="stat-number" id="statWeek">0</span><span class="stat-label">/ <span id="goalWeekly">0</span></span></div>
-                    <div class="stat"><span class="stat-label">Month:</span><span class="stat-number" id="statMonth">0</span><span class="stat-label">/ <span id="goalMonthly">0</span></span></div>
-                    <div class="stat"><span class="stat-label">Avg Score:</span><span class="stat-number" id="avgScore">0</span></div>
-                    <div class="stat"><span class="stat-label">Tasks:</span><span class="stat-number" id="pendingTasks">0</span></div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-day" aria-hidden="true"></i> Today</span>
+                        <span class="stat-number" id="statToday">0</span>
+                        <span class="stat-label">/<span id="goalDaily">3</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-week" aria-hidden="true"></i> Week</span>
+                        <span class="stat-number" id="statWeek">0</span>
+                        <span class="stat-label">/<span id="goalWeekly">15</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Month</span>
+                        <span class="stat-number" id="statMonth">0</span>
+                        <span class="stat-label">/<span id="goalMonthly">60</span></span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-star" aria-hidden="true"></i> Avg Score</span>
+                        <span class="stat-number" id="avgScore">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label"><i class="fas fa-tasks" aria-hidden="true"></i> Tasks</span>
+                        <span class="stat-number" id="pendingTasks">0</span>
+                    </div>
                 </div>
                 <div class="action-buttons">
-                    <span id="saveStatus" style="font-size: 0.8rem; color: var(--text-muted); margin-right: 10px;"><i class="fas fa-save"></i> Auto</span>
-                    <button id="refreshBtn" class="btn-icon"><i class="fas fa-sync-alt"></i></button>
-                    <button id="quickReportBtn" class="btn-icon"><i class="fas fa-bolt"></i> Quick Add</button>
-                    <button id="bulkActionsBtn" class="btn-icon"><i class="fas fa-check-double"></i> Bulk</button>
-                    <label class="csv-upload-btn btn-icon" id="csvUploadBtn">
-                        <i class="fas fa-file-upload"></i> Import CSV
-                        <input type="file" id="csvFileInput" accept=".csv">
+                    <button class="btn-icon" id="quickReportBtn" aria-label="Smart Import"><i class="fas fa-magic" aria-hidden="true"></i> Smart Import</button>
+                    <button class="btn-icon" id="bulkActionsBtn" aria-label="Bulk Actions"><i class="fas fa-check-double" aria-hidden="true"></i> Bulk Actions</button>
+                    <label class="btn-icon csv-upload-btn" id="csvUploadBtn" title="Upload CSV to import appointments">
+                        <i class="fas fa-file-upload" aria-hidden="true"></i> CSV
+                        <input type="file" id="csvFileInput" name="csvFileInput" accept=".csv" aria-label="Upload CSV file" />
                     </label>
-                    <!-- CRM Dialer Trigger Button -->
-                    <button id="toggleCrmBtn" class="btn-icon" style="background: var(--success); color: white; border-color: var(--success);">
-                        <i class="fas fa-phone-alt"></i> Dialer
-                    </button>
+                    <button class="btn-icon" id="historyBtn" aria-label="Version History"><i class="fas fa-history" aria-hidden="true"></i> History</button>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button class="btn-icon" id="refreshBtn" title="Refresh data from server" aria-label="Refresh data" style="padding:8px 12px;">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </button>
+                        <span class="badge-auto" id="saveStatus"><i class="fas fa-save" aria-hidden="true"></i> Auto</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- SCRIPTS PANEL -->
-            <div id="scriptPanel" class="script-card">
-                <div class="script-header-bar">
-                    <div class="script-title-area">
-                        <h2 id="currentScriptName">Loading...</h2>
-                        <span class="version-chip" id="versionNumber">1/1</span>
-                        <span class="key-hint" id="activeShortcutHint">Key: 1</span>
+            <!-- Right Panel -->
+            <div id="rightPanel">
+                <!-- Script Panel -->
+                <div id="scriptPanel" class="script-card">
+                    <div class="script-header-bar">
+                        <div class="script-title-area">
+                            <i class="fas fa-scroll" style="color:var(--primary); font-size:1.3rem;" aria-hidden="true"></i>
+                            <h2 id="currentScriptName">Opening Script</h2>
+                            <span class="version-chip"><i class="fas fa-clock" aria-hidden="true"></i> v<span id="versionNumber">1</span></span>
+                            <span class="version-chip"><i class="fas fa-key" aria-hidden="true"></i> Key: <span id="activeShortcutHint">—</span></span>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn-icon" id="editScriptBtn" aria-label="Edit script"><i class="fas fa-pen" aria-hidden="true"></i> Edit</button>
+                            <button class="btn-icon" id="saveScriptBtn" style="display:none; background:var(--success);" aria-label="Save script"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
+                            <button class="btn-icon" id="cancelEditBtn" style="display:none;" aria-label="Cancel editing"><i class="fas fa-times" aria-hidden="true"></i> Cancel</button>
+                            <button class="btn-icon" id="copyScriptBtn" aria-label="Copy script"><i class="fas fa-copy" aria-hidden="true"></i> Copy</button>
+                            <button class="btn-icon" id="resetScriptBtn" aria-label="Reset script"><i class="fas fa-undo-alt" aria-hidden="true"></i> Reset</button>
+                            <button class="btn-icon" id="undoBtn" aria-label="Undo"><i class="fas fa-undo" aria-hidden="true"></i> Undo</button>
+                            <button class="btn-icon" id="redoBtn" aria-label="Redo"><i class="fas fa-redo" aria-hidden="true"></i> Redo</button>
+                        </div>
                     </div>
-                    <div class="action-buttons">
-                        <button id="historyBtn" class="btn-icon" title="History"><i class="fas fa-history"></i></button>
-                        <button id="undoBtn" class="btn-icon" title="Undo"><i class="fas fa-undo"></i></button>
-                        <button id="redoBtn" class="btn-icon" title="Redo"><i class="fas fa-redo"></i></button>
-                        <button id="copyScriptBtn" class="btn-icon" title="Copy"><i class="fas fa-copy"></i></button>
-                        <button id="editScriptBtn" class="btn-icon"><i class="fas fa-edit"></i> Edit</button>
-                        <button id="saveScriptBtn" class="btn-icon" style="display:none; background:var(--success); color:white;"><i class="fas fa-save"></i> Save</button>
-                        <button id="cancelEditBtn" class="btn-icon" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
-                        <button id="resetScriptBtn" class="btn-icon" title="Reset to Default"><i class="fas fa-undo-alt"></i></button>
+                    <div class="script-body" id="scriptBody">
+                        <div id="scriptContent"></div>
                     </div>
                 </div>
-                <div id="scriptContent" class="script-body"></div>
+
+                <!-- Feature Panel -->
+                <div id="featurePanel" class="feature-panel" style="display:none;">
+                    <div class="feature-panel-header">
+                        <h2 id="featurePanelTitle">Feature</h2>
+                        <div id="viewToggleContainer" style="display:flex; gap:8px; align-items:center;">
+                            <div class="view-toggle" id="analyticsTabContainer" style="display:none;">
+                                <button id="insightsTabBtn" class="view-btn active" aria-label="Insights Dashboard"><i class="fas fa-chart-pie" aria-hidden="true"></i> Insights</button>
+                                <button id="reportsTabBtn" class="view-btn" aria-label="Advanced Reports"><i class="fas fa-chart-line" aria-hidden="true"></i> Reports</button>
+                            </div>
+                            <div class="view-toggle" id="calendarViewToggle" style="display:none;">
+                                <button id="calendarViewBtn" class="view-btn active" aria-label="Calendar View"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Calendar</button>
+                                <button id="listViewBtn" class="view-btn" aria-label="List View"><i class="fas fa-list" aria-hidden="true"></i> List</button>
+                            </div>
+                            <div class="view-toggle" id="taskViewToggle" style="display:none;">
+                                <button id="taskListViewBtn" class="view-btn active" aria-label="All Tasks"><i class="fas fa-list" aria-hidden="true"></i> All Tasks</button>
+                                <button id="taskPendingBtn" class="view-btn" aria-label="Pending Tasks"><i class="fas fa-clock" aria-hidden="true"></i> Pending</button>
+                            </div>
+                            <div class="view-toggle" id="workspaceViewToggle" style="display:none;">
+                                <button id="browserViewBtn" class="view-btn active" aria-label="Browser"><i class="fas fa-globe" aria-hidden="true"></i> Browser</button>
+                                <button id="notesViewBtn" class="view-btn" aria-label="Notes"><i class="fas fa-sticky-note" aria-hidden="true"></i> Notes</button>
+                            </div>
+                        </div>
+                        <button id="closeFeaturePanelBtn" class="btn-icon" aria-label="Close panel"><i class="fas fa-times" aria-hidden="true"></i> Close</button>
+                    </div>
+                    <div class="feature-panel-body" id="featurePanelBody">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
             </div>
 
-            <!-- FEATURE PANEL (Calendar, Tasks, Analytics) -->
-            <div id="featurePanel" class="feature-panel" style="display: none;">
-                <div class="feature-panel-header">
-                    <h2 id="featurePanelTitle">Feature</h2>
-                    <div id="analyticsTabContainer" class="view-toggle" style="display:none;">
-                        <button id="insightsTabBtn" class="view-btn active">Insights</button>
-                        <button id="reportsTabBtn" class="view-btn">Reports</button>
-                    </div>
-                    <div id="calendarViewToggle" class="view-toggle" style="display:none;">
-                        <button id="calendarViewBtn" class="view-btn active">Calendar</button>
-                        <button id="listViewBtn" class="view-btn">List</button>
-                    </div>
-                    <div id="taskViewToggle" class="view-toggle" style="display:none;">
-                        <button id="taskPendingBtn" class="view-btn active">Pending</button>
-                        <button id="taskListViewBtn" class="view-btn">All Tasks</button>
-                    </div>
-                    <button id="closeFeaturePanelBtn" class="btn-icon"><i class="fas fa-times"></i></button>
-                </div>
-                <div id="featurePanelBody" class="feature-panel-body"></div>
-            </div>
-        </main>
-    </div>
-
-    <!-- CRM DIALER SIDE PANEL (Docked Right) -->
-    <div id="crmPanel" class="crm-panel">
-        <div class="crm-panel-header">
-            <h3><i class="fas fa-headset" style="color: var(--primary);"></i> CRM Dialer</h3>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <div class="crm-controls">
-                    <button class="crm-zoom-btn" id="crmZoomOutBtn" title="Zoom Out"><i class="fas fa-minus"></i></button>
-                    <span id="crmZoomLevel">100%</span>
-                    <button class="crm-zoom-btn" id="crmZoomInBtn" title="Zoom In"><i class="fas fa-plus"></i></button>
-                </div>
-                <button class="btn-icon danger" id="closeCrmBtn" style="padding: 4px 10px;"><i class="fas fa-times"></i></button>
+            <div class="footer-note">
+                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions
             </div>
         </div>
-        <div class="crm-iframe-wrapper">
-            <!-- Includes necessary permissions for VoIP/WebRTC calls -->
-            <iframe id="crmIframe" src="https://sales.regen-digital.com/campaigns/1f9164c5-48ce-42db-8af5-f6885d8f0077/dialer?mode=automatic" allow="microphone; camera; display-capture"></iframe>
-        </div>
     </div>
 
-    <!-- STATIC BULK ACTIONS MODAL -->
-    <div id="bulkActionsModal" class="modal-overlay" style="display: none;">
+    <!-- Bulk Actions Modal -->
+    <div id="bulkActionsModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Bulk Actions">
         <div class="modal-card">
-            <h3><i class="fas fa-check-double"></i> Bulk Actions</h3>
-            <div id="bulkSelectionContainer" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--border-color); border-radius: 12px; padding: 8px;"></div>
+            <h3><i class="fas fa-check-double" aria-hidden="true"></i> Bulk Actions</h3>
+            <p style="margin:12px 0; font-size:0.85rem; color:var(--text-muted);">Select appointments to perform bulk operations.</p>
+            <div id="bulkSelectionContainer" style="margin:16px 0; max-height:300px; overflow-y:auto;"></div>
             <div class="form-group">
-                <label>Action</label>
-                <select id="bulkActionSelect">
-                    <option value="">Select an action...</option>
+                <label for="bulkActionSelect">Action</label>
+                <select id="bulkActionSelect" name="bulkActionSelect">
                     <option value="status">Change Status</option>
                     <option value="tag">Add Tag</option>
                     <option value="delete">Delete Selected</option>
-                    <option value="export">Export Selected (CSV)</option>
+                    <option value="export">Export Selected</option>
                 </select>
             </div>
-            <div id="bulkActionOptions" style="display: none;">
-                <div class="form-group" id="bulkStatusGroup" style="display: none;">
-                    <label>New Status</label>
-                    <select id="bulkStatusSelect">
+            <div id="bulkActionOptions" style="display:none;">
+                <div class="form-group" id="bulkStatusGroup">
+                    <label for="bulkStatusSelect">New Status</label>
+                    <select id="bulkStatusSelect" name="bulkStatusSelect">
                         <option value="Warm Call Booked">Warm Call Booked</option>
                         <option value="Meeting Booked">Meeting Booked</option>
                         <option value="Canceled">Canceled</option>
@@ -182,9 +212,9 @@
                         <option value="Held">Held</option>
                     </select>
                 </div>
-                <div class="form-group" id="bulkTagGroup" style="display: none;">
-                    <label>Tag to Add</label>
-                    <select id="bulkTagSelect">
+                <div class="form-group" id="bulkTagGroup" style="display:none;">
+                    <label for="bulkTagSelect">Tag to Add</label>
+                    <select id="bulkTagSelect" name="bulkTagSelect">
                         <option value="qualified_warm_call">Qualified Warm Call</option>
                         <option value="unqualified_warm_callback">Unqualified Warm Callback</option>
                         <option value="vip">VIP</option>
@@ -192,13 +222,14 @@
                     </select>
                 </div>
             </div>
-            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button id="executeBulkActionBtn" class="btn-icon" style="background: var(--primary); color: white;">Apply</button>
-                <button id="closeBulkModalBtn" class="btn-icon">Cancel</button>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="executeBulkActionBtn" class="btn-icon" style="background:var(--primary); color:white;" aria-label="Execute bulk action">Execute</button>
+                <button id="closeBulkModalBtn" class="btn-icon" aria-label="Close modal">Cancel</button>
             </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- JavaScript -->
+    <script src="js/script.js"></script>
 </body>
 </html>

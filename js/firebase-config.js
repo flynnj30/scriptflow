@@ -10,7 +10,7 @@ const FIREBASE_CONFIG = {
     storageBucket: "scriptflow-pro-2cf4c.firebasestorage.app",
     messagingSenderId: "250157640936",
     appId: "1:250157640936:web:cd6218470c302b305aed5d"
-  };
+};
 
 // Initialize Firebase
 firebase.initializeApp(FIREBASE_CONFIG);
@@ -19,27 +19,25 @@ firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
 // Apply settings with proper configuration
-// Fixed: Using merge: true to avoid overriding errors
 try {
-  db.settings({
-    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
-    merge: true
-  });
+    db.settings({
+        cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+        merge: true
+    });
 } catch (error) {
-  console.warn('Firestore settings already applied:', error);
+    console.warn('Firestore settings already applied:', error);
 }
 
 // Enable offline persistence with proper error handling
 try {
-  db.enablePersistence({ synchronizeTabs: true })
-    .catch(err => {
-      // This error is expected if persistence is already enabled
-      if (err.code !== 'failed-precondition' && err.code !== 'unavailable') {
-        console.warn('Firebase persistence error:', err);
-      }
-    });
+    db.enablePersistence({ synchronizeTabs: true })
+        .catch(err => {
+            if (err.code !== 'failed-precondition' && err.code !== 'unavailable') {
+                console.warn('Firebase persistence error:', err);
+            }
+        });
 } catch (err) {
-  console.warn('Firebase persistence setup:', err);
+    console.warn('Firebase persistence setup:', err);
 }
 
 // Initialize Auth
@@ -47,9 +45,9 @@ const auth = firebase.auth();
 
 // Enable persistence for auth
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-  .catch(err => {
-    console.warn('Auth persistence error:', err);
-  });
+    .catch(err => {
+        console.warn('Auth persistence error:', err);
+    });
 
 // Make available globally
 window.db = db;
