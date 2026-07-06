@@ -314,15 +314,36 @@ async function signInWithGoogle() {
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
-        const result = await auth.signInWithPopup(provider);
-        if (result.user) {
-            currentUser = result.user;
-            updateSidebarProfile(currentUser);
-            await loadUserData();
-            showToast('Welcome back! 👋', 'success');
-            closeAuthModal();
-            authInProgress = false;
-            return true;
+        
+        // Use redirect instead of popup to avoid COOP issues
+        // Check if we're in a popup context
+        if (window.opener) {
+            // We're in a popup, use redirect
+            await auth.signInWithRedirect(provider);
+            return;
+        }
+        
+        try {
+            const result = await auth.signInWithPopup(provider);
+            if (result.user) {
+                currentUser = result.user;
+                updateSidebarProfile(currentUser);
+                await loadUserData();
+                showToast('Welcome back! 👋', 'success');
+                closeAuthModal();
+                authInProgress = false;
+                return true;
+            }
+        } catch (popupError) {
+            // If popup fails due to COOP, fall back to redirect
+            if (popupError.code === 'auth/popup-blocked' || 
+                popupError.code === 'auth/popup-closed-by-user' ||
+                popupError.message.includes('Cross-Origin-Opener-Policy')) {
+                console.log('Popup blocked by COOP, using redirect instead');
+                await auth.signInWithRedirect(provider);
+                return true;
+            }
+            throw popupError;
         }
     } catch (error) {
         authInProgress = false;
@@ -331,22 +352,21 @@ async function signInWithGoogle() {
     }
 }
 
-async function signUp(email, password, username) {
-    if (authInProgress) { showToast('Sign in progress...', 'info'); return; }
-    authInProgress = true;
-    try {
-        const result = await auth.createUserWithEmailAndPassword(email, password);
-        if (result.user) {
-            await result.user.updateProfile({ displayName: username });
-            await db.collection('users').doc(result.user.uid).set({
-                uid: result.user.uid,
-                email: email,
-                username: username,
-                displayName: username,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                goals: { daily: 3, weekly: 15, monthly: 60 },
-                scriptOrder: ['opening', 'owner_yes', 'owner_no', 'objection_website', 'objection_webguy', 'objection_cost', 'objection_busy', 'objection_not_interested', 'objection_info', 'objection_found_me', 'closing']
-            });
+// Handle redirect result
+auth.getRedirectResult().then((result) => {
+    if (result.user) {
+        currentUser = result.user;
+        updateSidebarProfile(currentUser);
+        loadUserData().then(() => {
+            showToast('Welcome back! 👋', 'success');
+            closeAuthModal();
+            authInProgress = false;
+        });
+    }
+}).catch((error) => {
+    console.warn('Redirect sign-in error:', error);
+    authInProgress = false;
+});
             showToast('Account created! 🎉', 'success');
             currentUser = result.user;
             updateSidebarProfile(currentUser);
