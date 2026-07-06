@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: scriptflow-pro
+    runtime: node
+    plan: free
+    region: ohio
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
+    healthCheckPath: /
+    autoDeploy: true

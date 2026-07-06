@@ -172,7 +172,8 @@
                             </div>
                             <div class="view-toggle" id="workspaceViewToggle" style="display:none;">
                                 <button id="browserViewBtn" class="view-btn active" aria-label="Browser"><i class="fas fa-globe" aria-hidden="true"></i> Browser</button>
-                                <button id="notesViewBtn" class="view-btn" aria-label="Notes"><i class="fas fa-sticky-note" aria-hidden="true"></i> Notes</button>
+                                <button id="toolsViewBtn" class="view-btn" aria-label="Tools"><i class="fas fa-tools" aria-hidden="true"></i> Tools</button>
+                                <button id="quickCopyViewBtn" class="view-btn" aria-label="Quick Copy"><i class="fas fa-copy" aria-hidden="true"></i> Quick Copy</button>
                             </div>
                         </div>
                         <button id="closeFeaturePanelBtn" class="btn-icon" aria-label="Close panel"><i class="fas fa-times" aria-hidden="true"></i> Close</button>
@@ -228,6 +229,69 @@
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button id="executeBulkActionBtn" class="btn-icon" style="background:var(--primary); color:white;" aria-label="Execute bulk action">Execute</button>
                 <button id="closeBulkModalBtn" class="btn-icon" aria-label="Close modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command Palette Overlay -->
+    <div id="commandPalette" class="command-palette-overlay" style="display:none;">
+        <div class="command-palette">
+            <div class="command-palette-header">
+                <i class="fas fa-search"></i>
+                <input type="text" id="commandInput" placeholder="Type a command or search..." autofocus />
+                <span class="command-shortcut">⌘K</span>
+            </div>
+            <div id="commandResults" class="command-results"></div>
+        </div>
+    </div>
+
+    <!-- Quick Copy Modal -->
+    <div id="quickCopyModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-card" style="max-width: 600px;">
+            <h3><i class="fas fa-copy" aria-hidden="true"></i> Quick Copy Library</h3>
+            <div style="margin:12px 0;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                    <button class="quick-copy-filter active" data-filter="all">All</button>
+                    <button class="quick-copy-filter" data-filter="email">📧 Email</button>
+                    <button class="quick-copy-filter" data-filter="sms">💬 SMS</button>
+                    <button class="quick-copy-filter" data-filter="script">📜 Script</button>
+                    <button class="quick-copy-filter" data-filter="response">💡 Response</button>
+                </div>
+                <button class="btn-icon" id="addQuickCopyBtn" style="margin-bottom:12px; background:var(--success); color:white;">
+                    <i class="fas fa-plus"></i> New Template
+                </button>
+            </div>
+            <div id="quickCopyList" style="max-height:400px; overflow-y:auto;"></div>
+            <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+                <button id="closeQuickCopyBtn" class="btn-icon">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Quick Copy Template Modal -->
+    <div id="addQuickCopyTemplateModal" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-card" style="max-width: 500px;">
+            <h3><i class="fas fa-plus-circle"></i> New Template</h3>
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="quickCopyName" placeholder="e.g., Follow-up Email" />
+            </div>
+            <div class="form-group">
+                <label>Category</label>
+                <select id="quickCopyCategory">
+                    <option value="email">📧 Email</option>
+                    <option value="sms">💬 SMS</option>
+                    <option value="script">📜 Script</option>
+                    <option value="response">💡 Response</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Content</label>
+                <textarea id="quickCopyContent" rows="6" placeholder="Paste your template content here..."></textarea>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="saveQuickCopyBtn" class="btn-icon" style="background:var(--success); color:white;">Save</button>
+                <button id="cancelQuickCopyBtn" class="btn-icon">Cancel</button>
             </div>
         </div>
     </div>
