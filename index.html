@@ -22,7 +22,10 @@
     <!-- Firebase Config -->
     <script src="js/firebase-config.js"></script>
     
-    <!-- Styles -->
+    <!-- Notepad Styles -->
+    <link rel="stylesheet" href="css/notepad-styles.css" />
+    
+    <!-- Main Styles -->
     <link rel="stylesheet" href="css/style.css" />
 </head>
 <body class="dark">
@@ -66,7 +69,7 @@
                     <div class="tool-item" data-tool="calendar" role="menuitem"><i class="fas fa-calendar-alt" aria-hidden="true"></i> <span>Appointment Calendar</span></div>
                     <div class="tool-item" data-tool="tasks" role="menuitem"><i class="fas fa-tasks" aria-hidden="true"></i> <span>Follow-up Tasks</span></div>
                     <div class="tool-item" data-tool="smartworkspace" role="menuitem"><i class="fas fa-globe" aria-hidden="true"></i> <span>CRM Smart Workspace</span></div>
-                    <div class="tool-item" data-tool="notepad" role="menuitem"><i class="fas fa-pen-fancy" aria-hidden="true"></i> <span>Notepad Pro</span></div>
+                    <div class="tool-item" data-tool="notepad" role="menuitem"><i class="fas fa-sticky-note" aria-hidden="true"></i> <span>📝 Smart Notepad</span></div>
                     <div class="tool-item" data-tool="export" role="menuitem"><i class="fas fa-file-csv" aria-hidden="true"></i> <span>Export to CSV</span></div>
                     <div class="tool-item" data-tool="theme" role="menuitem"><i class="fas fa-moon" aria-hidden="true"></i> <span>Dark/Light Mode</span></div>
                     <div class="tool-item" data-tool="help" role="menuitem"><i class="fas fa-question-circle" aria-hidden="true"></i> <span>Help Guide</span></div>
@@ -118,9 +121,6 @@
                     <button class="btn-icon" id="historyBtn" aria-label="Version History"><i class="fas fa-history" aria-hidden="true"></i> History</button>
                     <button class="btn-icon" id="workspaceLauncherBtn" aria-label="Open CRM Smart Workspace" style="background:var(--primary); color:white;">
                         <i class="fas fa-globe" aria-hidden="true"></i> Workspace
-                    </button>
-                    <button class="btn-icon" id="notepadLauncherBtn" aria-label="Open Notepad Pro" style="background:var(--secondary); color:white;">
-                        <i class="fas fa-pen-fancy" aria-hidden="true"></i> Notes
                     </button>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <button class="btn-icon" id="refreshBtn" title="Refresh data from server" aria-label="Refresh data" style="padding:8px 12px;">
@@ -188,7 +188,7 @@
             </div>
 
             <div class="footer-note">
-                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions · Notepad Pro
+                <i class="fas fa-chart-line" aria-hidden="true"></i> Full-featured CRM · Drag appointments to reschedule · Lead scoring · Follow-up tasks · Bulk actions
             </div>
         </div>
     </div>
@@ -299,7 +299,11 @@
         </div>
     </div>
 
+    <!-- Notepad Container -->
+    <div id="notepad-container" style="height: 100%; min-height: 500px; width: 100%; display:none;"></div>
+
     <!-- JavaScript -->
     <script src="js/script.js"></script>
+    <script src="js/notepad-module.js"></script>
 </body>
 </html>
